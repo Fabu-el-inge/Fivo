@@ -35,8 +35,8 @@ FROM node:18-slim
 
 WORKDIR /app
 
-# Copy compiled binary from builder stage
-COPY --from=builder /app/build/bin/fivo_demo /app/build/bin/fivo_demo
+# Copy all compiled binaries and libraries from builder stage
+COPY --from=builder /app/build/bin /app/build/bin
 RUN chmod +x /app/build/bin/fivo_demo
 
 # Copy BFF application
@@ -49,12 +49,12 @@ RUN npm ci --only=production
 # Copy server code
 COPY bff/server.js .
 
-# Expose port
+# Expose port (Railway will assign dynamically via $PORT)
 EXPOSE 3001
 
-# Health check
+# Health check uses PORT environment variable
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3001/', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+    CMD node -e "const port = process.env.PORT || 3001; require('http').get('http://localhost:' + port + '/', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Start server
 CMD ["node", "server.js"]
