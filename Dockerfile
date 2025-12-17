@@ -37,7 +37,11 @@ WORKDIR /app
 
 # Copy all compiled binaries and libraries from builder stage
 COPY --from=builder /app/build/bin /app/build/bin
+COPY --from=builder /app/build/lib /app/build/lib
 RUN chmod +x /app/build/bin/fivo_demo
+
+# Set library path for shared libraries
+ENV LD_LIBRARY_PATH=/app/build/lib
 
 # Copy BFF application
 COPY bff/package*.json ./bff/
