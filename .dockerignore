@@ -34,8 +34,7 @@ Thumbs.db
 .env.local
 .env.*.local
 
-# Test files
-tests
+# Test files (keep tests/ for C++ build, exclude JS tests only)
 *.test.js
 *.spec.js
 
