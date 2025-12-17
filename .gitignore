@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+bff/node_modules/
+frontend/node_modules/
+
+# Build outputs
+build/
+frontend/dist/
+frontend/.vercel/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+bff/.env
+
+# Logs
+*.log
+npm-debug.log*
+bff_output.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Temporary
+tmp/
+temp/

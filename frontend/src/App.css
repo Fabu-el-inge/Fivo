@@ -1,0 +1,1053 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+/* ===== DESIGN TOKENS - LIGHT INSTRUMENT THEME ===== */
+:root {
+  /* Backgrounds - Ultra light, clean */
+  --bg-base: #F5F6F7;
+  --bg-surface: #FFFFFF;
+  --bg-glass: rgba(255, 255, 255, 0.85);
+  --bg-glass-subtle: rgba(255, 255, 255, 0.6);
+
+  /* Text - Dark grays, never pure black */
+  --text-primary: #1a1a2e;
+  --text-secondary: #6b6b80;
+  --text-muted: #9999aa;
+  --text-label: #888899;
+
+  /* Accent - Single color for active states ONLY */
+  --accent-active: #E5A800;
+  --accent-active-glow: rgba(229, 168, 0, 0.3);
+
+  /* Harmonic colors - Subtle, desaturated */
+  --color-safe: #22c55e;
+  --color-tension: #f59e0b;
+  --color-avoid: #ef4444;
+  --color-tonic: #3b82f6;
+  --color-neutral: #e5e7eb;
+
+  /* Glass effects */
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  --glass-blur: blur(12px);
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  /* Radius - Subtle, professional */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 50%;
+
+  /* Transitions */
+  --transition-fast: 0.12s ease;
+  --transition-normal: 0.25s ease;
+  --transition-smooth: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===== RESET ===== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: 0.01em;
+}
+
+/* ===== FULLSCREEN APP CONTAINER ===== */
+.app-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===== MINIMAL HEADER - FLOATING ===== */
+.app-header {
+  position: fixed;
+  bottom: var(--space-lg);
+  right: var(--space-lg);
+  /* Bottom Right Corner */
+  left: auto;
+  transform: none;
+  text-align: right;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.app-header h1 {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.app-header .subtitle {
+  display: none;
+}
+
+/* ===== MAIN LAYOUT - GRID SYSTEM ===== */
+.main-layout {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  /* Left (Fluid), Center (Content), Right (Fluid) */
+  grid-template-rows: 1fr;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* LEFT COLUMN - TOOLS */
+.tools-left-container {
+  padding-right: var(--space-lg);
+  /* Add padding to separate slightly from circle */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  justify-content: center;
+  align-items: flex-end;
+  /* Align RIGHT (towards center) */
+  height: 100%;
+  pointer-events: none;
+}
+
+.tools-left-container>* {
+  pointer-events: auto;
+}
+
+/* RIGHT COLUMN - STYLE */
+.tools-right-container {
+  padding-left: 60px;
+  /* Increased from space-lg (24px) to move away from circle */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  /* Align LEFT (towards center) */
+  height: 100%;
+  pointer-events: none;
+}
+
+.tools-right-container>* {
+  pointer-events: auto;
+}
+
+/* CENTER COLUMN - CIRCLE */
+.center-panel {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  /* No pointer-events: none here, we need to click circle */
+}
+
+/* CIRCLE WRAPPER */
+.circle-wrapper {
+  position: relative;
+  width: min(65vh, 65vw);
+  height: min(65vh, 65vw);
+  min-width: 400px;
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* BOTTOM CENTER - Octave */
+.bottom-center {
+  position: absolute;
+  /* ~83% puts it just below the circle (50% + 32.5% radius) */
+  top: 84%;
+  left: 50%;
+  transform: translate(-50%, 0);
+  z-index: 20;
+}
+
+/* 4:00 PM POSITION - Key Selector */
+.position-4-oclock {
+  position: absolute;
+  /* Shifted slightly Up and Right */
+  top: 80%;
+  left: 90%;
+  /* Moved further right */
+  transform: translate(-50%, -50%);
+  z-index: 100;
+  /* Higher z-index for dropdown */
+}
+
+/* REMOVE OLD LEFT PANEL STYLES */
+.left-panel {
+  display: none;
+}
+
+/* ===== GLASS CARD - Subtle floating panels ===== */
+.glass-card {
+  background: var(--bg-glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ===== CONTROL PANEL - INSTRUMENT STYLE ===== */
+.control-panel {
+  padding: var(--space-md);
+}
+
+.control-panel h2 {
+  font-size: 0.6rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  margin-bottom: var(--space-md);
+  padding-bottom: var(--space-xs);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.controls-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.control-group label {
+  font-size: 0.55rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-label);
+}
+
+/* COMPONENT STYLES */
+
+/* Tools Left Stack */
+.tools-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 140px;
+}
+
+.tool-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+  text-align: center;
+}
+
+.tools-left .btn-group.vertical {
+  flex-direction: column;
+  width: 100%;
+}
+
+/* Style Selector Buttons */
+.style-selector {
+  width: 140px;
+}
+
+.style-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.style-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.8rem;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.style-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.style-btn.active {
+  background: var(--accent-active);
+  color: #000;
+  border-color: var(--accent-active);
+  font-weight: 600;
+  box-shadow: 0 0 15px rgba(229, 168, 0, 0.4);
+}
+
+/* Vertical Ranges & Stacks */
+.vertical-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+
+.sub-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 0.7rem;
+  color: var(--text-label);
+  width: 100%;
+}
+
+.sub-control input[type="range"] {
+  width: 100%;
+  margin-top: 4px;
+}
+
+/* Vertical Range Input Transform */
+.vertical-range {
+  -webkit-appearance: slider-vertical;
+  appearance: slider-vertical;
+  width: 8px;
+  height: 80px;
+  margin: 10px 0;
+}
+
+/* Octave Control */
+.octave-control {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.5rem 1rem;
+}
+
+.octave-control button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-surface);
+  cursor: pointer;
+}
+
+.octave-control .value-display {
+  font-size: 1.2rem;
+  font-weight: 700;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* Key Selector */
+.key-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 120px;
+  text-align: center;
+}
+
+/* Minimal select */
+.control-group select {
+  appearance: none;
+  background: var(--bg-surface);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.control-group select:hover {
+  border-color: var(--text-muted);
+}
+
+.control-group select:focus {
+  outline: none;
+  border-color: var(--accent-active);
+  box-shadow: 0 0 0 3px var(--accent-active-glow);
+}
+
+/* Instrument-style button group */
+.control-group .btn-group {
+  display: flex;
+  gap: 1px;
+  background: var(--glass-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.control-group .btn-group button,
+.control-group button {
+  appearance: none;
+  background: var(--bg-surface);
+  border: none;
+  color: var(--text-secondary);
+  padding: var(--space-sm) var(--space-md);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex: 1;
+  text-align: center;
+}
+
+.control-group .btn-group button:hover,
+.control-group button:hover {
+  background: var(--bg-glass-subtle);
+  color: var(--text-primary);
+}
+
+.control-group button.active {
+  background: var(--accent-active);
+  color: #000;
+  font-weight: 600;
+}
+
+.control-group button:disabled {
+  cursor: default;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Solo button styling */
+.control-group>button:not(.btn-group button) {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+}
+
+/* ===== RESULT PANEL - MINIMAL INFO ===== */
+.result-panel {
+  padding: var(--space-md);
+}
+
+.result-panel h3 {
+  font-size: 0.55rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: var(--space-sm);
+}
+
+.result-panel .chord-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: var(--space-xs);
+}
+
+.result-panel .chord-name span {
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  display: inline-block;
+}
+
+.result-panel .relation {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-sm);
+}
+
+.result-panel .midi-notes {
+  display: flex;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.result-panel .midi-note {
+  background: var(--bg-surface);
+  border: 1px solid var(--glass-border);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+/* ===== CIRCLE OF FIFTHS - GLASS PAD STYLE ===== */
+.circle-wrapper {
+  position: relative;
+  width: min(65vh, 65vw);
+  height: min(65vh, 65vw);
+  min-width: 400px;
+  min-height: 400px;
+}
+
+.circle-svg {
+  width: 100%;
+  height: 100%;
+  transition: transform var(--transition-smooth);
+  overflow: visible;
+  /* Prevent clipping of glows */
+}
+
+/* Center display - Premium Glass */
+.circle-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 10;
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-full);
+  width: 22%;
+  height: 22%;
+  min-width: 80px;
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.05),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.circle-center .key-label {
+  font-size: 0.5rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  margin-bottom: 4px;
+}
+
+.circle-center .key-value {
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Glass Pad Base Styling */
+.glass-pad-group {
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.glass-pad-color,
+.glass-pad-shine {
+  transition: all var(--transition-smooth);
+  /* Hardware acceleration for filters */
+  transform: translateZ(0);
+}
+
+/* Layer 1: The Color/Base */
+.glass-pad-color {
+  stroke: none;
+}
+
+/* Layer 2: The Glass Surface */
+.glass-pad-shine {
+  stroke-width: 1px;
+  stroke: rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+  /* Let clicks pass through to group/color */
+}
+
+/* Divider Lines - "Cuts" in the glass */
+.glass-divider {
+  stroke: rgba(255, 255, 255, 0.3);
+  stroke-width: 1px;
+  pointer-events: none;
+}
+
+/* === STATE: NEUTRAL (Off) === */
+.glass-pad-group.neutral .glass-pad-color {
+  fill: #e5e7eb;
+  /* Neutral grey base */
+  fill-opacity: 0.1;
+  /* Almost transparent */
+}
+
+.glass-pad-group.neutral .glass-pad-shine {
+  /* Shine gradient already applied via SVG fill url */
+  opacity: 0.5;
+}
+
+.glass-pad-group.neutral:hover .glass-pad-color {
+  fill-opacity: 0.2;
+}
+
+.glass-pad-group.neutral:hover .glass-pad-shine {
+  stroke: rgba(255, 255, 255, 0.8);
+  opacity: 1;
+}
+
+/* === STATE: ACTIVE/HARMONIC (On) === */
+/* This is where we get INTENSE COLOR "behind" the glass */
+.glass-pad-group.active .glass-pad-color {
+  fill: var(--segment-color);
+  fill-opacity: 0.6;
+  /* Intense color, not pastel! */
+
+  /* Inner glow effect via filter? Or relying on the glass overlay? */
+  filter: drop-shadow(0 0 8px var(--segment-color));
+}
+
+.glass-pad-group.active .glass-pad-shine {
+  stroke: rgba(255, 255, 255, 0.6);
+  /* The gradient fill stays white, creating the "glass over color" look */
+}
+
+.glass-pad-group.active:hover .glass-pad-color {
+  fill-opacity: 0.8;
+  /* Even more intense on hover */
+  filter: drop-shadow(0 0 15px var(--segment-color));
+}
+
+.glass-pad-group.active:hover .glass-pad-shine {
+  stroke: white;
+  stroke-width: 2px;
+}
+
+/* === STATE: SELECTED === */
+.glass-pad-group.selected .glass-pad-color {
+  fill: var(--segment-color);
+  fill-opacity: 0.9;
+  /* Solid intense color */
+  filter: drop-shadow(0 0 20px var(--segment-color));
+}
+
+.glass-pad-group.selected .glass-pad-shine {
+  stroke: white;
+  stroke-width: 3px;
+  /* Make shine very visible */
+}
+
+/* Labels */
+.glass-pad-label {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+  transition: all var(--transition-normal);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  /* Legibility shadow */
+}
+
+.glass-pad-group.neutral .glass-pad-label {
+  fill: var(--text-secondary);
+  opacity: 0.6;
+}
+
+.glass-pad-group.active .glass-pad-label {
+  fill: #fff;
+  /* White text on intense color */
+  font-weight: 700;
+}
+
+/* Exception: Inner ring text smaller */
+.glass-pad-label.minor {
+  font-size: 9px;
+  font-weight: 500;
+}
+
+/* Hover effects for text */
+.glass-pad-group:hover .glass-pad-label {
+  transform: scale(1.1);
+  fill: #fff;
+  opacity: 1;
+}
+
+/* ===== ERROR BANNER ===== */
+.error-banner {
+  position: fixed;
+  top: var(--space-lg);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid var(--color-avoid);
+  color: var(--color-avoid);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  text-align: center;
+  z-index: 1000;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .left-panel {
+    position: fixed;
+    top: auto;
+    bottom: var(--space-xl);
+    left: 50%;
+    transform: translateX(-50%);
+    flex-direction: row;
+    max-width: 90vw;
+    gap: var(--space-sm);
+  }
+
+  .control-panel,
+  .result-panel {
+    padding: var(--space-sm);
+  }
+
+  .control-panel h2 {
+    display: none;
+  }
+
+  .circle-wrapper {
+    width: min(75vw, 60vh);
+    height: min(75vw, 60vh);
+    min-width: 280px;
+    min-height: 280px;
+  }
+
+  .app-header {
+    bottom: auto;
+    top: var(--space-md);
+  }
+}
+
+@media (max-width: 480px) {
+  .left-panel {
+    flex-direction: column;
+    bottom: var(--space-md);
+    max-width: 160px;
+    left: var(--space-md);
+    transform: none;
+  }
+
+  .circle-wrapper {
+    min-width: 260px;
+    min-height: 260px;
+  }
+
+  .note-sector {
+    width: 38px;
+    height: 38px;
+    font-size: 0.75rem;
+  }
+
+  .circle-center {
+    min-width: 60px;
+    min-height: 60px;
+  }
+}
+
+/* Bottom Left Corner Info - Subtle */
+.bottom-left-corner {
+  position: absolute;
+  bottom: 2rem;
+  left: 2rem;
+  z-index: 50;
+  pointer-events: none;
+}
+
+/* Minimalist Result Panel */
+.result-minimal {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: 'Inter', monospace;
+  opacity: 0.7;
+  /* Make it subtle */
+}
+
+.chord-text {
+  font-size: 0.75rem;
+  /* Small */
+  font-weight: 300;
+  /* Light font weight */
+  color: var(--text-secondary);
+  /* Gray */
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.separator {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.mini-notes {
+  display: flex;
+  gap: 6px;
+}
+
+/* Apple-Style Minimal List (Style Selector) */
+.style-selector-apple {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  /* Align text left within the right container */
+  gap: 12px;
+}
+
+.style-selector-apple label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.style-list-apple {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.style-item-apple {
+  background: transparent;
+  border: none;
+  padding: 6px 0;
+  text-align: left;
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text-label);
+  /* Inactive gray */
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.style-item-apple:hover {
+  color: var(--text-secondary);
+}
+
+.style-item-apple.active {
+  color: var(--text-primary);
+  /* Active black/dark */
+  font-weight: 600;
+  transform: translateX(-4px);
+  /* Subtle shift */
+}
+
+/* Optional: Apple-style active indicator (dot) */
+.style-item-apple.active::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 4px;
+  background-color: var(--accent-active);
+  border-radius: 50%;
+}
+
+.key-dropdown-wrapper {
+  position: relative;
+}
+
+.key-trigger {
+  width: 48px;
+  /* Smaller touch target */
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.05),
+    inset 0 2px 4px rgba(255, 255, 255, 0.9);
+  /* Inner light */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  backdrop-filter: blur(8px);
+}
+
+.key-trigger:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  border-color: rgba(255, 255, 255, 0.8);
+}
+
+.key-trigger.active {
+  background: var(--bg-surface);
+  border-color: var(--accent-active);
+  box-shadow: 0 0 0 2px var(--accent-active-glow);
+}
+
+.current-key {
+  font-size: 1.1rem;
+  /* Smaller font */
+  font-weight: 700;
+  color: var(--text-primary);
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.key-options-grid {
+  position: absolute;
+  bottom: 110%;
+  /* Show above the trigger */
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  width: 200px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  animation: popUp 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  z-index: 1000;
+}
+
+@keyframes popUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+.key-option {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.key-option:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.key-option.selected {
+  background: var(--accent-active);
+  color: black;
+  box-shadow: 0 2px 8px rgba(229, 168, 0, 0.3);
+}
+
+/* Backdrop for clicking outside */
+.backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 90;
+}
+
+.mini-note {
+  font-size: 0.75rem;
+  /* Small */
+  color: var(--text-muted);
+  /* Gray */
+  font-family: monospace;
+}
+
+/* Apple Minimalist Knob */
+.knob-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.knob-wrapper label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.knob-control {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-surface);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.05),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8);
+  position: relative;
+  cursor: grab;
+  touch-action: none;
+  transition: transform 0.2s cubic-bezier(0.1, 0.7, 0.1, 1);
+}
+
+.knob-control:active {
+  cursor: grabbing;
+  box-shadow: 0 0 0 2px var(--accent-active-glow);
+}
+
+/* The indicator dot */
+.knob-indicator {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-active);
+  box-shadow: 0 0 4px var(--accent-active);
+}
+
+.knob-value-label {
+  font-family: 'Inter', monospace;
+  font-size: 0.7rem;
+  color: var(--text-primary);
+  font-weight: 600;
+  min-height: 1rem;
+}
