@@ -30,7 +30,11 @@ typedef enum {
     CHORD_AUGMENTED = 3,
     CHORD_DOM7 = 4,
     CHORD_MAJ7 = 5,
-    CHORD_MIN7 = 6
+    CHORD_MIN7 = 6,
+    CHORD_POWER5 = 7,
+    CHORD_DOM9 = 8,
+    CHORD_MAJ9 = 9,
+    CHORD_MIN9 = 10
 } FivoChordType;
 
 typedef struct {
@@ -50,8 +54,23 @@ typedef enum {
     COLOR_RED = 0,    // Unsafe / Clash
     COLOR_ORANGE = 1, // Tension / Interesting
     COLOR_GREEN = 2,  // Safe / Consonant
-    COLOR_BLUE = 3    // Active Selecion
+    COLOR_BLUE = 3    // Active Selection
 } FivoColorCode;
+
+typedef enum {
+    STYLE_POP = 0,
+    STYLE_ROCK = 1,
+    STYLE_JAZZ = 2,
+    STYLE_BOSSA = 3
+} FivoStyle;
+
+// Extended chord options
+typedef struct {
+    int fingers;           // 1, 2, or 3 notes (0 = auto/full chord)
+    int use_voice_leading; // 1 = find closest voicing to prev_notes
+    uint8_t prev_notes[8]; // Previous chord notes for voice leading
+    int prev_count;        // Number of previous notes
+} FivoChordOptions;
 
 #ifdef __cplusplus
 }

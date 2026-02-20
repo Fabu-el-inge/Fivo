@@ -1,13 +1,15 @@
 
-
 import type React from 'react';
 
 interface Props {
     currentKey: string;
-    selectedRoot: string;
-    onRootSelect: (note: string, isMinor: boolean) => void;
+    pressedRoot: string | null;
+    onRootPress: (note: string, isMinor: boolean) => void;
+    onRootRelease: () => void;
+    onRootGlide: (note: string, isMinor: boolean) => void; // For glide/legato between notes
     contextMap?: Record<string, number>;
     minorContextMap?: Record<string, number>;
+    fingersPerNote?: Record<string, number>;
 }
 
 // Circle of Fifths order - Major chords
@@ -35,9 +37,16 @@ const getMinorNoteId = (note: string): number => {
     return map[note] ?? -1;
 };
 
+// Check if key is minor (ends with 'm')
+const isMinorKey = (key: string): boolean => key.endsWith('m') && key.length > 1;
+
+// Get major equivalent of a minor key (Am -> A)
+const getRelativeMajorRoot = (minorKey: string): string => minorKey.slice(0, -1);
+
 // Get color for harmonic context
 const getColor = (note: string, currentKey: string, contextMap?: Record<string, number>): string => {
-    if (note === currentKey) return 'var(--color-tonic)';
+    // For major keys, check if this note is the tonic
+    if (!isMinorKey(currentKey) && note === currentKey) return 'var(--color-tonic)';
 
     if (!contextMap) return 'var(--color-neutral)';
 
@@ -54,11 +63,10 @@ const getColor = (note: string, currentKey: string, contextMap?: Record<string, 
 
 // Get color for minor chords
 const getMinorColor = (note: string, currentKey: string, minorContextMap?: Record<string, number>): string => {
-    const keyId = getNoteId(currentKey);
-    const minorId = getMinorNoteId(note);
-    const relativeMinorId = (keyId + 9) % 12;
+    // For minor keys, check if this minor chord is the tonic
+    if (isMinorKey(currentKey) && note === currentKey) return 'var(--color-tonic)';
 
-    if (minorId === relativeMinorId) return 'var(--color-tonic)';
+    const minorId = getMinorNoteId(note);
 
     if (!minorContextMap) return 'var(--color-neutral)';
 
@@ -72,9 +80,9 @@ const getMinorColor = (note: string, currentKey: string, minorContextMap?: Recor
     }
 };
 
-// Helper to check if a color is neutral (for text color decision)
+// Helper to check if segment should be "off" (neutral or avoid/red)
 const isNeutralColor = (color: string): boolean => {
-    return color === 'var(--color-neutral)';
+    return color === 'var(--color-neutral)' || color === 'var(--color-avoid)';
 };
 
 // Create SVG arc path for a segment
@@ -126,13 +134,22 @@ const getLabelPosition = (
 
 export const CircleOfFifths: React.FC<Props> = ({
     currentKey,
-    selectedRoot,
-    onRootSelect,
+    pressedRoot,
+    onRootPress,
+    onRootRelease,
+    onRootGlide,
     contextMap,
-    minorContextMap
+    minorContextMap,
+    fingersPerNote = {}
 }) => {
+    // Get fingers for a note (default 3)
+    const getFingers = (note: string): number => fingersPerNote[note] ?? 3;
+
     // Calculate rotation to put current key at top (12 o'clock)
-    const keyIndex = NOTES.indexOf(currentKey);
+    // For minor keys, find index in MINOR_NOTES; for major, find in NOTES
+    const keyIndex = isMinorKey(currentKey)
+        ? MINOR_NOTES.indexOf(currentKey)
+        : NOTES.indexOf(currentKey);
     const rotationDeg = keyIndex * -30;
 
     // Increase canvas size to prevent drop-shadow clipping
@@ -149,6 +166,30 @@ export const CircleOfFifths: React.FC<Props> = ({
 
     const segmentAngle = 30; // 360 / 12
 
+    // Touch move handler for glide support
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (!pressedRoot) return;
+        const touch = e.touches[0];
+        const element = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (!element) return;
+
+        // Find the parent g element with data-note
+        // Try both closest (for children) and direct check (for g element itself)
+        let noteGroup = element.closest('[data-note]');
+        if (!noteGroup && element.hasAttribute?.('data-note')) {
+            noteGroup = element;
+        }
+        if (!noteGroup) return;
+
+        const note = noteGroup.getAttribute('data-note');
+        const isMinor = noteGroup.getAttribute('data-minor') === 'true';
+
+        // Call glide - the handler will check if it's a different note
+        if (note) {
+            onRootGlide(note, isMinor);
+        }
+    };
+
     return (
         <div className="circle-wrapper">
             {/* Center Label */}
@@ -162,6 +203,7 @@ export const CircleOfFifths: React.FC<Props> = ({
                 className="circle-svg"
                 viewBox={`0 0 ${size} ${size}`}
                 style={{ transform: `rotate(${rotationDeg}deg)` }}
+                onTouchMove={handleTouchMove}
             >
                 <defs>
                     <linearGradient id="glass-shine" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -182,16 +224,23 @@ export const CircleOfFifths: React.FC<Props> = ({
                     const color = getColor(note, currentKey, contextMap);
                     // Check if it's "neutral" to decide if we light it up
                     const isNeutral = isNeutralColor(color);
-                    const isSelected = note === selectedRoot && !selectedRoot.includes('m');
+                    const isPressed = note === pressedRoot;
                     const labelPos = getLabelPosition(startAngle, endAngle, majorInnerRadius, majorOuterRadius, cx, cy);
                     const counterRotation = -rotationDeg;
+                    const noteFingers = getFingers(note);
 
                     return (
                         <g
                             key={note}
-                            className={`glass-pad-group ${isSelected ? 'selected' : ''} ${isNeutral ? 'neutral' : 'active'}`}
-                            style={{ '--segment-color': color } as React.CSSProperties}
-                            onClick={() => onRootSelect(note, false)}
+                            data-note={note}
+                            data-minor="false"
+                            className={`glass-pad-group ${isPressed ? 'selected' : ''} ${isNeutral ? 'neutral' : 'active'}`}
+                            style={{ '--segment-color': color, touchAction: 'none' } as React.CSSProperties}
+                            onMouseDown={() => onRootPress(note, false)}
+                            onMouseUp={onRootRelease}
+                            onMouseEnter={(e) => { if (e.buttons === 1 && pressedRoot !== note) onRootGlide(note, false); }}
+                            onTouchStart={(e) => { e.preventDefault(); onRootPress(note, false); }}
+                            onTouchEnd={(e) => { e.preventDefault(); onRootRelease(); }}
                         >
                             {/* Layer 1: Intense Color (Behind) */}
                             <path
@@ -212,6 +261,17 @@ export const CircleOfFifths: React.FC<Props> = ({
                             >
                                 {note}
                             </text>
+                            {/* Fingers indicator */}
+                            {noteFingers < 3 && (
+                                <text
+                                    x={labelPos.x + 12}
+                                    y={labelPos.y - 8}
+                                    className="fingers-indicator"
+                                    style={{ transform: `rotate(${counterRotation}deg)`, transformOrigin: `${labelPos.x + 12}px ${labelPos.y - 8}px` }}
+                                >
+                                    {noteFingers}
+                                </text>
+                            )}
                         </g>
                     );
                 })}
@@ -222,16 +282,23 @@ export const CircleOfFifths: React.FC<Props> = ({
                     const endAngle = (index + 1) * segmentAngle - (segmentAngle / 2);
                     const color = getMinorColor(note, currentKey, minorContextMap);
                     const isNeutral = isNeutralColor(color);
-                    const isSelected = selectedRoot === note;
+                    const isPressed = pressedRoot === note;
                     const labelPos = getLabelPosition(startAngle, endAngle, minorInnerRadius, minorOuterRadius, cx, cy);
                     const counterRotation = -rotationDeg;
+                    const noteFingers = getFingers(note);
 
                     return (
                         <g
                             key={note}
-                            className={`glass-pad-group ${isSelected ? 'selected' : ''} ${isNeutral ? 'neutral' : 'active'}`}
-                            style={{ '--segment-color': color } as React.CSSProperties}
-                            onClick={() => onRootSelect(note, true)}
+                            data-note={note}
+                            data-minor="true"
+                            className={`glass-pad-group ${isPressed ? 'selected' : ''} ${isNeutral ? 'neutral' : 'active'}`}
+                            style={{ '--segment-color': color, touchAction: 'none' } as React.CSSProperties}
+                            onMouseDown={() => onRootPress(note, true)}
+                            onMouseUp={onRootRelease}
+                            onMouseEnter={(e) => { if (e.buttons === 1 && pressedRoot !== note) onRootGlide(note, true); }}
+                            onTouchStart={(e) => { e.preventDefault(); onRootPress(note, true); }}
+                            onTouchEnd={(e) => { e.preventDefault(); onRootRelease(); }}
                         >
                             {/* Layer 1: Intense Color (Behind) */}
                             <path
@@ -252,6 +319,17 @@ export const CircleOfFifths: React.FC<Props> = ({
                             >
                                 {note}
                             </text>
+                            {/* Fingers indicator */}
+                            {noteFingers < 3 && (
+                                <text
+                                    x={labelPos.x + 10}
+                                    y={labelPos.y - 6}
+                                    className="fingers-indicator minor"
+                                    style={{ transform: `rotate(${counterRotation}deg)`, transformOrigin: `${labelPos.x + 10}px ${labelPos.y - 6}px` }}
+                                >
+                                    {noteFingers}
+                                </text>
+                            )}
                         </g>
                     );
                 })}

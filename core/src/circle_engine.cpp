@@ -58,4 +58,30 @@ int fivo_is_in_key(FivoNote key, FivoNote note) {
     }
 }
 
+// Calculate distance in the Circle of Fifths (0-6)
+// The circle of fifths positions (semitones -> fifth position):
+// C=0, G=1, D=2, A=3, E=4, B=5, F#=6, Db=7(-5), Ab=8(-4), Eb=9(-3), Bb=10(-2), F=11(-1)
+// Formula: fifthPos = (semitones * 7) % 12
+// Distance is minimum of clockwise and counter-clockwise
+int fivo_circle_get_fifth_distance(FivoNote from, FivoNote to) {
+    int semitones = (to - from + 12) % 12;
+
+    // Convert semitones to position in circle of fifths
+    // Multiplying by 7 (mod 12) converts chromatic to fifths space
+    int fifthPos = (semitones * 7) % 12;
+
+    // Return minimum distance (clockwise or counter-clockwise)
+    // Max distance in circle of 12 is 6
+    if (fifthPos > 6) {
+        return 12 - fifthPos;
+    }
+    return fifthPos;
+}
+
+// Get the scale degree of a note relative to a key
+// Returns: 0=I, 1=bII, 2=II, 3=bIII, 4=III, 5=IV, 6=#IV/bV, 7=V, 8=bVI, 9=VI, 10=bVII, 11=VII
+int fivo_get_scale_degree(FivoNote key, FivoNote note) {
+    return (note - key + 12) % 12;
+}
+
 }

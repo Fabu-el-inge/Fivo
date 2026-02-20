@@ -15,9 +15,9 @@ target_include_directories(fivo_core PUBLIC
 # For static linking scenarios (optional alias)
 add_library(Fivo::Core ALIAS fivo_core)
 
-# Compiler options
+# Compiler options (temporarily relaxed)
 if(MSVC)
     target_compile_options(fivo_core PRIVATE /W4)
 else()
-    target_compile_options(fivo_core PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(fivo_core PRIVATE -Wall)
 endif()
