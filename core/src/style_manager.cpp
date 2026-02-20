@@ -359,13 +359,13 @@ FivoColorCode fivo_style_get_minor_color(FivoNote key, FivoNote minorRoot) {
 // Cuando la tonalidad es MENOR (ej: Am), los acordes mayores tienen diferente función
 static FivoColorCode get_color_minor_key_pop(int scaleDegree) {
     switch(scaleDegree) {
-        case 0:  // I  - Paralelo mayor (A en Am) - préstamo
         case 3:  // III - Relativo mayor (C en Am) - fundamental
-        case 7:  // V  - Dominante mayor (E en Am) - dominante
-        case 10: // VII - (G en Am) - subtónica - MUY común en pop (Am-G-F-E, Am-G-C)
+        case 7:  // V  - Dominante mayor (E en Am) - dominante (menor armónica)
+        case 8:  // bVI - (F en Am) - diatónico de la menor natural
+        case 10: // bVII - (G en Am) - subtónica - MUY común en pop (Am-G-F-E, Am-G-C)
             return COLOR_GREEN;
-        case 5:  // IV - Subdominante (D en Am) - modo dórico
-        case 8:  // VI - (F en Am) - subdominante menor
+        case 0:  // I  - Paralelo mayor (A en Am) - préstamo (tiene C#, no diatónico)
+        case 5:  // IV - Subdominante (D en Am) - modo dórico (tiene F#, no diatónico)
             return COLOR_ORANGE;
         default:
             return COLOR_RED;
