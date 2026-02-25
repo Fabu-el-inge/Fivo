@@ -13,6 +13,7 @@ interface ToolsLeftProps {
     tempo: number;
     expression: number;
     autoVoicing: boolean;
+    chordMode: boolean;
     onInversionChange: (inv: number) => void;
     onStrumToggle: () => void;
     onStrumSpeedChange: (val: number) => void;
@@ -20,6 +21,7 @@ interface ToolsLeftProps {
     onTempoChange: (val: number) => void;
     onExpressionChange: (val: number) => void;
     onAutoVoicingToggle: (val: boolean) => void;
+    onChordModeToggle: (val: boolean) => void;
 }
 
 // Generic Rotary Knob Component
@@ -128,6 +130,7 @@ export const ToolsLeft: React.FC<ToolsLeftProps> = ({
     tempo,
     expression,
     autoVoicing,
+    chordMode,
     onInversionChange,
     onStrumToggle,
     onStrumSpeedChange,
@@ -135,6 +138,7 @@ export const ToolsLeft: React.FC<ToolsLeftProps> = ({
     onTempoChange,
     onExpressionChange,
     onAutoVoicingToggle,
+    onChordModeToggle,
 }) => {
     // Adapter for Strum:
     // Knob Value: 0 = OFF. 1..100 = Speed (mapped 10..200?)
@@ -161,6 +165,16 @@ export const ToolsLeft: React.FC<ToolsLeftProps> = ({
 
     return (
         <div className="tools-left glass-panel">
+            {/* Chord Mode Toggle */}
+            <div className="auto-voicing-toggle">
+                <span className="auto-voicing-label">Acordes</span>
+                <button
+                    className={`auto-voicing-btn ${chordMode ? 'active' : ''}`}
+                    onClick={() => onChordModeToggle(!chordMode)}
+                    title={chordMode ? 'Chord mode ON (2 notas)' : 'Chord mode OFF (1 nota)'}
+                />
+            </div>
+
             {/* Auto Voicing Toggle */}
             <div className="auto-voicing-toggle">
                 <span className="auto-voicing-label">Auto voicing</span>

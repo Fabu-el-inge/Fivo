@@ -619,6 +619,7 @@ body {
   min-height: 400px;
   user-select: none;
   -webkit-user-select: none;
+  touch-action: none;
 }
 
 .circle-svg {
@@ -626,6 +627,7 @@ body {
   height: 100%;
   transition: transform var(--transition-smooth);
   overflow: visible;
+  touch-action: none;
   /* Prevent clipping of glows */
 }
 
@@ -718,14 +720,6 @@ body {
   opacity: 0.5;
 }
 
-.glass-pad-group.neutral:hover .glass-pad-color {
-  fill-opacity: 0.2;
-}
-
-.glass-pad-group.neutral:hover .glass-pad-shine {
-  stroke: rgba(255, 255, 255, 0.8);
-  opacity: 1;
-}
 
 /* === STATE: ACTIVE/HARMONIC (On) === */
 /* This is where we get INTENSE COLOR "behind" the glass */
@@ -743,16 +737,6 @@ body {
   /* The gradient fill stays white, creating the "glass over color" look */
 }
 
-.glass-pad-group.active:hover .glass-pad-color {
-  fill-opacity: 0.8;
-  /* Even more intense on hover */
-  filter: drop-shadow(0 0 15px var(--segment-color));
-}
-
-.glass-pad-group.active:hover .glass-pad-shine {
-  stroke: white;
-  stroke-width: 2px;
-}
 
 /* === STATE: SELECTED === */
 .glass-pad-group.selected .glass-pad-color {
@@ -810,12 +794,6 @@ body {
   font-weight: 500;
 }
 
-/* Hover effects for text */
-.glass-pad-group:hover .glass-pad-label {
-  transform: scale(1.1);
-  fill: #fff;
-  opacity: 1;
-}
 
 /* ===== ERROR BANNER ===== */
 .error-banner {

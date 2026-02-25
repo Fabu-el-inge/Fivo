@@ -13,20 +13,16 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 // Security: Helmet for HTTP headers
 app.use(helmet());
 
-// CORS configuration
-const corsOptions = {
-    origin: NODE_ENV === 'production'
-        ? process.env.ALLOWED_ORIGINS?.split(',') || []
-        : true, // Allow all origins in development (for local network access)
-    credentials: true,
-    optionsSuccessStatus: 200
-};
-app.use(cors(corsOptions));
+// Trust Railway/proxy headers so rate limiting uses real client IP
+app.set('trust proxy', 1);
 
-// Rate limiting to prevent abuse
+// CORS configuration
+app.use(cors({ origin: true, credentials: true, optionsSuccessStatus: 200 }));
+
+// Rate limiting to prevent abuse (por usuario real, no por proxy compartido)
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: NODE_ENV === 'production' ? 100 : 1000, // Higher limit for development
+    max: NODE_ENV === 'production' ? 600 : 1000,
     message: 'Too many requests from this IP, please try again later.',
     standardHeaders: true,
     legacyHeaders: false,

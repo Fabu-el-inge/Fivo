@@ -23,7 +23,7 @@ COPY demos ./demos
 RUN mkdir -p build && \
     cd build && \
     cmake .. && \
-    make
+    make -j$(nproc)
 
 # Verify binary was created
 RUN ls -la /app/build/bin/ && \

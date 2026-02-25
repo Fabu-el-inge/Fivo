@@ -1,5 +1,6 @@
 
 import type React from 'react';
+import { useRef, useEffect } from 'react';
 
 interface Props {
     currentKey: string;
@@ -166,29 +167,35 @@ export const CircleOfFifths: React.FC<Props> = ({
 
     const segmentAngle = 30; // 360 / 12
 
-    // Touch move handler for glide support
-    const handleTouchMove = (e: React.TouchEvent) => {
-        if (!pressedRoot) return;
+    // Ref para adjuntar touchmove nativo no-pasivo (requerido en iOS Safari)
+    const svgRef = useRef<SVGSVGElement>(null);
+    const pressedRootRef = useRef(pressedRoot);
+    pressedRootRef.current = pressedRoot;
+
+    const handleNativeTouchMove = (e: TouchEvent) => {
+        e.preventDefault(); // Bloquea scroll/zoom en iOS
+        if (!pressedRootRef.current) return;
         const touch = e.touches[0];
         const element = document.elementFromPoint(touch.clientX, touch.clientY);
         if (!element) return;
 
-        // Find the parent g element with data-note
-        // Try both closest (for children) and direct check (for g element itself)
         let noteGroup = element.closest('[data-note]');
-        if (!noteGroup && element.hasAttribute?.('data-note')) {
-            noteGroup = element;
-        }
+        if (!noteGroup && element.hasAttribute?.('data-note')) noteGroup = element;
         if (!noteGroup) return;
 
         const note = noteGroup.getAttribute('data-note');
         const isMinor = noteGroup.getAttribute('data-minor') === 'true';
-
-        // Call glide - the handler will check if it's a different note
-        if (note) {
-            onRootGlide(note, isMinor);
-        }
+        if (note) onRootGlide(note, isMinor);
     };
+
+    useEffect(() => {
+        const svg = svgRef.current;
+        if (!svg) return;
+        // { passive: false } es necesario para poder llamar preventDefault en iOS
+        svg.addEventListener('touchmove', handleNativeTouchMove, { passive: false });
+        return () => svg.removeEventListener('touchmove', handleNativeTouchMove);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
         <div className="circle-wrapper">
@@ -200,10 +207,10 @@ export const CircleOfFifths: React.FC<Props> = ({
 
             {/* SVG Ring Container */}
             <svg
+                ref={svgRef}
                 className="circle-svg"
                 viewBox={`0 0 ${size} ${size}`}
                 style={{ transform: `rotate(${rotationDeg}deg)` }}
-                onTouchMove={handleTouchMove}
             >
                 <defs>
                     <linearGradient id="glass-shine" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -257,7 +264,7 @@ export const CircleOfFifths: React.FC<Props> = ({
                                 x={labelPos.x}
                                 y={labelPos.y}
                                 className="glass-pad-label"
-                                style={{ transform: `rotate(${counterRotation}deg)`, transformOrigin: `${labelPos.x}px ${labelPos.y}px` }}
+                                transform={`rotate(${counterRotation}, ${labelPos.x}, ${labelPos.y})`}
                             >
                                 {note}
                             </text>
@@ -267,7 +274,7 @@ export const CircleOfFifths: React.FC<Props> = ({
                                     x={labelPos.x + 12}
                                     y={labelPos.y - 8}
                                     className="fingers-indicator"
-                                    style={{ transform: `rotate(${counterRotation}deg)`, transformOrigin: `${labelPos.x + 12}px ${labelPos.y - 8}px` }}
+                                    transform={`rotate(${counterRotation}, ${labelPos.x + 12}, ${labelPos.y - 8})`}
                                 >
                                     {noteFingers}
                                 </text>
@@ -315,7 +322,7 @@ export const CircleOfFifths: React.FC<Props> = ({
                                 x={labelPos.x}
                                 y={labelPos.y}
                                 className="glass-pad-label minor"
-                                style={{ transform: `rotate(${counterRotation}deg)`, transformOrigin: `${labelPos.x}px ${labelPos.y}px` }}
+                                transform={`rotate(${counterRotation}, ${labelPos.x}, ${labelPos.y})`}
                             >
                                 {note}
                             </text>
@@ -325,7 +332,7 @@ export const CircleOfFifths: React.FC<Props> = ({
                                     x={labelPos.x + 10}
                                     y={labelPos.y - 6}
                                     className="fingers-indicator minor"
-                                    style={{ transform: `rotate(${counterRotation}deg)`, transformOrigin: `${labelPos.x + 10}px ${labelPos.y - 6}px` }}
+                                    transform={`rotate(${counterRotation}, ${labelPos.x + 10}, ${labelPos.y - 6})`}
                                 >
                                     {noteFingers}
                                 </text>

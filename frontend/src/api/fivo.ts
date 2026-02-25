@@ -37,6 +37,12 @@ const API_BASE = getApiBase();
 
 export type PowerMode = 'auto' | 'on' | 'off';
 
+// Cache de acordes: evita round-trip a Railway en cada clic
+const chordCache = new Map<string, FivoResponse>();
+
+const cacheKey = (key: string, root: string, inversion: number, style: FivoStyle, isMinor: boolean, power: PowerMode, fingers: number) =>
+    `${key}|${root}|${inversion}|${style}|${isMinor}|${power}|${fingers}`;
+
 export const fetchChord = async (
     key: string,
     root: string,
@@ -46,12 +52,32 @@ export const fetchChord = async (
     power: PowerMode = 'auto',
     fingers: number = 3
 ): Promise<FivoResponse> => {
+    const ck = cacheKey(key, root, inversion, style, isMinor, power, fingers);
+    const cached = chordCache.get(ck);
+    if (cached) return cached;
+
     const url = `${API_BASE}/chord?key=${encodeURIComponent(key)}&root=${encodeURIComponent(root)}&inversion=${inversion}&style=${style}&minor=${isMinor}&power=${power}&fingers=${fingers}`;
     const res = await fetch(url);
     if (!res.ok) {
         throw new Error(`API Error: ${res.statusText}`);
     }
-    return res.json();
+    const data = await res.json();
+    chordCache.set(ck, data);
+    return data;
+};
+
+// Pre-carga todos los acordes de la key+estilo actual en background
+// Así el primer clic ya tiene el dato listo
+const MAJOR_ROOTS = ['C', 'G', 'D', 'A', 'E', 'B', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F'];
+const MINOR_ROOTS  = ['A', 'E', 'B', 'F#', 'C#', 'G#', 'Eb', 'Bb', 'F', 'C', 'G', 'D'];
+
+export const prefetchChords = (key: string, style: FivoStyle, power: PowerMode = 'auto') => {
+    const fetches = [
+        ...MAJOR_ROOTS.map(root => fetchChord(key, root, 0, style, false, power, 1)),
+        ...MINOR_ROOTS.map(root  => fetchChord(key, root, 0, style, true,  power, 1)),
+    ];
+    // fire-and-forget, no bloqueamos nada
+    Promise.all(fetches).catch(() => {});
 };
 
 export const fetchContext = async (key: string, style: FivoStyle = 'pop'): Promise<FivoContextResponse> => {

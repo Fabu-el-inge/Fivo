@@ -4,8 +4,9 @@ import { CircleOfFifths } from './components/CircleOfFifths';
 import { ToolsLeft, StyleSelector, InstrumentSelector, OctaveControl, KeySelector, RotaryKnob, RecLoopHold, Arpeggiator, Metronome } from './components/ControlPanel';
 import type { MetronomeClickSound } from './components/ControlPanel';
 import { ResultPanel } from './components/ResultPanel';
-import { fetchChord, fetchContext } from './api/fivo';
+import { fetchChord, fetchContext, prefetchChords } from './api/fivo';
 import type { FivoResponse, FivoContextResponse, FivoStyle, PowerMode } from './api/fivo';
+import { calcChordNotes } from './api/chordCalc';
 import { audioEngine } from './api/audio';
 import type { InstrumentName } from './api/audio';
 
@@ -35,6 +36,8 @@ function App() {
   const [fingersPerNote, setFingersPerNote] = useState<Record<string, number>>({});
   // Inversion per note (default 0 = Root for all)
   const [inversionPerNote, setInversionPerNote] = useState<Record<string, number>>({});
+  // Chord Mode - play 2-finger dyad instead of single note
+  const [chordMode, setChordMode] = useState(false);
   // Auto Voicing - automatically choose best inversion for smooth voice leading
   const [autoVoicing, setAutoVoicing] = useState(false);
   const lastPlayedNotes = useRef<number[]>([]); // Track last chord notes for auto voicing
@@ -74,7 +77,7 @@ function App() {
   const savedFingersRef = useRef<Record<string, number> | null>(null);
   const lastGlideTime = useRef<number>(0); // Throttle glide events
   const arpStartTime = useRef<number>(0);
-  const pendingGlide = useRef<{ note: string; isMinor: boolean; arpNotes?: number[]; chordData?: FivoResponse } | null>(null);
+  const pendingGlide = useRef<{ note: string; isMinor: boolean; arpNotes?: number[]; baseNotes?: number[]; chordData?: FivoResponse } | null>(null);
   const currentPressedRef = useRef<string | null>(null); // Track current pressed note (avoid state timing issues)
 
   // Hold State - keeps chord/arp playing after release
@@ -316,9 +319,11 @@ function App() {
     }
   }, []);
 
-  // Initial load - fetch context only
+  // Initial load - fetch context + pre-cargar acordes con delay para no saturar rate limit
   useEffect(() => {
     updateContext(currentKey, style);
+    const t = setTimeout(() => prefetchChords(currentKey, style, powerMode), 1500);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -337,8 +342,10 @@ function App() {
     updateContext(newKey, style);
   };
 
-  // Get fingers for a specific note (default 1 = Root)
+  // Get fingers for a specific note
+  // chordMode = 2 fingers (dyad), otherwise per-note setting (default 1)
   const getFingersForNote = (note: string): number => {
+    if (chordMode) return fingersPerNote[note] ? Math.max(2, fingersPerNote[note]) : 2;
     return fingersPerNote[note] ?? 1;
   };
 
@@ -348,7 +355,7 @@ function App() {
   };
 
   // Set ALL notes to same finger count (used by quick-fingers, currently disabled)
-  // @ts-expect-error - temporarily unused while quick-fingers is disabled
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const setAllFingers = (fingers: number) => {
     const allFingers: Record<string, number> = {};
     ALL_NOTES.forEach(note => {
@@ -539,8 +546,8 @@ function App() {
     };
   }, [isResizing]);
 
-  // User presses on a chord - START sound
-  const handleRootPress = async (note: string, isMinor: boolean) => {
+  // User presses on a chord - START sound (síncrono: notas calculadas localmente)
+  const handleRootPress = (note: string, isMinor: boolean) => {
     // If hold is ON and tapping the same note that's playing, toggle it OFF
     if (isHold && pressedRoot === note) {
       if (arpIntervalRef.current) {
@@ -554,6 +561,8 @@ function App() {
       return;
     }
 
+    const apiRoot = isMinor ? getMinorRoot(note) : note;
+
     // If Hold is ON and arpeggiator is already running, queue the change (quantized)
     if (isHold && arpPattern > 0 && arpIntervalRef.current) {
       setPressedRoot(note);
@@ -562,12 +571,12 @@ function App() {
 
       const noteFingers = getFingersForNote(note);
       const noteInversion = getInversionForNote(note);
-      const data = await fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers);
-      if (data?.notes) {
-        const adjustedNotes = data.notes.map(n => n + (octave - 3) * 12);
-        const newArpNotes = getArpPattern(arpPattern, adjustedNotes, style);
-        pendingGlide.current = { note, isMinor, arpNotes: newArpNotes, chordData: data };
-      }
+      const adjustedNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, powerMode, contextData?.map)
+        .map(n => n + (octave - 3) * 12);
+      const newArpNotes = getArpPattern(arpPattern, adjustedNotes, style);
+      pendingGlide.current = { note, isMinor, arpNotes: newArpNotes, baseNotes: adjustedNotes };
+      // metadata async
+      fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers);
       return;
     }
 
@@ -577,98 +586,98 @@ function App() {
       arpIntervalRef.current = null;
     }
     pendingGlide.current = null;
-    audioEngine.panic(); // Use panic for complete reset
+    audioEngine.panic();
 
     setPressedRoot(note);
     setIsMinorPressed(isMinor);
-    currentPressedRef.current = note; // Sync ref immediately
+    currentPressedRef.current = note;
     const noteFingers = getFingersForNote(note);
 
-    // For auto voicing, first get chord with root position, then calculate best inversion
+    // Auto voicing: calcula inversión óptima localmente (sin API)
     let noteInversion = getInversionForNote(note);
     if (autoVoicing && lastPlayedNotes.current.length > 0) {
-      const baseData = await fetchChordData(currentKey, note, isMinor, 0, style, powerMode, noteFingers);
-      if (baseData?.notes) {
-        const baseAdjusted = baseData.notes.map(n => n + (octave - 3) * 12);
-        noteInversion = calculateBestInversion(baseAdjusted, lastPlayedNotes.current);
-      }
+      const baseNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, 0, noteFingers, powerMode, contextData?.map)
+        .map(n => n + (octave - 3) * 12);
+      noteInversion = calculateBestInversion(baseNotes, lastPlayedNotes.current);
     }
 
-    const data = await fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers);
+    // Calcular notas localmente — instantáneo
+    const adjustedNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, powerMode, contextData?.map)
+      .map(n => n + (octave - 3) * 12);
 
-    if (data?.notes) {
-      const adjustedNotes = data.notes.map(n => n + (octave - 3) * 12);
-      lastPlayedNotes.current = adjustedNotes;
+    lastPlayedNotes.current = adjustedNotes;
 
-      // If arpeggiator is active
-      if (arpPattern > 0) {
-        arpBaseNotesRef.current = adjustedNotes;
-        let arpNotes = getArpPattern(arpPattern, adjustedNotes, style);
+    // Fetch metadata en background para actualizar el display (no bloqueante)
+    fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers);
 
-        const getNextInterval = (timingIdx: number): number => {
-          const msPerBeat = 60000 / arpTempoRef.current;
-          const eighth = msPerBeat / 2;
-          const triplet = msPerBeat / 3;
-          let pattern: number[];
-          switch (style) {
-            case 'jazz': pattern = [triplet * 2, triplet, triplet * 2, triplet]; break;
-            case 'bossa': pattern = [eighth * 1.5, eighth * 0.5, eighth, eighth]; break;
-            case 'rock': pattern = [eighth * 0.95, eighth * 1.05, eighth * 0.95, eighth * 1.05]; break;
-            default: pattern = [eighth, eighth, eighth, eighth];
+    // If arpeggiator is active
+    if (arpPattern > 0) {
+      arpBaseNotesRef.current = adjustedNotes;
+      let arpNotes = getArpPattern(arpPattern, adjustedNotes, style);
+
+      const getNextInterval = (timingIdx: number): number => {
+        const msPerBeat = 60000 / arpTempoRef.current;
+        const eighth = msPerBeat / 2;
+        const triplet = msPerBeat / 3;
+        let pattern: number[];
+        switch (style) {
+          case 'jazz': pattern = [triplet * 2, triplet, triplet * 2, triplet]; break;
+          case 'bossa': pattern = [eighth * 1.5, eighth * 0.5, eighth, eighth]; break;
+          case 'rock': pattern = [eighth * 0.95, eighth * 1.05, eighth * 0.95, eighth * 1.05]; break;
+          default: pattern = [eighth, eighth, eighth, eighth];
+        }
+        return pattern[timingIdx % pattern.length];
+      };
+
+      let noteIndex = 0;
+      let timingIndex = 0;
+      let lastPatternUsed = arpPattern;
+
+      arpStartTime.current = performance.now();
+      audioEngine.attackNotes([arpNotes[noteIndex]]);
+      noteIndex++;
+
+      const playNextNote = () => {
+        audioEngine.releaseNotes();
+
+        if (arpPatternRef.current !== lastPatternUsed) {
+          if (arpPatternRef.current === 0) {
+            audioEngine.attackNotes(arpBaseNotesRef.current);
+            return;
           }
-          return pattern[timingIdx % pattern.length];
-        };
+          lastPatternUsed = arpPatternRef.current;
+          arpNotes = getArpPattern(arpPatternRef.current, arpBaseNotesRef.current, style);
+          noteIndex = 0;
+        }
 
-        let noteIndex = 0;
-        let timingIndex = 0;
-        let lastPatternUsed = arpPattern;
+        if (noteIndex >= arpNotes.length) {
+          noteIndex = 0;
+          if (pendingGlide.current) {
+            const pending = pendingGlide.current;
+            pendingGlide.current = null;
+            if (pending.arpNotes && (pending.baseNotes || pending.chordData)) {
+              arpBaseNotesRef.current = pending.baseNotes ?? pending.chordData!.notes.map(n => n + (octave - 3) * 12);
+              arpNotes = pending.arpNotes;
+              setPressedRoot(pending.note);
+              setIsMinorPressed(pending.isMinor);
+              if (pending.chordData) setChordData(pending.chordData);
+            }
+          }
+        }
 
-        arpStartTime.current = performance.now();
         audioEngine.attackNotes([arpNotes[noteIndex]]);
         noteIndex++;
+        const interval = getNextInterval(timingIndex);
+        timingIndex++;
+        arpIntervalRef.current = window.setTimeout(playNextNote, interval);
+      };
 
-        const playNextNote = () => {
-          audioEngine.releaseNotes();
-
-          if (arpPatternRef.current !== lastPatternUsed) {
-            if (arpPatternRef.current === 0) {
-              audioEngine.attackNotes(arpBaseNotesRef.current);
-              return;
-            }
-            lastPatternUsed = arpPatternRef.current;
-            arpNotes = getArpPattern(arpPatternRef.current, arpBaseNotesRef.current, style);
-            noteIndex = 0;
-          }
-
-          if (noteIndex >= arpNotes.length) {
-            noteIndex = 0;
-            if (pendingGlide.current) {
-              const pending = pendingGlide.current;
-              pendingGlide.current = null;
-              if (pending.arpNotes && pending.chordData) {
-                arpBaseNotesRef.current = pending.chordData.notes.map(n => n + (octave - 3) * 12);
-                arpNotes = pending.arpNotes;
-                setPressedRoot(pending.note);
-                setIsMinorPressed(pending.isMinor);
-                setChordData(pending.chordData);
-              }
-            }
-          }
-
-          audioEngine.attackNotes([arpNotes[noteIndex]]);
-          noteIndex++;
-          const interval = getNextInterval(timingIndex);
-          timingIndex++;
-          arpIntervalRef.current = window.setTimeout(playNextNote, interval);
-        };
-
-        const firstInterval = getNextInterval(0);
-        arpIntervalRef.current = window.setTimeout(playNextNote, firstInterval);
-      } else if (strumEnabled) {
-        audioEngine.attackNotesStrum(adjustedNotes, strumSpeed);
-      } else {
-        audioEngine.attackNotes(adjustedNotes);
-      }
+      const firstInterval = getNextInterval(0);
+      arpIntervalRef.current = window.setTimeout(playNextNote, firstInterval);
+    } else if (strumEnabled) {
+      audioEngine.attackNotesStrum(adjustedNotes, strumSpeed);
+    } else {
+      audioEngine.attackNotes(adjustedNotes);
     }
   };
 
@@ -685,7 +694,7 @@ function App() {
     audioEngine.releaseAll();
   };
 
-  // User glides to another chord while holding - smooth transition with quantization
+  // User glides to another chord while holding - smooth transition, ahora síncrono
   const handleRootGlide = (note: string, isMinor: boolean) => {
     if (currentPressedRef.current === note) return;
 
@@ -697,18 +706,17 @@ function App() {
     setIsMinorPressed(isMinor);
     currentPressedRef.current = note;
 
-    // If arpeggiator is active, queue the change for smooth transition
+    const apiRoot = isMinor ? getMinorRoot(note) : note;
+    const noteFingers = getFingersForNote(note);
+    const noteInversion = getInversionForNote(note);
+
     if (arpPattern > 0) {
-      const noteFingers = getFingersForNote(note);
-      const noteInversion = getInversionForNote(note);
-      fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers)
-        .then(data => {
-          if (data?.notes) {
-            const adjustedNotes = data.notes.map(n => n + (octave - 3) * 12);
-            const newArpNotes = getArpPattern(arpPattern, adjustedNotes, style);
-            pendingGlide.current = { note, isMinor, arpNotes: newArpNotes, chordData: data };
-          }
-        });
+      // Arp: queue el cambio con notas locales
+      const adjustedNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, powerMode, contextData?.map)
+        .map(n => n + (octave - 3) * 12);
+      const newArpNotes = getArpPattern(arpPattern, adjustedNotes, style);
+      pendingGlide.current = { note, isMinor, arpNotes: newArpNotes, baseNotes: adjustedNotes };
+      fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers);
     } else {
       if (arpIntervalRef.current) {
         clearTimeout(arpIntervalRef.current);
@@ -716,19 +724,14 @@ function App() {
       }
       audioEngine.releaseAll();
 
-      const noteFingers = getFingersForNote(note);
-      const noteInversion = getInversionForNote(note);
-      fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers)
-        .then(data => {
-          if (data?.notes && currentPressedRef.current === note) {
-            const adjustedNotes = data.notes.map(n => n + (octave - 3) * 12);
-            if (strumEnabled) {
-              audioEngine.attackNotesStrum(adjustedNotes, strumSpeed);
-            } else {
-              audioEngine.attackNotes(adjustedNotes);
-            }
-          }
-        });
+      const adjustedNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, powerMode, contextData?.map)
+        .map(n => n + (octave - 3) * 12);
+      if (strumEnabled) {
+        audioEngine.attackNotesStrum(adjustedNotes, strumSpeed);
+      } else {
+        audioEngine.attackNotes(adjustedNotes);
+      }
+      fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers);
     }
   };
 
@@ -815,6 +818,7 @@ function App() {
             tempo={tempo}
             expression={expression}
             autoVoicing={autoVoicing}
+            chordMode={chordMode}
             onInversionChange={handleInversionChange}
             onStrumToggle={() => setStrumEnabled(!strumEnabled)}
             onStrumSpeedChange={setStrumSpeed}
@@ -822,6 +826,7 @@ function App() {
             onTempoChange={setTempo}
             onExpressionChange={setExpression}
             onAutoVoicingToggle={setAutoVoicing}
+            onChordModeToggle={setChordMode}
           />
         </div>
 

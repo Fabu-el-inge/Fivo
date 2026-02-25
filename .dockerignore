@@ -52,3 +52,25 @@ temp
 *.tmp
 bff_output.log
 build_manual.sh
+
+# Loose test/compile files in root
+simple_test.cpp
+test_hello.cpp
+test_simple.cpp
+test_tmp.cpp
+*.bat
+*.ps1
+build_log.txt
+build_out.txt
+build_stderr.txt
+build_stdout.txt
+compile_err.txt
+compile_errors.txt
+compile_out.txt
+compile_output.txt
+gpp_error.txt
+gpp_out.txt
+bff_output.log
+backups/
+.claude/
+nul
