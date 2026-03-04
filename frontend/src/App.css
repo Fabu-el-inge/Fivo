@@ -429,8 +429,8 @@ body {
   position: relative;
   width: min(65vh, 65vw);
   height: min(65vh, 65vw);
-  min-width: 400px;
-  min-height: 400px;
+  min-width: 280px;
+  min-height: 280px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -848,8 +848,8 @@ body {
   position: relative;
   width: min(65vh, 65vw);
   height: min(65vh, 65vw);
-  min-width: 400px;
-  min-height: 400px;
+  min-width: 280px;
+  min-height: 280px;
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
@@ -1045,63 +1045,107 @@ body {
 }
 
 /* ===== RESPONSIVE ===== */
-@media (max-width: 768px) {
-  .left-panel {
-    position: fixed;
-    top: auto;
-    bottom: var(--space-xl);
-    left: 50%;
-    transform: translateX(-50%);
-    flex-direction: row;
-    max-width: 90vw;
-    gap: var(--space-sm);
+
+/* --- Mobile landscape: altura < 600px --- */
+@media (orientation: landscape) and (max-height: 600px) {
+  .circle-wrapper {
+    width: min(88vh, 44vw);
+    height: min(88vh, 44vw);
+    min-width: 0;
+    min-height: 0;
   }
 
-  .control-panel,
-  .result-panel {
-    padding: var(--space-sm);
+  .main-layout {
+    align-items: center;
   }
 
-  .control-panel h2 {
+  /* Compact left panel */
+  .tools-left-container {
+    padding-right: 8px;
+  }
+  .effects-box {
+    padding: 6px 8px;
+    gap: 8px;
+  }
+  .slide-toggle-wrap {
+    gap: 4px;
+  }
+  .vfader-track {
+    height: 64px !important;
+  }
+  .vfader-label,
+  .vfader-value,
+  .slide-toggle-label {
+    font-size: 0.5rem;
+  }
+
+  /* Compact right panel */
+  .tools-right-container {
+    padding-left: 8px;
+    gap: 6px;
+  }
+  .metronome-section {
+    gap: 6px;
+    padding: 6px 8px;
+  }
+  .metro-tempo-col,
+  .metro-controls-col {
+    gap: 4px;
+  }
+  .knob-control {
+    width: 40px !important;
+    height: 40px !important;
+  }
+  .arp-section {
+    padding: 6px 8px;
+    gap: 4px;
+  }
+  .rec-instrument-row {
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  /* Smaller wheel-bottom-row */
+  .wheel-bottom-row {
+    gap: 8px;
+  }
+  .center-panel {
+    gap: 6px;
+  }
+
+  /* Hide branding on landscape mobile */
+  .app-header {
     display: none;
   }
-
-  .circle-wrapper {
-    width: min(75vw, 60vh);
-    height: min(75vw, 60vh);
-    min-width: 280px;
-    min-height: 280px;
-  }
-
-  .app-header {
-    bottom: auto;
-    top: var(--space-md);
+  .bottom-left-corner {
+    display: none;
   }
 }
 
-@media (max-width: 480px) {
-  .left-panel {
-    flex-direction: column;
-    bottom: var(--space-md);
-    max-width: 160px;
-    left: var(--space-md);
-    transform: none;
-  }
-
+/* --- Mobile portrait: ancho < 600px --- */
+@media (max-width: 600px) and (orientation: portrait) {
   .circle-wrapper {
-    min-width: 260px;
-    min-height: 260px;
+    width: min(92vw, 70vh);
+    height: min(92vw, 70vh);
+    min-width: 0;
+    min-height: 0;
   }
 
-  .note-sector {
-    width: 38px;
-    height: 38px;
-    font-size: 0.75rem;
+  .tools-left-container {
+    padding-right: 6px;
   }
+  .tools-right-container {
+    padding-left: 6px;
+  }
+}
 
-  .circle-center {
-    min-width: 60px;
-    min-height: 60px;
+/* --- Tablet / small desktop --- */
+@media (max-width: 900px) and (orientation: landscape) {
+  .circle-wrapper {
+    width: min(75vh, 50vw);
+    height: min(75vh, 50vw);
+    min-width: 0;
+    min-height: 0;
   }
 }
 
