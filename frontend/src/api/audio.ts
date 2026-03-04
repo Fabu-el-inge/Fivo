@@ -41,7 +41,7 @@ export class AudioEngine {
     private metronomeBeatCallback: MetronomeBeatCallback | null = null;
 
     // Current instrument
-    private currentInstrument: InstrumentName = 'Synth';
+    private currentInstrument: InstrumentName = 'Piano';
 
     private async init() {
         if (this.initialized) return;
@@ -123,6 +123,8 @@ export class AudioEngine {
         }).connect(this.metronomeGain);
 
         this.initialized = true;
+        // Apply instrument that was set before init (e.g. 'Piano' from React state)
+        this.setInstrument(this.currentInstrument);
         console.log("Audio Engine Initialized with Tone.js");
     }
 
