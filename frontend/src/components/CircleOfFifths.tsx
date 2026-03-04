@@ -4,10 +4,10 @@ import { useRef, useEffect } from 'react';
 
 interface Props {
     currentKey: string;
-    pressedRoot: string | null;
-    onRootPress: (note: string, isMinor: boolean) => void;
-    onRootRelease: () => void;
-    onRootGlide: (note: string, isMinor: boolean) => void; // For glide/legato between notes
+    pressedRoots: Set<string>;
+    onRootPress: (note: string, isMinor: boolean, touchId: string) => void;
+    onRootRelease: (touchId: string) => void;
+    onRootGlide: (note: string, isMinor: boolean, touchId: string) => void;
     contextMap?: Record<string, number>;
     minorContextMap?: Record<string, number>;
     fingersPerNote?: Record<string, number>;
@@ -135,7 +135,7 @@ const getLabelPosition = (
 
 export const CircleOfFifths: React.FC<Props> = ({
     currentKey,
-    pressedRoot,
+    pressedRoots,
     onRootPress,
     onRootRelease,
     onRootGlide,
@@ -169,23 +169,21 @@ export const CircleOfFifths: React.FC<Props> = ({
 
     // Ref para adjuntar touchmove nativo no-pasivo (requerido en iOS Safari)
     const svgRef = useRef<SVGSVGElement>(null);
-    const pressedRootRef = useRef(pressedRoot);
-    pressedRootRef.current = pressedRoot;
 
     const handleNativeTouchMove = (e: TouchEvent) => {
         e.preventDefault(); // Bloquea scroll/zoom en iOS
-        if (!pressedRootRef.current) return;
-        const touch = e.touches[0];
-        const element = document.elementFromPoint(touch.clientX, touch.clientY);
-        if (!element) return;
-
-        let noteGroup = element.closest('[data-note]');
-        if (!noteGroup && element.hasAttribute?.('data-note')) noteGroup = element;
-        if (!noteGroup) return;
-
-        const note = noteGroup.getAttribute('data-note');
-        const isMinor = noteGroup.getAttribute('data-minor') === 'true';
-        if (note) onRootGlide(note, isMinor);
+        if (e.touches.length === 0) return;
+        // Process each active finger independently
+        Array.from(e.touches).forEach(touch => {
+            const element = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (!element) return;
+            let noteGroup = element.closest('[data-note]');
+            if (!noteGroup && element.hasAttribute?.('data-note')) noteGroup = element;
+            if (!noteGroup) return;
+            const note = noteGroup.getAttribute('data-note');
+            const isMinor = noteGroup.getAttribute('data-minor') === 'true';
+            if (note) onRootGlide(note, isMinor, 'touch-' + touch.identifier);
+        });
     };
 
     useEffect(() => {
@@ -231,7 +229,7 @@ export const CircleOfFifths: React.FC<Props> = ({
                     const color = getColor(note, currentKey, contextMap);
                     // Check if it's "neutral" to decide if we light it up
                     const isNeutral = isNeutralColor(color);
-                    const isPressed = note === pressedRoot;
+                    const isPressed = pressedRoots.has(note);
                     const labelPos = getLabelPosition(startAngle, endAngle, majorInnerRadius, majorOuterRadius, cx, cy);
                     const counterRotation = -rotationDeg;
                     const noteFingers = getFingers(note);
@@ -243,11 +241,11 @@ export const CircleOfFifths: React.FC<Props> = ({
                             data-minor="false"
                             className={`glass-pad-group ${isPressed ? 'selected' : ''} ${isNeutral ? 'neutral' : 'active'}`}
                             style={{ '--segment-color': color, touchAction: 'none' } as React.CSSProperties}
-                            onMouseDown={() => onRootPress(note, false)}
-                            onMouseUp={onRootRelease}
-                            onMouseEnter={(e) => { if (e.buttons === 1 && pressedRoot !== note) onRootGlide(note, false); }}
-                            onTouchStart={(e) => { e.preventDefault(); onRootPress(note, false); }}
-                            onTouchEnd={(e) => { e.preventDefault(); onRootRelease(); }}
+                            onMouseDown={() => onRootPress(note, false, 'mouse')}
+                            onMouseUp={() => onRootRelease('mouse')}
+                            onMouseEnter={(e) => { if (e.buttons === 1 && !pressedRoots.has(note)) onRootGlide(note, false, 'mouse'); }}
+                            onTouchStart={(e) => { e.preventDefault(); onRootPress(note, false, 'touch-' + e.changedTouches[0].identifier); }}
+                            onTouchEnd={(e) => { e.preventDefault(); Array.from(e.changedTouches).forEach(t => onRootRelease('touch-' + t.identifier)); }}
                         >
                             {/* Layer 1: Intense Color (Behind) */}
                             <path
@@ -289,7 +287,7 @@ export const CircleOfFifths: React.FC<Props> = ({
                     const endAngle = (index + 1) * segmentAngle - (segmentAngle / 2);
                     const color = getMinorColor(note, currentKey, minorContextMap);
                     const isNeutral = isNeutralColor(color);
-                    const isPressed = pressedRoot === note;
+                    const isPressed = pressedRoots.has(note);
                     const labelPos = getLabelPosition(startAngle, endAngle, minorInnerRadius, minorOuterRadius, cx, cy);
                     const counterRotation = -rotationDeg;
                     const noteFingers = getFingers(note);
@@ -301,11 +299,11 @@ export const CircleOfFifths: React.FC<Props> = ({
                             data-minor="true"
                             className={`glass-pad-group ${isPressed ? 'selected' : ''} ${isNeutral ? 'neutral' : 'active'}`}
                             style={{ '--segment-color': color, touchAction: 'none' } as React.CSSProperties}
-                            onMouseDown={() => onRootPress(note, true)}
-                            onMouseUp={onRootRelease}
-                            onMouseEnter={(e) => { if (e.buttons === 1 && pressedRoot !== note) onRootGlide(note, true); }}
-                            onTouchStart={(e) => { e.preventDefault(); onRootPress(note, true); }}
-                            onTouchEnd={(e) => { e.preventDefault(); onRootRelease(); }}
+                            onMouseDown={() => onRootPress(note, true, 'mouse')}
+                            onMouseUp={() => onRootRelease('mouse')}
+                            onMouseEnter={(e) => { if (e.buttons === 1 && !pressedRoots.has(note)) onRootGlide(note, true, 'mouse'); }}
+                            onTouchStart={(e) => { e.preventDefault(); onRootPress(note, true, 'touch-' + e.changedTouches[0].identifier); }}
+                            onTouchEnd={(e) => { e.preventDefault(); Array.from(e.changedTouches).forEach(t => onRootRelease('touch-' + t.identifier)); }}
                         >
                             {/* Layer 1: Intense Color (Behind) */}
                             <path

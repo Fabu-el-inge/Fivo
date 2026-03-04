@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import './App.css';
 import { CircleOfFifths } from './components/CircleOfFifths';
-import { ToolsLeft, StyleSelector, InstrumentSelector, OctaveControl, KeySelector, RotaryKnob, RecLoopHold, Arpeggiator, Metronome } from './components/ControlPanel';
+import { ToolsLeft, StyleSelector, InstrumentSelector, OctaveControl, KeySelector, RotaryKnob, RecLoopHold, Arpeggiator, ArpTempoControl, Metronome } from './components/ControlPanel';
 import type { MetronomeClickSound } from './components/ControlPanel';
 import { ResultPanel } from './components/ResultPanel';
 import { fetchChord, fetchContext, prefetchChords } from './api/fivo';
@@ -26,6 +26,9 @@ const getMinorRoot = (minorNote: string): string => {
 function App() {
   const [currentKey, setCurrentKey] = useState('C');
   const [pressedRoot, setPressedRoot] = useState<string | null>(null);
+  const [pressedRoots, setPressedRoots] = useState<Set<string>>(new Set());
+  const activeTouches = useRef<Map<string, { note: string; isMinor: boolean }>>(new Map());
+  const lastGlideTimes = useRef<Map<string, number>>(new Map());
   const [, setIsMinorPressed] = useState(false);
   const [octave, setOctave] = useState(4);
   const [inversion, setInversion] = useState(0);
@@ -52,11 +55,14 @@ function App() {
   const resizeStart = useRef({ x: 0, y: 0, w: 0, h: 0, px: 0, py: 0 });
 
   // Sound State
-  const [articulation, setArticulation] = useState(2);
-  const [tempo, setTempo] = useState(120); // BPM
-  const [expression, setExpression] = useState(0); // 0-100
-  const [strumSpeed, setStrumSpeed] = useState(50);
-  const [instrument, setInstrument] = useState<InstrumentName>('Synth');
+  const [attackOn, setAttackOn] = useState(false);
+  const [releaseOn, setReleaseOn] = useState(false);
+  const [colorOn, setColorOn] = useState(false);
+  const [expressionOn, setExpressionOn] = useState(false);
+  const [strumSpeed, setStrumSpeed] = useState(80);
+  // Un nivel compartido para todos los efectos (0-100)
+  const [effectLevel, setEffectLevel] = useState(50);
+  const [instrument, setInstrument] = useState<InstrumentName>('Piano');
 
   // Metronome State
   const [metronomeActive, setMetronomeActive] = useState(false);
@@ -70,69 +76,43 @@ function App() {
   // Arpeggiator State
   const [arpPattern, setArpPattern] = useState(0); // 0 = off, 1-5 = patterns
   const [arpTempo, setArpTempo] = useState(120); // BPM
+  const [arpSwing, setArpSwing] = useState(0); // 0-100%
   const arpTempoRef = useRef(120);
+  const arpSwingRef = useRef(0);
   const arpPatternRef = useRef(0);
   const arpBaseNotesRef = useRef<number[]>([]);
   const arpIntervalRef = useRef<number | null>(null);
   const savedFingersRef = useRef<Record<string, number> | null>(null);
-  const lastGlideTime = useRef<number>(0); // Throttle glide events
+  const lastGlideTime = useRef<number>(0); // Throttle glide events (monophonic fallback)
   const arpStartTime = useRef<number>(0);
-  const pendingGlide = useRef<{ note: string; isMinor: boolean; arpNotes?: number[]; baseNotes?: number[]; chordData?: FivoResponse } | null>(null);
+  const pendingGlide = useRef<{ note: string; isMinor: boolean; arpNotes?: number[][]; baseNotes?: number[]; chordData?: FivoResponse } | null>(null);
   const currentPressedRef = useRef<string | null>(null); // Track current pressed note (avoid state timing issues)
+  const strumInversionRef = useRef<Record<string, number>>({}); // Inversion cycle per note for strum
 
   // Hold State - keeps chord/arp playing after release
   const [isHold, setIsHold] = useState(false);
 
-  // Arpeggio patterns by style
-  const getArpPattern = (pattern: number, notes: number[], currentStyle: FivoStyle): number[] => {
-    if (notes.length < 2) return notes;
-    const root = notes[0];
-    const third = notes[1] || root;
-    const fifth = notes[2] || third;
-    const seventh = root + 10;
-    const octave = root + 12;
-
-    if (currentStyle === 'pop') {
-      switch (pattern) {
-        case 1: return [root, octave, fifth, third];
-        case 2: return [root, fifth, octave, third];
-        case 3: return [root, third, fifth, third];
-        case 4: return [root, fifth, third, fifth];
-        case 5: return [root, fifth, octave, fifth];
-        default: return notes;
-      }
+  // Arpeggio patterns — densidad creciente, voicings musicalmente sanos
+  const getArpPattern = (pattern: number, notes: number[]): number[][] => {
+    if (notes.length < 2) return notes.map(n => [n]);
+    const R  = notes[0];                  // root
+    const T  = notes[1] || R;             // third
+    const F  = notes[2] || T;             // fifth
+    const O  = R + 12;                    // root octave up
+    const F2 = F + 12;                    // fifth octave up
+    switch (pattern) {
+      // 1: cascada clásica — sube y baja
+      case 1: return [[R], [F], [O], [T]];
+      // 2: alberti — root salta al oct, rellena con tercera y quinta
+      case 2: return [[R], [T], [F], [O]];
+      // 3: octava doble en tiempos fuertes
+      case 3: return [[R, O], [T], [F, O], [T]];
+      // 4: power dyads — quinta + octava juntas
+      case 4: return [[R, F], [T, O], [F, O], [R, T]];
+      // 5: spread triad abierto — grande pero limpio
+      case 5: return [[R, F, O], [T, O], [R, F2], [T, F, O]];
+      default: return notes.map(n => [n]);
     }
-    if (currentStyle === 'jazz') {
-      switch (pattern) {
-        case 1: return [root, third, fifth, seventh];
-        case 2: return [seventh, fifth, third, root];
-        case 3: return [root, third, seventh];
-        case 4: return [root, third, fifth, seventh, octave];
-        case 5: return [root, seventh, third, fifth];
-        default: return notes;
-      }
-    }
-    if (currentStyle === 'rock') {
-      switch (pattern) {
-        case 1: return [root, fifth, root, fifth];
-        case 2: return [root, root, fifth, fifth];
-        case 3: return [root, root, root, fifth];
-        case 4: return [root, fifth, octave, fifth];
-        case 5: return [root, octave, root, octave];
-        default: return notes;
-      }
-    }
-    if (currentStyle === 'bossa') {
-      switch (pattern) {
-        case 1: return [root, fifth, third, fifth];
-        case 2: return [root, third, fifth, third];
-        case 3: return [root, fifth, root, third];
-        case 4: return [root, third, fifth, octave, fifth];
-        case 5: return [root, fifth, octave, fifth, third];
-        default: return notes;
-      }
-    }
-    return notes;
   };
 
   // Handle arpeggiator pattern change - save/restore fingers
@@ -153,24 +133,18 @@ function App() {
 
         let noteIndex = 0;
         let timingIndex = 0;
-        let currentArpNotes = getArpPattern(newPattern, lastPlayedNotes.current, style);
+        let currentArpNotes = getArpPattern(newPattern, lastPlayedNotes.current);
         let lastPatternUsed = newPattern;
 
         const getNextInterval = (timingIdx: number): number => {
           const msPerBeat = 60000 / arpTempoRef.current;
           const eighth = msPerBeat / 2;
-          const triplet = msPerBeat / 3;
-          let pattern: number[];
-          switch (style) {
-            case 'jazz': pattern = [triplet * 2, triplet, triplet * 2, triplet]; break;
-            case 'bossa': pattern = [eighth * 1.5, eighth * 0.5, eighth, eighth]; break;
-            case 'rock': pattern = [eighth * 0.95, eighth * 1.05, eighth * 0.95, eighth * 1.05]; break;
-            default: pattern = [eighth, eighth, eighth, eighth];
-          }
+          const sf = arpSwingRef.current / 300; // 0 → 0.333 (triplet swing)
+          const pattern = [eighth * (1 + sf), eighth * (1 - sf), eighth * (1 + sf), eighth * (1 - sf)];
           return pattern[timingIdx % pattern.length];
         };
 
-        audioEngine.attackNotes([currentArpNotes[noteIndex]]);
+        audioEngine.attackNotes(currentArpNotes[noteIndex]);
         noteIndex++;
 
         const playNextNote = () => {
@@ -181,11 +155,11 @@ function App() {
           }
           if (arpPatternRef.current !== lastPatternUsed) {
             lastPatternUsed = arpPatternRef.current;
-            currentArpNotes = getArpPattern(arpPatternRef.current, arpBaseNotesRef.current, style);
+            currentArpNotes = getArpPattern(arpPatternRef.current, arpBaseNotesRef.current);
             noteIndex = 0;
           }
           if (noteIndex >= currentArpNotes.length) noteIndex = 0;
-          audioEngine.attackNotes([currentArpNotes[noteIndex]]);
+          audioEngine.attackNotes(currentArpNotes[noteIndex]);
           noteIndex++;
           timingIndex++;
           arpIntervalRef.current = window.setTimeout(playNextNote, getNextInterval(timingIndex));
@@ -204,11 +178,11 @@ function App() {
   };
 
   // Update Audio Engine when settings change
-  useEffect(() => {
-    audioEngine.setArticulation(articulation);
-    audioEngine.setTempo(tempo);
-    audioEngine.setExpression(expression);
-  }, [articulation, tempo, expression]);
+  useEffect(() => { audioEngine.setAttack(attackOn ? effectLevel : 0); }, [attackOn, effectLevel]);
+  useEffect(() => { audioEngine.setSustain(colorOn ? 40 + effectLevel * 0.5 : 60); }, [colorOn, effectLevel]);
+  useEffect(() => { audioEngine.setRelease(releaseOn ? effectLevel : 0); }, [releaseOn, effectLevel]);
+  useEffect(() => { if (strumEnabled) setStrumSpeed(20 + effectLevel * 1.6); }, [effectLevel, strumEnabled]);
+  useEffect(() => { audioEngine.setExpression(expressionOn ? effectLevel : 100); }, [expressionOn, effectLevel]);
 
   // Metronome beat callback
   useEffect(() => {
@@ -261,6 +235,11 @@ function App() {
     arpTempoRef.current = arpTempo;
   }, [arpTempo]);
 
+  // Keep arp swing ref in sync
+  useEffect(() => {
+    arpSwingRef.current = arpSwing;
+  }, [arpSwing]);
+
   // Keep arp pattern ref in sync
   useEffect(() => {
     arpPatternRef.current = arpPattern;
@@ -282,8 +261,10 @@ function App() {
       }
       pendingGlide.current = null;
       currentPressedRef.current = null;
+      activeTouches.current.clear();
       audioEngine.releaseAll();
       setPressedRoot(null);
+      setPressedRoots(new Set());
     }
     prevHoldRef.current = isHold;
   }, [isHold]);
@@ -343,9 +324,9 @@ function App() {
   };
 
   // Get fingers for a specific note
-  // chordMode = 2 fingers (dyad), otherwise per-note setting (default 1)
+  // chordMode = 3 fingers (full chord), otherwise per-note setting (default 1)
   const getFingersForNote = (note: string): number => {
-    if (chordMode) return fingersPerNote[note] ? Math.max(2, fingersPerNote[note]) : 2;
+    if (chordMode) return 3;
     return fingersPerNote[note] ?? 1;
   };
 
@@ -374,45 +355,30 @@ function App() {
     setInversionPerNote(prev => ({ ...prev, [note]: inv }));
   };
 
-  // Calculate best inversion for smooth voice leading (Auto Voicing)
-  const calculateBestInversion = (chordNotes: number[], previousNotes: number[]): number => {
-    if (previousNotes.length === 0 || chordNotes.length === 0) {
-      return 0; // No previous chord, use root position
-    }
+  // Voice leading: cada nota se transpone a la octava más cercana al centro del acorde anterior
+  const voiceLeadNotes = (baseNotes: number[], previousNotes: number[]): number[] => {
+    if (previousNotes.length === 0 || baseNotes.length === 0) return baseNotes;
 
-    // Generate all inversions of the chord
-    const inversions: number[][] = [];
-    for (let inv = 0; inv < Math.min(3, chordNotes.length); inv++) {
-      const inverted = [...chordNotes];
-      for (let i = 0; i < inv; i++) {
-        // Move lowest note up an octave
-        inverted.push(inverted.shift()! + 12);
+    const prevCenter = previousNotes.reduce((a, b) => a + b, 0) / previousNotes.length;
+
+    const voiced = baseNotes.map(note => {
+      const pc = ((note % 12) + 12) % 12; // pitch class 0-11
+      let best = note;
+      let minDist = Infinity;
+      // Buscar en todas las octavas razonables (MIDI 36-96)
+      for (let oct = 2; oct <= 8; oct++) {
+        const candidate = oct * 12 + pc;
+        if (candidate < 36 || candidate > 96) continue;
+        const dist = Math.abs(candidate - prevCenter);
+        if (dist < minDist) {
+          minDist = dist;
+          best = candidate;
+        }
       }
-      inversions.push(inverted);
-    }
-
-    // Calculate total movement for each inversion
-    let bestInversion = 0;
-    let minMovement = Infinity;
-
-    inversions.forEach((invNotes, invIndex) => {
-      let totalMovement = 0;
-
-      // Compare each note to closest note in previous chord
-      invNotes.forEach(note => {
-        const closestDistance = Math.min(
-          ...previousNotes.map(prevNote => Math.abs(note - prevNote))
-        );
-        totalMovement += closestDistance;
-      });
-
-      if (totalMovement < minMovement) {
-        minMovement = totalMovement;
-        bestInversion = invIndex;
-      }
+      return best;
     });
 
-    return bestInversion;
+    return voiced.sort((a, b) => a - b);
   };
 
   // Drag handlers for fingers panel
@@ -547,7 +513,7 @@ function App() {
   }, [isResizing]);
 
   // User presses on a chord - START sound (síncrono: notas calculadas localmente)
-  const handleRootPress = (note: string, isMinor: boolean) => {
+  const handleRootPress = (note: string, isMinor: boolean, touchId: string = 'mouse') => {
     // If hold is ON and tapping the same note that's playing, toggle it OFF
     if (isHold && pressedRoot === note) {
       if (arpIntervalRef.current) {
@@ -556,230 +522,325 @@ function App() {
       }
       pendingGlide.current = null;
       currentPressedRef.current = null;
+      activeTouches.current.clear();
       audioEngine.releaseAll();
       setPressedRoot(null);
+      setPressedRoots(new Set());
       return;
     }
 
     const apiRoot = isMinor ? getMinorRoot(note) : note;
 
-    // If Hold is ON and arpeggiator is already running, queue the change (quantized)
-    if (isHold && arpPattern > 0 && arpIntervalRef.current) {
-      setPressedRoot(note);
-      setIsMinorPressed(isMinor);
-      currentPressedRef.current = note;
+    // MONOPHONIC mode: hold ON or arp ON
+    if (isHold || arpPattern > 0) {
+      // If Hold is ON and arpeggiator is already running, queue the change (quantized)
+      if (isHold && arpPattern > 0 && arpIntervalRef.current) {
+        setPressedRoot(note);
+        setPressedRoots(new Set([note]));
+        setIsMinorPressed(isMinor);
+        currentPressedRef.current = note;
 
-      const noteFingers = getFingersForNote(note);
-      const noteInversion = getInversionForNote(note);
-      const adjustedNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, powerMode, contextData?.map)
-        .map(n => n + (octave - 3) * 12);
-      const newArpNotes = getArpPattern(arpPattern, adjustedNotes, style);
-      pendingGlide.current = { note, isMinor, arpNotes: newArpNotes, baseNotes: adjustedNotes };
-      // metadata async
-      fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers);
-      return;
-    }
+        const noteFingers = getFingersForNote(note);
+        const noteInversion = getInversionForNote(note);
+        const adjustedNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, powerMode, contextData?.map)
+          .map(n => n + (octave - 3) * 12);
+        const newArpNotes = getArpPattern(arpPattern, adjustedNotes);
+        pendingGlide.current = { note, isMinor, arpNotes: newArpNotes, baseNotes: adjustedNotes };
+        fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers);
+        return;
+      }
 
-    // Stop any currently playing arpeggiator/notes before starting new one
-    if (arpIntervalRef.current) {
-      clearTimeout(arpIntervalRef.current);
-      arpIntervalRef.current = null;
-    }
-    pendingGlide.current = null;
-    audioEngine.panic();
-
-    setPressedRoot(note);
-    setIsMinorPressed(isMinor);
-    currentPressedRef.current = note;
-    const noteFingers = getFingersForNote(note);
-
-    // Auto voicing: calcula inversión óptima localmente (sin API)
-    let noteInversion = getInversionForNote(note);
-    if (autoVoicing && lastPlayedNotes.current.length > 0) {
-      const baseNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, 0, noteFingers, powerMode, contextData?.map)
-        .map(n => n + (octave - 3) * 12);
-      noteInversion = calculateBestInversion(baseNotes, lastPlayedNotes.current);
-    }
-
-    // Calcular notas localmente — instantáneo
-    const adjustedNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, powerMode, contextData?.map)
-      .map(n => n + (octave - 3) * 12);
-
-    lastPlayedNotes.current = adjustedNotes;
-
-    // Fetch metadata en background para actualizar el display (no bloqueante)
-    fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers);
-
-    // If arpeggiator is active
-    if (arpPattern > 0) {
-      arpBaseNotesRef.current = adjustedNotes;
-      let arpNotes = getArpPattern(arpPattern, adjustedNotes, style);
-
-      const getNextInterval = (timingIdx: number): number => {
-        const msPerBeat = 60000 / arpTempoRef.current;
-        const eighth = msPerBeat / 2;
-        const triplet = msPerBeat / 3;
-        let pattern: number[];
-        switch (style) {
-          case 'jazz': pattern = [triplet * 2, triplet, triplet * 2, triplet]; break;
-          case 'bossa': pattern = [eighth * 1.5, eighth * 0.5, eighth, eighth]; break;
-          case 'rock': pattern = [eighth * 0.95, eighth * 1.05, eighth * 0.95, eighth * 1.05]; break;
-          default: pattern = [eighth, eighth, eighth, eighth];
-        }
-        return pattern[timingIdx % pattern.length];
-      };
-
-      let noteIndex = 0;
-      let timingIndex = 0;
-      let lastPatternUsed = arpPattern;
-
-      arpStartTime.current = performance.now();
-      audioEngine.attackNotes([arpNotes[noteIndex]]);
-      noteIndex++;
-
-      const playNextNote = () => {
-        audioEngine.releaseNotes();
-
-        if (arpPatternRef.current !== lastPatternUsed) {
-          if (arpPatternRef.current === 0) {
-            audioEngine.attackNotes(arpBaseNotesRef.current);
-            return;
-          }
-          lastPatternUsed = arpPatternRef.current;
-          arpNotes = getArpPattern(arpPatternRef.current, arpBaseNotesRef.current, style);
-          noteIndex = 0;
-        }
-
-        if (noteIndex >= arpNotes.length) {
-          noteIndex = 0;
-          if (pendingGlide.current) {
-            const pending = pendingGlide.current;
-            pendingGlide.current = null;
-            if (pending.arpNotes && (pending.baseNotes || pending.chordData)) {
-              arpBaseNotesRef.current = pending.baseNotes ?? pending.chordData!.notes.map(n => n + (octave - 3) * 12);
-              arpNotes = pending.arpNotes;
-              setPressedRoot(pending.note);
-              setIsMinorPressed(pending.isMinor);
-              if (pending.chordData) setChordData(pending.chordData);
-            }
-          }
-        }
-
-        audioEngine.attackNotes([arpNotes[noteIndex]]);
-        noteIndex++;
-        const interval = getNextInterval(timingIndex);
-        timingIndex++;
-        arpIntervalRef.current = window.setTimeout(playNextNote, interval);
-      };
-
-      const firstInterval = getNextInterval(0);
-      arpIntervalRef.current = window.setTimeout(playNextNote, firstInterval);
-    } else if (strumEnabled) {
-      audioEngine.attackNotesStrum(adjustedNotes, strumSpeed);
-    } else {
-      audioEngine.attackNotes(adjustedNotes);
-    }
-  };
-
-  // User releases chord - STOP sound (unless hold is ON)
-  const handleRootRelease = () => {
-    if (isHold) return;
-
-    setPressedRoot(null);
-    currentPressedRef.current = null;
-    if (arpIntervalRef.current) {
-      clearTimeout(arpIntervalRef.current);
-      arpIntervalRef.current = null;
-    }
-    audioEngine.releaseAll();
-  };
-
-  // User glides to another chord while holding - smooth transition, ahora síncrono
-  const handleRootGlide = (note: string, isMinor: boolean) => {
-    if (currentPressedRef.current === note) return;
-
-    const now = performance.now();
-    if (now - lastGlideTime.current < 30) return;
-    lastGlideTime.current = now;
-
-    setPressedRoot(note);
-    setIsMinorPressed(isMinor);
-    currentPressedRef.current = note;
-
-    const apiRoot = isMinor ? getMinorRoot(note) : note;
-    const noteFingers = getFingersForNote(note);
-    const noteInversion = getInversionForNote(note);
-
-    if (arpPattern > 0) {
-      // Arp: queue el cambio con notas locales
-      const adjustedNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, powerMode, contextData?.map)
-        .map(n => n + (octave - 3) * 12);
-      const newArpNotes = getArpPattern(arpPattern, adjustedNotes, style);
-      pendingGlide.current = { note, isMinor, arpNotes: newArpNotes, baseNotes: adjustedNotes };
-      fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers);
-    } else {
+      // Stop any currently playing arpeggiator/notes before starting new one
       if (arpIntervalRef.current) {
         clearTimeout(arpIntervalRef.current);
         arpIntervalRef.current = null;
       }
-      audioEngine.releaseAll();
+      pendingGlide.current = null;
+      activeTouches.current.clear();
+      audioEngine.panic();
 
-      const adjustedNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, powerMode, contextData?.map)
+      setPressedRoot(note);
+      setPressedRoots(new Set([note]));
+      setIsMinorPressed(isMinor);
+      currentPressedRef.current = note;
+      const noteFingers = getFingersForNote(note);
+
+      const noteInversion = autoVoicing ? 0 : getInversionForNote(note);
+      const baseNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, powerMode, contextData?.map)
         .map(n => n + (octave - 3) * 12);
-      if (strumEnabled) {
+      const adjustedNotes = autoVoicing && lastPlayedNotes.current.length > 0
+        ? voiceLeadNotes(baseNotes, lastPlayedNotes.current)
+        : baseNotes;
+
+      lastPlayedNotes.current = adjustedNotes;
+      fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers);
+
+      if (arpPattern > 0) {
+        arpBaseNotesRef.current = adjustedNotes;
+        let arpNotes = getArpPattern(arpPattern, adjustedNotes);
+
+        const getNextInterval = (timingIdx: number): number => {
+          const msPerBeat = 60000 / arpTempoRef.current;
+          const eighth = msPerBeat / 2;
+          const sf = arpSwingRef.current / 300; // 0 → 0.333 (triplet swing)
+          const pattern = [eighth * (1 + sf), eighth * (1 - sf), eighth * (1 + sf), eighth * (1 - sf)];
+          return pattern[timingIdx % pattern.length];
+        };
+
+        let noteIndex = 0;
+        let timingIndex = 0;
+        let lastPatternUsed = arpPattern;
+
+        arpStartTime.current = performance.now();
+        audioEngine.attackNotes(arpNotes[noteIndex]);
+        noteIndex++;
+
+        const playNextNote = () => {
+          audioEngine.releaseNotes();
+
+          if (arpPatternRef.current !== lastPatternUsed) {
+            if (arpPatternRef.current === 0) {
+              audioEngine.attackNotes(arpBaseNotesRef.current);
+              return;
+            }
+            lastPatternUsed = arpPatternRef.current;
+            arpNotes = getArpPattern(arpPatternRef.current, arpBaseNotesRef.current);
+            noteIndex = 0;
+          }
+
+          if (noteIndex >= arpNotes.length) {
+            noteIndex = 0;
+            if (pendingGlide.current) {
+              const pending = pendingGlide.current;
+              pendingGlide.current = null;
+              if (pending.arpNotes && (pending.baseNotes || pending.chordData)) {
+                arpBaseNotesRef.current = pending.baseNotes ?? pending.chordData!.notes.map(n => n + (octave - 3) * 12);
+                arpNotes = pending.arpNotes;
+                setPressedRoot(pending.note);
+                setPressedRoots(new Set([pending.note]));
+                setIsMinorPressed(pending.isMinor);
+                if (pending.chordData) setChordData(pending.chordData);
+              }
+            }
+          }
+
+          audioEngine.attackNotes(arpNotes[noteIndex]);
+          noteIndex++;
+          const interval = getNextInterval(timingIndex);
+          timingIndex++;
+          arpIntervalRef.current = window.setTimeout(playNextNote, interval);
+        };
+
+        const firstInterval = getNextInterval(0);
+        arpIntervalRef.current = window.setTimeout(playNextNote, firstInterval);
+      } else if (strumEnabled) {
         audioEngine.attackNotesStrum(adjustedNotes, strumSpeed);
       } else {
         audioEngine.attackNotes(adjustedNotes);
       }
-      fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers);
+      return;
     }
+
+    // POLYPHONIC mode: no hold, no arp — each touch sounds independently
+    activeTouches.current.set(touchId, { note, isMinor });
+    setPressedRoots(prev => new Set([...prev, note]));
+    setPressedRoot(note);
+    setIsMinorPressed(isMinor);
+    currentPressedRef.current = note;
+    const noteFingers = getFingersForNote(note);
+
+    // Strum: cicla inversión cada vez que se presiona la misma nota
+    let noteInversion: number;
+    if (strumEnabled) {
+      const prev = strumInversionRef.current[note] ?? 0;
+      noteInversion = prev;
+      strumInversionRef.current[note] = (prev + 1) % 3;
+    } else {
+      noteInversion = autoVoicing ? 0 : getInversionForNote(note);
+    }
+
+    const baseNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, powerMode, contextData?.map)
+      .map(n => n + (octave - 3) * 12);
+    const adjustedNotes = (!strumEnabled && autoVoicing && lastPlayedNotes.current.length > 0)
+      ? voiceLeadNotes(baseNotes, lastPlayedNotes.current)
+      : baseNotes;
+
+    lastPlayedNotes.current = adjustedNotes;
+    fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers);
+
+    if (strumEnabled) {
+      audioEngine.attackNotesStrumForTouch(adjustedNotes, strumSpeed, touchId);
+    } else {
+      audioEngine.attackNotesForTouch(adjustedNotes, touchId);
+    }
+  };
+
+  // User releases chord - STOP sound (unless hold is ON)
+  const handleRootRelease = (touchId: string = 'mouse') => {
+    if (isHold) return;
+
+    // MONOPHONIC mode (arp active): release all
+    if (arpPattern > 0 && arpIntervalRef.current) {
+      clearTimeout(arpIntervalRef.current);
+      arpIntervalRef.current = null;
+      pendingGlide.current = null;
+      currentPressedRef.current = null;
+      activeTouches.current.clear();
+      audioEngine.releaseAll();
+      setPressedRoot(null);
+      setPressedRoots(new Set());
+      return;
+    }
+
+    // POLYPHONIC mode: release only this touch
+    const touch = activeTouches.current.get(touchId);
+    if (touch) {
+      activeTouches.current.delete(touchId);
+      audioEngine.releaseNotesForTouch(touchId);
+
+      // Remove from pressedRoots only if no other touch holds this note
+      const stillHeld = [...activeTouches.current.values()].some(t => t.note === touch.note);
+      if (!stillHeld) {
+        setPressedRoots(prev => { const next = new Set(prev); next.delete(touch.note); return next; });
+      }
+      if (activeTouches.current.size === 0) {
+        setPressedRoot(null);
+        currentPressedRef.current = null;
+      }
+    } else {
+      // Fallback: clear everything
+      activeTouches.current.clear();
+      currentPressedRef.current = null;
+      audioEngine.releaseAll();
+      setPressedRoot(null);
+      setPressedRoots(new Set());
+    }
+  };
+
+  // User glides to another chord while holding - smooth transition, ahora síncrono
+  const handleRootGlide = (note: string, isMinor: boolean, touchId: string = 'mouse') => {
+    const existingTouch = activeTouches.current.get(touchId);
+    if (existingTouch?.note === note) return;
+
+    // Throttle per touch ID
+    const now = performance.now();
+    const lastTime = lastGlideTimes.current.get(touchId) ?? 0;
+    if (now - lastTime < 30) return;
+    lastGlideTimes.current.set(touchId, now);
+
+    setPressedRoot(note);
+    setIsMinorPressed(isMinor);
+    currentPressedRef.current = note;
+
+    const apiRoot = isMinor ? getMinorRoot(note) : note;
+    const noteFingers = getFingersForNote(note);
+    const noteInversion = autoVoicing ? 0 : getInversionForNote(note);
+
+    // MONOPHONIC mode (arp active)
+    if (arpPattern > 0) {
+      const baseNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, powerMode, contextData?.map)
+        .map(n => n + (octave - 3) * 12);
+      const adjustedNotes = autoVoicing && lastPlayedNotes.current.length > 0
+        ? voiceLeadNotes(baseNotes, lastPlayedNotes.current)
+        : baseNotes;
+      const newArpNotes = getArpPattern(arpPattern, adjustedNotes);
+      pendingGlide.current = { note, isMinor, arpNotes: newArpNotes, baseNotes: adjustedNotes };
+      setPressedRoots(new Set([note]));
+      fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers);
+      return;
+    }
+
+    // POLYPHONIC mode: update this specific touch
+    const oldNote = existingTouch?.note;
+    activeTouches.current.set(touchId, { note, isMinor });
+
+    setPressedRoots(prev => {
+      const next = new Set(prev);
+      if (oldNote) {
+        const stillHeld = [...activeTouches.current.entries()]
+          .filter(([id]) => id !== touchId)
+          .some(([, t]) => t.note === oldNote);
+        if (!stillHeld) next.delete(oldNote);
+      }
+      next.add(note);
+      return next;
+    });
+
+    const baseNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, powerMode, contextData?.map)
+      .map(n => n + (octave - 3) * 12);
+    const adjustedNotes = autoVoicing && lastPlayedNotes.current.length > 0
+      ? voiceLeadNotes(baseNotes, lastPlayedNotes.current)
+      : baseNotes;
+
+    if (strumEnabled) {
+      audioEngine.attackNotesStrumForTouch(adjustedNotes, strumSpeed, touchId);
+    } else {
+      audioEngine.attackNotesForTouch(adjustedNotes, touchId);
+    }
+    fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers);
   };
 
   // Global mouseup/touchend to catch releases outside the circle
   useEffect(() => {
-    const handleGlobalRelease = () => {
+    const handleGlobalMouseUp = () => {
       if (isHold) return;
-
-      if (arpIntervalRef.current) {
-        clearTimeout(arpIntervalRef.current);
-        arpIntervalRef.current = null;
-      }
-      pendingGlide.current = null;
-      currentPressedRef.current = null;
-      audioEngine.releaseAll();
-
-      if (pressedRoot !== null) {
+      const touch = activeTouches.current.get('mouse');
+      if (touch) {
+        activeTouches.current.delete('mouse');
+        audioEngine.releaseNotesForTouch('mouse');
+        const stillHeld = [...activeTouches.current.values()].some(t => t.note === touch.note);
+        if (!stillHeld) setPressedRoots(prev => { const next = new Set(prev); next.delete(touch.note); return next; });
+        if (activeTouches.current.size === 0) { setPressedRoot(null); currentPressedRef.current = null; }
+      } else if (pressedRoot !== null) {
+        // Fallback for monophonic/arp mode
+        if (arpIntervalRef.current) { clearTimeout(arpIntervalRef.current); arpIntervalRef.current = null; }
+        pendingGlide.current = null;
+        currentPressedRef.current = null;
+        audioEngine.releaseAll();
         setPressedRoot(null);
+        setPressedRoots(new Set());
       }
+    };
+
+    const handleGlobalTouchEnd = (e: TouchEvent) => {
+      if (isHold) return;
+      Array.from(e.changedTouches).forEach(touch => {
+        const tid = 'touch-' + touch.identifier;
+        const activeTouch = activeTouches.current.get(tid);
+        if (activeTouch) {
+          activeTouches.current.delete(tid);
+          audioEngine.releaseNotesForTouch(tid);
+          const stillHeld = [...activeTouches.current.values()].some(t => t.note === activeTouch.note);
+          if (!stillHeld) setPressedRoots(prev => { const next = new Set(prev); next.delete(activeTouch.note); return next; });
+          if (activeTouches.current.size === 0) { setPressedRoot(null); currentPressedRef.current = null; }
+        }
+      });
     };
 
     const handlePanic = () => {
-      if (arpIntervalRef.current) {
-        clearTimeout(arpIntervalRef.current);
-        arpIntervalRef.current = null;
-      }
+      if (arpIntervalRef.current) { clearTimeout(arpIntervalRef.current); arpIntervalRef.current = null; }
       pendingGlide.current = null;
       currentPressedRef.current = null;
+      activeTouches.current.clear();
       audioEngine.releaseAll();
       setPressedRoot(null);
+      setPressedRoots(new Set());
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handlePanic();
-      }
+      if (e.key === 'Escape') handlePanic();
     };
 
-    window.addEventListener('mouseup', handleGlobalRelease);
-    window.addEventListener('touchend', handleGlobalRelease);
-    window.addEventListener('touchcancel', handleGlobalRelease);
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    window.addEventListener('touchend', handleGlobalTouchEnd);
+    window.addEventListener('touchcancel', handlePanic);
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('blur', handlePanic);
 
     return () => {
-      window.removeEventListener('mouseup', handleGlobalRelease);
-      window.removeEventListener('touchend', handleGlobalRelease);
-      window.removeEventListener('touchcancel', handleGlobalRelease);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+      window.removeEventListener('touchend', handleGlobalTouchEnd);
+      window.removeEventListener('touchcancel', handlePanic);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('blur', handlePanic);
     };
@@ -796,7 +857,10 @@ function App() {
   };
 
   const handleOctaveChange = (delta: number) => {
-    setOctave(Math.max(1, Math.min(7, octave + delta)));
+    setOctave(prev => Math.max(1, Math.min(7, prev + delta)));
+    if (lastPlayedNotes.current.length > 0) {
+      lastPlayedNotes.current = lastPlayedNotes.current.map(n => n + delta * 12);
+    }
   };
 
   return (
@@ -811,30 +875,26 @@ function App() {
         {/* COL 1: LEFT TOOLS */}
         <div className="tools-left-container">
           <ToolsLeft
-            inversion={inversion}
             strumEnabled={strumEnabled}
-            strumSpeed={strumSpeed}
-            articulation={articulation}
-            tempo={tempo}
-            expression={expression}
-            autoVoicing={autoVoicing}
-            chordMode={chordMode}
-            onInversionChange={handleInversionChange}
-            onStrumToggle={() => setStrumEnabled(!strumEnabled)}
-            onStrumSpeedChange={setStrumSpeed}
-            onArticulationChange={setArticulation}
-            onTempoChange={setTempo}
-            onExpressionChange={setExpression}
-            onAutoVoicingToggle={setAutoVoicing}
-            onChordModeToggle={setChordMode}
+            attackOn={attackOn}
+            releaseOn={releaseOn}
+            colorOn={colorOn}
+            expressionOn={expressionOn}
+            effectLevel={effectLevel}
+            onStrumToggle={() => setStrumEnabled(prev => !prev)}
+            onAttackToggle={() => setAttackOn(prev => !prev)}
+            onReleaseToggle={() => setReleaseOn(prev => !prev)}
+            onColorToggle={() => setColorOn(prev => !prev)}
+            onExpressionToggle={() => setExpressionOn(prev => !prev)}
+            onEffectLevelChange={setEffectLevel}
           />
         </div>
 
-        {/* COL 2: CENTER PANEL (Circle + Floating Controls) */}
+        {/* COL 2: CENTER PANEL */}
         <div className="center-panel">
           <CircleOfFifths
             currentKey={currentKey}
-            pressedRoot={pressedRoot}
+            pressedRoots={pressedRoots}
             onRootPress={handleRootPress}
             onRootRelease={handleRootRelease}
             onRootGlide={handleRootGlide}
@@ -843,47 +903,79 @@ function App() {
             fingersPerNote={fingersPerNote}
           />
 
-          {/* Bottom Control: Octave */}
-          <div className="bottom-center">
-            <OctaveControl
-              octave={octave}
-              onOctaveChange={handleOctaveChange}
-            />
-          </div>
-
-          {/* 4:00 PM Control: Key Selector */}
-          <div className="position-4-oclock">
+          {/* Bottom row: Key + Acordes + Octave */}
+          <div className="wheel-bottom-row">
             <KeySelector
               currentKey={currentKey}
               majorNotes={MAJOR_NOTES}
               minorNotes={MINOR_NOTES}
               onKeyChange={handleKeyChange}
             />
+            <button
+              className={`hold-btn ${chordMode ? 'active' : ''}`}
+              onClick={() => setChordMode(prev => !prev)}
+            >
+              acordes
+            </button>
+            <OctaveControl
+              octave={octave}
+              onOctaveChange={handleOctaveChange}
+            />
+            <button
+              className={`hold-btn ${isHold ? 'active' : ''}`}
+              onClick={() => setIsHold(prev => !prev)}
+            >
+              hold
+            </button>
           </div>
         </div>
 
-        {/* COL 3: RIGHT TOOLS (Arpeggiator + Instrument + Rec Loop + Style) */}
+        {/* COL 3: RIGHT TOOLS */}
         <div className="tools-right-container">
           <Arpeggiator
             value={arpPattern}
-            tempo={arpTempo}
+            swing={arpSwing}
             onValueChange={handleArpPatternChange}
+            onSwingChange={setArpSwing}
+          />
+          <Metronome
+            active={metronomeActive}
+            volume={metronomeVolume}
+            muted={metronomeMuted}
+            timeSignature={timeSignature}
+            beat={metronomeBeat}
+            accent={metronomeAccent}
+            clickSound={metronomeClickSound}
+            tempo={arpTempo}
+            onToggle={() => setMetronomeActive(!metronomeActive)}
+            onVolumeChange={setMetronomeVolume}
+            onMuteToggle={() => setMetronomeMuted(!metronomeMuted)}
+            onTimeSignatureChange={setTimeSignature}
+            onClickSoundChange={(sound) => { setMetronomeClickSound(sound); }}
             onTempoChange={setArpTempo}
           />
-          <InstrumentSelector
-            instrument={instrument}
-            onInstrumentChange={setInstrument}
-          />
-          <RecLoopHold
-            isHold={isHold}
-            onHoldChange={setIsHold}
-            activeModal={activeModal}
-            onModalFocus={setActiveModal}
-          />
-          <StyleSelector
-            style={style.charAt(0).toUpperCase() + style.slice(1)}
-            onStyleChange={handleStyleChange}
-          />
+          <div className="rec-instrument-row">
+            <RecLoopHold
+              isHold={isHold}
+              onHoldChange={setIsHold}
+              activeModal={activeModal}
+              onModalFocus={setActiveModal}
+            />
+            <InstrumentSelector
+              instrument={instrument}
+              onInstrumentChange={setInstrument}
+            />
+            <StyleSelector
+              style={style.charAt(0).toUpperCase() + style.slice(1)}
+              onStyleChange={handleStyleChange}
+            />
+            <button
+              className={`hold-btn ${autoVoicing ? 'active' : ''}`}
+              onClick={() => setAutoVoicing(prev => !prev)}
+            >
+              auto voicing
+            </button>
+          </div>
         </div>
 
       </div>
@@ -929,25 +1021,6 @@ function App() {
         </div>
       </div> */}
 
-      {/* Metronome - Bottom Right */}
-      <div className="metronome-bottom-right">
-        <Metronome
-          active={metronomeActive}
-          volume={metronomeVolume}
-          muted={metronomeMuted}
-          timeSignature={timeSignature}
-          beat={metronomeBeat}
-          accent={metronomeAccent}
-          clickSound={metronomeClickSound}
-          onToggle={() => setMetronomeActive(!metronomeActive)}
-          onVolumeChange={setMetronomeVolume}
-          onMuteToggle={() => setMetronomeMuted(!metronomeMuted)}
-          onTimeSignatureChange={setTimeSignature}
-          onClickSoundChange={(sound) => {
-            setMetronomeClickSound(sound);
-          }}
-        />
-      </div>
 
       {/* Fingers Configuration Panel */}
       {showFingersPanel && (

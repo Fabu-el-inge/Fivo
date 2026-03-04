@@ -6,18 +6,25 @@ export type MetronomeBeatCallback = (beat: number, isAccent: boolean) => void;
 
 export class AudioEngine {
     private synth: Tone.PolySynth | null = null;
+    private filter: Tone.Filter | null = null;
     private reverb: Tone.Reverb | null = null;
     private chorus: Tone.Chorus | null = null;
     private limiter: Tone.Limiter | null = null;
     private initialized = false;
 
-    // Articulation Settings
-    private articulationLevel: number = 2; // 0=Corchea, 1=Negra, 2=Blanca, 3=Redonda
-    private expressionLevel: number = 0; // 0-100
-    private tempo: number = 120; // BPM
+    // Envelope Settings (0-100 knob values)
+    private attackVal: number = 20;   // 0-100 → log 1ms..1500ms
+    private sustainVal: number = 70;  // 0-100 → linear 0..100%
+    private releaseVal: number = 50;  // 0-100 → log 50ms..5000ms
+
+    // Expression = filtro pasa-bajos (0-100 → log 200Hz..20000Hz)
+    private expressionVal: number = 80;
 
     // Strum timeout tracking (for cancellation)
     private strumTimeouts: number[] = [];
+
+    // Cancel token: incremented on releaseAll/panic to abort pending async attacks
+    private attackCancelToken = 0;
 
     // Metronome
     private metronomeClickHigh: Tone.MembraneSynth | null = null;
@@ -59,11 +66,17 @@ export class AudioEngine {
             wet: 0.2
         }).connect(this.reverb);
 
-        // Main Synth (Sawtooth + Sine blend via AM or simple addition)
-        // Using FMSynth or FMSynth-like configuration for "glassy" professional sound
+        // Expression filter (low-pass): synth → filter → chorus
+        this.filter = new Tone.Filter({
+            type: 'lowpass',
+            frequency: this.expressionToHz(this.expressionVal),
+            rolloff: -12,
+        }).connect(this.chorus);
+
+        // Main Synth
         this.synth = new Tone.PolySynth(Tone.Synth, {
             oscillator: {
-                type: "fatsawtooth", // Richer than basic triangle
+                type: "fatsawtooth",
                 count: 3,
                 spread: 30
             },
@@ -74,7 +87,7 @@ export class AudioEngine {
                 release: 1
             },
             volume: -8
-        }).connect(this.chorus);
+        }).connect(this.filter);
 
         // Set max polyphony (must be done after construction)
         this.synth.maxPolyphony = 64;
@@ -113,16 +126,32 @@ export class AudioEngine {
         console.log("Audio Engine Initialized with Tone.js");
     }
 
-    public setArticulation(level: number) {
-        this.articulationLevel = Math.max(0, Math.min(3, level));
+    // Attack: 0-100 → logarítmico 1ms..1500ms
+    public setAttack(val: number) {
+        this.attackVal = Math.max(0, Math.min(100, val));
     }
 
-    public setExpression(level: number) {
-        this.expressionLevel = Math.max(0, Math.min(100, level));
+    // Sustain: 0-100 → lineal 0%..100%
+    public setSustain(val: number) {
+        this.sustainVal = Math.max(0, Math.min(100, val));
     }
 
-    public setTempo(bpm: number) {
-        this.tempo = Math.max(30, Math.min(300, bpm));
+    // Release: 0-100 → logarítmico 50ms..5000ms
+    public setRelease(val: number) {
+        this.releaseVal = Math.max(0, Math.min(100, val));
+    }
+
+    // Expression: 0-100 → log 500Hz..20000Hz (low-pass filter brightness)
+    // 0 = oscuro/apagado pero audible, 100 = brillo completo
+    private expressionToHz(val: number): number {
+        return 500 * Math.pow(40, val / 100);
+    }
+
+    public setExpression(val: number) {
+        this.expressionVal = Math.max(0, Math.min(100, val));
+        if (this.filter) {
+            this.filter.frequency.rampTo(this.expressionToHz(this.expressionVal), 0.05);
+        }
     }
 
     public setInstrument(name: InstrumentName) {
@@ -173,56 +202,14 @@ export class AudioEngine {
     }
 
     private getEnvelopeSettings() {
-        // Articulation based on musical note values, relative to tempo
-        // Negra (quarter note) = 60 / BPM seconds
-        const quarterNote = 60 / this.tempo;
-        const eighthNote = quarterNote / 2;    // Corchea
-        const halfNote = quarterNote * 2;       // Blanca
-        const wholeNote = quarterNote * 4;      // Redonda
+        // Attack: log scale  0→1ms, 50→~40ms, 100→1500ms
+        const attack  = 0.001 * Math.pow(1500, this.attackVal  / 100);
+        // Sustain: linear 0→0.0, 100→1.0
+        const sustain = this.sustainVal / 100;
+        // Release: log scale  0→50ms, 50→500ms, 100→5000ms
+        const release = 0.05  * Math.pow(100,  this.releaseVal / 100);
 
-        const base = {
-            attack: 0.02,
-            decay: 0.1,
-            sustain: 0.7,
-            release: quarterNote
-        };
-
-        switch (this.articulationLevel) {
-            case 0: // Corchea
-                base.attack = 0.01;
-                base.decay = 0.1;
-                base.sustain = 0.8;
-                base.release = eighthNote;
-                break;
-            case 1: // Negra
-                base.attack = 0.01;
-                base.decay = 0.1;
-                base.sustain = 0.8;
-                base.release = quarterNote;
-                break;
-            case 2: // Blanca
-                base.attack = 0.01;
-                base.decay = 0.1;
-                base.sustain = 0.8;
-                base.release = halfNote;
-                break;
-            case 3: // Redonda
-                base.attack = 0.01;
-                base.decay = 0.1;
-                base.sustain = 0.8;
-                base.release = wholeNote;
-                break;
-        }
-
-        if (this.expressionLevel > 0) {
-            // Add more dynamism based on expression level (0-100)
-            const factor = this.expressionLevel / 100;
-            base.attack += 0.03 * factor;
-            base.release += quarterNote * factor;
-            base.sustain = Math.min(1, base.sustain + 0.1 * factor);
-        }
-
-        return base;
+        return { attack, decay: 0.05, sustain, release };
     }
 
     public async playNotes(midiNotes: number[], duration: string = "2n") {
@@ -257,9 +244,16 @@ export class AudioEngine {
     // Track the end time of strum (when last note attack finishes)
     private strumEndTime: number = 0;
 
+    // Multi-touch: per-touch frequency tracking
+    private touchFreqs: Map<string, number[]> = new Map();
+    // Multi-touch: per-touch strum timeout IDs (para poder cancelarlos en release)
+    private touchStrumTimeouts: Map<string, number[]> = new Map();
+
     // Hold mode: Attack (start sound)
     public async attackNotes(midiNotes: number[]) {
+        const token = this.attackCancelToken;
         await this.init();
+        if (this.attackCancelToken !== token) return;
         if (!this.synth) return;
 
         // Release any currently playing notes first
@@ -269,6 +263,96 @@ export class AudioEngine {
         this.activeFreqs = midiNotes.map(n => Tone.Frequency(n, "midi").toFrequency());
         this.strumEndTime = 0; // No strum delay
         this.synth.triggerAttack(this.activeFreqs);
+    }
+
+    // Multi-touch: attack notes for a specific touch without stopping other touches
+    public async attackNotesForTouch(midiNotes: number[], touchId: string) {
+        const token = this.attackCancelToken;
+        await this.init();
+        if (this.attackCancelToken !== token) return;
+        if (!this.synth) return;
+
+        const prev = this.touchFreqs.get(touchId);
+        const newFreqs = midiNotes.map(n => Tone.Frequency(n, "midi").toFrequency());
+        this.touchFreqs.set(touchId, newFreqs);
+
+        // Release OLD freqs of this touch, but only if not held by another touch
+        if (prev && prev.length > 0) {
+            const allOtherFreqs = new Set<string>();
+            this.touchFreqs.forEach((f, id) => { if (id !== touchId) f.forEach(freq => allOtherFreqs.add(freq.toFixed(2))); });
+            const toRelease = prev.filter(f => !allOtherFreqs.has(f.toFixed(2)));
+            if (toRelease.length > 0) this.synth.triggerRelease(toRelease);
+        }
+
+        // Only attack NEW freqs not already sounding from another touch
+        const alreadySounding = new Set<string>();
+        this.touchFreqs.forEach((f, id) => { if (id !== touchId) f.forEach(freq => alreadySounding.add(freq.toFixed(2))); });
+        const toAttack = newFreqs.filter(f => !alreadySounding.has(f.toFixed(2)));
+
+        this.synth.set({ envelope: this.getEnvelopeSettings() });
+        if (toAttack.length > 0) this.synth.triggerAttack(toAttack);
+    }
+
+    // Multi-touch: strum for a specific touch
+    // totalMs = duración total del strum. Curva cuadrática: acelera hacia las notas finales.
+    public async attackNotesStrumForTouch(midiNotes: number[], totalMs: number = 80, touchId: string) {
+        const token = this.attackCancelToken;
+        await this.init();
+        if (this.attackCancelToken !== token) return;
+        if (!this.synth) return;
+
+        // Cancelar strum previo de este touch
+        const prevTimeouts = this.touchStrumTimeouts.get(touchId);
+        if (prevTimeouts) { prevTimeouts.forEach(id => clearTimeout(id)); }
+        this.touchStrumTimeouts.set(touchId, []);
+
+        const prev = this.touchFreqs.get(touchId);
+        const newFreqs = midiNotes.map(n => Tone.Frequency(n, "midi").toFrequency());
+        this.touchFreqs.set(touchId, newFreqs);
+
+        if (prev && prev.length > 0) {
+            const allOtherFreqs = new Set<string>();
+            this.touchFreqs.forEach((f, id) => { if (id !== touchId) f.forEach(freq => allOtherFreqs.add(freq.toFixed(2))); });
+            const toRelease = prev.filter(f => !allOtherFreqs.has(f.toFixed(2)));
+            if (toRelease.length > 0) this.synth.triggerRelease(toRelease);
+        }
+
+        this.synth.set({ envelope: this.getEnvelopeSettings() });
+        const N = newFreqs.length;
+        newFreqs.forEach((freq, index) => {
+            // Curva cuadrática ease-in: slow start → fast end
+            // t(i) = totalMs * (i / (N-1))^2   (para N=1: siempre 0)
+            const t = N > 1 ? (index / (N - 1)) : 0;
+            const delayMs = Math.round(totalMs * t * t);
+
+            if (delayMs === 0) {
+                this.synth?.triggerAttack(freq, undefined, 0.8);
+            } else {
+                const id = window.setTimeout(() => {
+                    this.synth?.triggerAttack(freq, undefined, 0.8);
+                }, delayMs);
+                this.touchStrumTimeouts.get(touchId)?.push(id);
+            }
+        });
+    }
+
+    // Multi-touch: release notes for a specific touch
+    public releaseNotesForTouch(touchId: string) {
+        if (!this.synth) return;
+
+        // Cancelar strum timeouts pendientes de este touch (fix de notas trabadas)
+        const pending = this.touchStrumTimeouts.get(touchId);
+        if (pending) { pending.forEach(id => clearTimeout(id)); this.touchStrumTimeouts.delete(touchId); }
+
+        const freqs = this.touchFreqs.get(touchId);
+        if (!freqs || freqs.length === 0) return;
+        this.touchFreqs.delete(touchId);
+
+        // Only release freqs not still held by another touch
+        const allOtherFreqs = new Set<string>();
+        this.touchFreqs.forEach(f => f.forEach(freq => allOtherFreqs.add(freq.toFixed(2))));
+        const toRelease = freqs.filter(f => !allOtherFreqs.has(f.toFixed(2)));
+        if (toRelease.length > 0) this.synth.triggerRelease(toRelease);
     }
 
     // Hold mode: Release (stop sound)
@@ -287,28 +371,34 @@ export class AudioEngine {
 
     // Force release ALL notes (for glide transitions)
     public releaseAll() {
+        this.attackCancelToken++;
         if (!this.synth) return;
 
-        // Cancel pending strum timeouts first
         this.cancelStrumTimeouts();
+        this.touchStrumTimeouts.forEach(ids => ids.forEach(id => clearTimeout(id)));
+        this.touchStrumTimeouts.clear();
 
         this.synth.releaseAll(Tone.now());
 
         this.activeFreqs = [];
         this.strumEndTime = 0;
+        this.touchFreqs.clear();
     }
 
     // PANIC: Stop everything immediately
     public panic() {
+        this.attackCancelToken++;
         if (!this.synth) return;
 
-        // Cancel pending strum timeouts first
         this.cancelStrumTimeouts();
+        this.touchStrumTimeouts.forEach(ids => ids.forEach(id => clearTimeout(id)));
+        this.touchStrumTimeouts.clear();
 
         this.synth.releaseAll(Tone.now());
 
         this.activeFreqs = [];
         this.strumEndTime = 0;
+        this.touchFreqs.clear();
     }
 
     // Get MediaStream of audio output for recording

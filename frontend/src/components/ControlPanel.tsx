@@ -6,22 +6,18 @@ import type { InstrumentName } from '../api/audio';
 // But keeping a loose contract is good.
 
 interface ToolsLeftProps {
-    inversion: number;
     strumEnabled: boolean;
-    strumSpeed: number;
-    articulation: number;
-    tempo: number;
-    expression: number;
-    autoVoicing: boolean;
-    chordMode: boolean;
-    onInversionChange: (inv: number) => void;
+    attackOn: boolean;
+    releaseOn: boolean;
+    colorOn: boolean;
+    expressionOn: boolean;
+    effectLevel: number;
     onStrumToggle: () => void;
-    onStrumSpeedChange: (val: number) => void;
-    onArticulationChange: (val: number) => void;
-    onTempoChange: (val: number) => void;
-    onExpressionChange: (val: number) => void;
-    onAutoVoicingToggle: (val: boolean) => void;
-    onChordModeToggle: (val: boolean) => void;
+    onAttackToggle: () => void;
+    onReleaseToggle: () => void;
+    onColorToggle: () => void;
+    onExpressionToggle: () => void;
+    onEffectLevelChange: (v: number) => void;
 }
 
 // Generic Rotary Knob Component
@@ -48,6 +44,8 @@ export const RotaryKnob: React.FC<RotaryKnobProps> = ({
     const [isDragging, setIsDragging] = useState(false);
     const startY = useRef(0);
     const startVal = useRef(0);
+    const [editing, setEditing] = useState(false);
+    const [editText, setEditText] = useState('');
 
     const handlePointerDown = (e: React.PointerEvent) => {
         setIsDragging(true);
@@ -115,134 +113,127 @@ export const RotaryKnob: React.FC<RotaryKnobProps> = ({
             >
                 <div className="knob-indicator"></div>
             </div>
-            <div className="knob-value-label">
-                {formatValue ? formatValue(value) : value}
-            </div>
+            {editing ? (
+                <input
+                    className="knob-value-input"
+                    type="text"
+                    value={editText}
+                    autoFocus
+                    onChange={e => setEditText(e.target.value)}
+                    onBlur={() => {
+                        const n = parseInt(editText, 10);
+                        if (!isNaN(n)) onChange(Math.min(max, Math.max(min, n)));
+                        setEditing(false);
+                    }}
+                    onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                            const n = parseInt(editText, 10);
+                            if (!isNaN(n)) onChange(Math.min(max, Math.max(min, n)));
+                            setEditing(false);
+                        }
+                        if (e.key === 'Escape') setEditing(false);
+                    }}
+                />
+            ) : (
+                <div
+                    className="knob-value-label"
+                    onClick={() => { setEditText(String(value)); setEditing(true); }}
+                    title="Click to edit"
+                >
+                    {formatValue ? formatValue(value) : value}
+                </div>
+            )}
         </div>
     );
 };
 
-export const ToolsLeft: React.FC<ToolsLeftProps> = ({
-    inversion,
-    strumEnabled,
-    strumSpeed,
-    articulation,
-    tempo,
-    expression,
-    autoVoicing,
-    chordMode,
-    onInversionChange,
-    onStrumToggle,
-    onStrumSpeedChange,
-    onArticulationChange,
-    onTempoChange,
-    onExpressionChange,
-    onAutoVoicingToggle,
-    onChordModeToggle,
-}) => {
-    // Adapter for Strum:
-    // Knob Value: 0 = OFF. 1..100 = Speed (mapped 10..200?)
-    // Actually simplicity: Let knob value be Strum Delay directly?
-    // User wants "Off sea 0".
-    // Let's say range 0 to 200.
-    // If 0 -> OFF.
-    // If >0 -> ON, value is delay.
-    // But typical delay is 10ms (fast) to 200ms (slow).
-    // Let's allow 0 as a special "OFF" state.
+// Vertical Fader Component
+interface VerticalFaderProps {
+    value: number; // 0-100
+    onChange: (val: number) => void;
+    label: string;
+    height?: number;
+}
 
-    const handleStrumKnobChange = (val: number) => {
-        if (val === 0) {
-            if (strumEnabled) onStrumToggle(); // Turn OFF
-        } else {
-            if (!strumEnabled) onStrumToggle(); // Turn ON
-            // Clamp min speed if needed, but 1ms is fine visually
-            // Usually < 10ms is instant.
-            onStrumSpeedChange(Math.max(10, val));
-        }
+// Slide Toggle Component
+interface SlideToggleProps {
+    on: boolean;
+    onToggle: () => void;
+    label: string;
+    sub?: string;
+}
+
+const SlideToggle: React.FC<SlideToggleProps> = ({ on, onToggle, label, sub }) => {
+    return (
+        <div className="slide-toggle-wrap" onClick={onToggle}>
+            <span className="slide-toggle-label">{label}</span>
+            <div className={`slide-toggle-track ${on ? 'on' : ''}`}>
+                <div className="slide-toggle-thumb" />
+            </div>
+            {sub && <span className="cc-toggle-sub">{sub}</span>}
+        </div>
+    );
+};
+
+const VerticalFader: React.FC<VerticalFaderProps> = ({ value, onChange, label, height = 160 }) => {
+    const trackRef = useRef<HTMLDivElement>(null);
+
+    const handleMove = (clientY: number) => {
+        const rect = trackRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const pct = 1 - Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+        onChange(Math.round(pct * 100));
     };
 
-    const currentStrumVal = strumEnabled ? strumSpeed : 0;
+    const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        handleMove(e.clientY);
+    };
+
+    const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+        if (!(e.buttons & 1)) return;
+        handleMove(e.clientY);
+    };
 
     return (
+        <div className="vfader-wrap">
+            <span className="vfader-label">{label}</span>
+            <div
+                className="vfader-track"
+                ref={trackRef}
+                style={{ height }}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+            >
+                <div className="vfader-fill" style={{ height: `${value}%` }} />
+                <div className="vfader-thumb" style={{ bottom: `${value}%` }} />
+            </div>
+            <span className="vfader-value">{value}%</span>
+        </div>
+    );
+};
+
+type EffectKey = 'strum' | 'attack' | 'release' | 'color' | 'expression';
+
+export const ToolsLeft: React.FC<ToolsLeftProps> = ({
+    strumEnabled, attackOn, releaseOn, colorOn, expressionOn,
+    effectLevel,
+    onStrumToggle, onAttackToggle, onReleaseToggle, onColorToggle, onExpressionToggle,
+    onEffectLevelChange,
+}) => {
+    return (
         <div className="tools-left glass-panel">
-            {/* Chord Mode Toggle */}
-            <div className="auto-voicing-toggle">
-                <span className="auto-voicing-label">Acordes</span>
-                <button
-                    className={`auto-voicing-btn ${chordMode ? 'active' : ''}`}
-                    onClick={() => onChordModeToggle(!chordMode)}
-                    title={chordMode ? 'Chord mode ON (2 notas)' : 'Chord mode OFF (1 nota)'}
-                />
-            </div>
-
-            {/* Auto Voicing Toggle */}
-            <div className="auto-voicing-toggle">
-                <span className="auto-voicing-label">Auto voicing</span>
-                <button
-                    className={`auto-voicing-btn ${autoVoicing ? 'active' : ''}`}
-                    onClick={() => onAutoVoicingToggle(!autoVoicing)}
-                />
-            </div>
-
-            {/* Inversion Knob (Discrete) */}
-            <RotaryKnob
-                value={inversion}
-                onChange={onInversionChange}
-                min={0}
-                max={2}
-                step={1}
-                label="Inversion"
-                formatValue={(v: number) => autoVoicing ? 'Auto' : v === 0 ? 'Root' : v === 1 ? '1st' : '2nd'}
-            />
-
-            {/* Strum Knob (Continuous) */}
-            <RotaryKnob
-                value={currentStrumVal}
-                onChange={handleStrumKnobChange}
-                min={0}
-                max={200}
-                step={5}
-                label="Strum"
-                formatValue={(v: number) => v === 0 ? 'OFF' : `${v}ms`}
-            />
-
-            {/* Articulation Knob - Musical note values */}
-            <RotaryKnob
-                value={articulation}
-                onChange={onArticulationChange}
-                min={0}
-                max={3}
-                step={1}
-                label="Artic."
-                formatValue={(v: number) => {
-                    switch (v) {
-                        case 0: return '♪'; // Corchea
-                        case 1: return '♩'; // Negra
-                        case 2: return '𝅗𝅥'; // Blanca
-                        case 3: return '𝅝'; // Redonda
-                        default: return '♩';
-                    }
-                }}
-            />
-
-            {/* Tempo Control */}
-            <TempoControl tempo={tempo} onTempoChange={onTempoChange} />
-
-            {/* Expression Vertical Slider */}
-            <div className="expression-slider-wrapper">
-                <label>Expr.</label>
-                <div className="expression-slider-container">
-                    <input
-                        type="range"
-                        className="expression-slider"
-                        min={0}
-                        max={100}
-                        step={1}
-                        value={expression}
-                        onChange={(e) => onExpressionChange(Number(e.target.value))}
-                    />
+            <div className="effects-box">
+                <div className="tools-left-buttons">
+                    <SlideToggle on={strumEnabled}  onToggle={onStrumToggle}      label="strum" />
+                    <SlideToggle on={attackOn}      onToggle={onAttackToggle}     label="atck"  />
+                    <SlideToggle on={releaseOn}     onToggle={onReleaseToggle}    label="rlse"  />
+                    <SlideToggle on={colorOn}       onToggle={onColorToggle}      label="color" />
+                    <SlideToggle on={expressionOn}  onToggle={onExpressionToggle} label="expr." />
                 </div>
-                <span className="expression-value">{expression}</span>
+                <div className="level-fader-wrap">
+                    <VerticalFader value={effectLevel} onChange={onEffectLevelChange} label="level" height={100} />
+                </div>
             </div>
         </div>
     );
@@ -382,12 +373,12 @@ export const InstrumentSelector: React.FC<InstrumentSelectorProps> = ({ instrume
 // Arpeggiator Component
 interface ArpeggiatorProps {
     value: number;
-    tempo: number;
+    swing: number;
     onValueChange: (v: number) => void;
-    onTempoChange: (t: number) => void;
+    onSwingChange: (v: number) => void;
 }
 
-export const Arpeggiator: React.FC<ArpeggiatorProps> = ({ value, tempo, onValueChange, onTempoChange }) => {
+export const Arpeggiator: React.FC<ArpeggiatorProps> = ({ value, swing, onValueChange, onSwingChange }) => {
     const patterns = ['Off', '1', '2', '3', '4', '5'];
 
     const handleKnobClick = () => {
@@ -445,87 +436,33 @@ export const Arpeggiator: React.FC<ArpeggiatorProps> = ({ value, tempo, onValueC
                 </div>
                 <span className="arp-title">arpeggiator</span>
             </div>
-            <ArpTempoControl tempo={tempo} onTempoChange={onTempoChange} />
+            <div className="arp-swing-row">
+                <span className="arp-swing-label">swing</span>
+                <input
+                    type="range"
+                    className="arp-swing-slider"
+                    min={0} max={100} step={1}
+                    value={swing}
+                    onChange={(e) => onSwingChange(Number(e.target.value))}
+                />
+                <span className="arp-swing-value">{swing}%</span>
+            </div>
         </div>
     );
 };
 
 // Arp Tempo Control
-const ArpTempoControl: React.FC<{ tempo: number; onTempoChange: (t: number) => void }> = ({ tempo, onTempoChange }) => {
-    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-    const tempoRef = useRef(tempo);
-
-    React.useEffect(() => {
-        tempoRef.current = tempo;
-    }, [tempo]);
-
-    const startHold = (delta: number) => {
-        const newVal = Math.max(30, Math.min(300, tempoRef.current + delta));
-        tempoRef.current = newVal;
-        onTempoChange(newVal);
-
-        intervalRef.current = setInterval(() => {
-            const next = Math.max(30, Math.min(300, tempoRef.current + delta));
-            tempoRef.current = next;
-            onTempoChange(next);
-        }, 100);
-    };
-
-    const stopHold = () => {
-        if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-        }
-    };
-
-    const handleWheel = (e: React.WheelEvent) => {
-        e.preventDefault();
-        const delta = e.deltaX !== 0 ? (e.deltaX > 0 ? 1 : -1) : (e.deltaY > 0 ? -1 : 1);
-        const next = Math.max(30, Math.min(300, tempo + delta));
-        onTempoChange(next);
-    };
-
-    React.useEffect(() => {
-        return () => {
-            if (intervalRef.current) clearInterval(intervalRef.current);
-        };
-    }, []);
-
+export const ArpTempoControl: React.FC<{ tempo: number; onTempoChange: (t: number) => void }> = ({ tempo, onTempoChange }) => {
     return (
-        <div className="tempo-control" onWheel={handleWheel}>
-            <span className="tempo-label">Tempo</span>
-            <div className="tempo-bar">
-                <button
-                    className="tempo-btn minus"
-                    onMouseDown={() => startHold(-1)}
-                    onMouseUp={stopHold}
-                    onMouseLeave={stopHold}
-                    onTouchStart={() => startHold(-1)}
-                    onTouchEnd={stopHold}
-                >
-                    −
-                </button>
-                <input
-                    type="range"
-                    className="tempo-slider"
-                    min={30}
-                    max={300}
-                    value={tempo}
-                    onChange={(e) => onTempoChange(Number(e.target.value))}
-                />
-                <button
-                    className="tempo-btn plus"
-                    onMouseDown={() => startHold(1)}
-                    onMouseUp={stopHold}
-                    onMouseLeave={stopHold}
-                    onTouchStart={() => startHold(1)}
-                    onTouchEnd={stopHold}
-                >
-                    +
-                </button>
-            </div>
-            <span className="tempo-value">{tempo} BPM</span>
-        </div>
+        <RotaryKnob
+            value={tempo}
+            onChange={onTempoChange}
+            min={30}
+            max={300}
+            step={1}
+            label="tempo"
+            formatValue={(v) => `${v} bpm`}
+        />
     );
 };
 
@@ -537,9 +474,15 @@ interface OctaveControlProps {
 export const OctaveControl: React.FC<OctaveControlProps> = ({ octave, onOctaveChange }) => {
     return (
         <div className="octave-control glass-panel compact">
-            <button onClick={() => onOctaveChange(-1)}>−</button>
+            <button
+                onClick={() => onOctaveChange(-1)}
+                onTouchStart={(e) => { e.preventDefault(); onOctaveChange(-1); }}
+            >−</button>
             <span className="value-display">{octave}</span>
-            <button onClick={() => onOctaveChange(1)}>+</button>
+            <button
+                onClick={() => onOctaveChange(1)}
+                onTouchStart={(e) => { e.preventDefault(); onOctaveChange(1); }}
+            >+</button>
         </div>
     );
 };
@@ -1169,7 +1112,6 @@ export const RecLoopHold: React.FC<RecLoopHoldProps> = ({ isHold, onHoldChange, 
             <div className="rec-loop-labels">
                 <span>Rec</span>
                 <span>Loop</span>
-                <span>Hold</span>
             </div>
             <div className="rec-loop-buttons">
                 <button
@@ -1179,12 +1121,10 @@ export const RecLoopHold: React.FC<RecLoopHoldProps> = ({ isHold, onHoldChange, 
                         setIsRec(newRecState);
 
                         if (newRecState) {
-                            // Encontrar el primer slot vacío para grabar
                             let targetSlot = loopBank.findIndex(s => s.buffer === null);
-                            if (targetSlot === -1) targetSlot = 0; // Si todos llenos, sobreescribir el primero
+                            if (targetSlot === -1) targetSlot = 0;
                             startRecordingSlot(targetSlot);
                         } else {
-                            // Parar grabación
                             if (recordingSlot !== null) {
                                 stopRecordingSlot(recordingSlot);
                             }
@@ -1198,7 +1138,6 @@ export const RecLoopHold: React.FC<RecLoopHoldProps> = ({ isHold, onHoldChange, 
                         setIsLoop(newLoopState);
 
                         if (newLoopState) {
-                            // Encontrar el último slot con contenido
                             let lastFilledSlot = -1;
                             for (let i = loopBank.length - 1; i >= 0; i--) {
                                 if (loopBank[i].buffer !== null) {
@@ -1206,19 +1145,13 @@ export const RecLoopHold: React.FC<RecLoopHoldProps> = ({ isHold, onHoldChange, 
                                     break;
                                 }
                             }
-                            // Reproducir si hay algún loop
                             if (lastFilledSlot >= 0 && !loopBank[lastFilledSlot].isPlaying) {
                                 playSlot(lastFilledSlot);
                             }
                         } else {
-                            // Detener todos los slots cuando se desactiva Loop
                             stopAllSlots();
                         }
                     }}
-                />
-                <button
-                    className={`rec-btn-square ${isHold ? 'active' : ''}`}
-                    onClick={handleHold}
                 />
             </div>
 
@@ -1229,6 +1162,7 @@ export const RecLoopHold: React.FC<RecLoopHoldProps> = ({ isHold, onHoldChange, 
                     onModalFocus('loopbank');
                 }}
                 title="Loop Bank"
+                style={{ display: 'none' }}
             >
                 opciones avanzadas
             </button>
@@ -1442,11 +1376,13 @@ interface MetronomeProps {
     beat: number;
     accent: boolean;
     clickSound: MetronomeClickSound;
+    tempo: number;
     onToggle: () => void;
     onVolumeChange: (vol: number) => void;
     onMuteToggle: () => void;
     onTimeSignatureChange: (ts: number) => void;
     onClickSoundChange: (sound: MetronomeClickSound) => void;
+    onTempoChange: (t: number) => void;
 }
 
 export const Metronome: React.FC<MetronomeProps> = ({
@@ -1457,81 +1393,89 @@ export const Metronome: React.FC<MetronomeProps> = ({
     beat,
     accent,
     clickSound,
+    tempo,
     onToggle,
     onVolumeChange,
     onMuteToggle,
     onTimeSignatureChange,
     onClickSoundChange,
+    onTempoChange,
 }) => {
     return (
         <div className="metronome-section">
-            <div className="metronome-header">
-                <button
-                    className={`metronome-toggle ${active ? 'active' : ''}`}
-                    onClick={onToggle}
-                    title={active ? 'Stop metronome' : 'Start metronome'}
+            {/* COL 1: Tempo knob */}
+            <div className="metro-tempo-col">
+                <RotaryKnob
+                    value={tempo}
+                    onChange={onTempoChange}
+                    min={30}
+                    max={300}
+                    step={1}
+                    label="tempo"
+                    formatValue={(v) => `${v} bpm`}
                 />
-                <span className="metronome-label">Metro</span>
-                <button
-                    className={`metronome-mute ${muted ? 'muted' : ''}`}
-                    onClick={onMuteToggle}
-                    title={muted ? 'Unmute click' : 'Mute click'}
-                >
-                    {muted ? '🔇' : '🔊'}
-                </button>
             </div>
 
-            {/* Visual pulse indicator */}
-            <div className="metronome-beats">
-                {Array.from({ length: timeSignature }).map((_, i) => (
-                    <div
-                        key={i}
-                        className={`metronome-pulse ${active && beat === i ? 'active' : ''} ${active && beat === i && accent ? 'accent' : ''}`}
-                    />
-                ))}
-            </div>
-
-            {/* Click sound selector */}
-            <div className="metronome-sound-selector">
-                <button
-                    className={`metronome-sound-btn ${clickSound === 'soft' ? 'active' : ''}`}
-                    onClick={() => onClickSoundChange('soft')}
-                    title="Soft click"
-                >
-                    Soft
-                </button>
-                <button
-                    className={`metronome-sound-btn ${clickSound === 'hard' ? 'active' : ''}`}
-                    onClick={() => onClickSoundChange('hard')}
-                    title="Hard click"
-                >
-                    Hard
-                </button>
-            </div>
-
-            {/* Time signature selector */}
-            <div className="time-sig-selector">
-                {[3, 4, 6].map(ts => (
+            {/* COL 2: Metro controls */}
+            <div className="metro-controls-col">
+                <div className="metronome-header">
                     <button
-                        key={ts}
-                        className={`time-sig-btn ${timeSignature === ts ? 'active' : ''}`}
-                        onClick={() => onTimeSignatureChange(ts)}
+                        className={`metronome-toggle ${active ? 'active' : ''}`}
+                        onClick={onToggle}
+                        title={active ? 'Stop metronome' : 'Start metronome'}
+                    />
+                    <span className="metronome-label">Metro</span>
+                    <button
+                        className={`metronome-mute ${muted ? 'muted' : ''}`}
+                        onClick={onMuteToggle}
+                        title={muted ? 'Unmute click' : 'Mute click'}
                     >
-                        {ts === 6 ? '6/8' : `${ts}/4`}
+                        {muted ? '🔇' : '🔊'}
                     </button>
-                ))}
-            </div>
+                </div>
 
-            {/* Volume slider */}
-            <input
-                type="range"
-                className="metronome-volume"
-                min={0}
-                max={100}
-                value={volume}
-                onChange={(e) => onVolumeChange(Number(e.target.value))}
-                title={`Volume: ${volume}%`}
-            />
+                <div className="metronome-beats">
+                    {Array.from({ length: timeSignature }).map((_, i) => (
+                        <div
+                            key={i}
+                            className={`metronome-pulse ${active && beat === i ? 'active' : ''} ${active && beat === i && accent ? 'accent' : ''}`}
+                        />
+                    ))}
+                </div>
+
+                <div className="metronome-sound-selector">
+                    <button
+                        className={`metronome-sound-btn ${clickSound === 'soft' ? 'active' : ''}`}
+                        onClick={() => onClickSoundChange('soft')}
+                    >Soft</button>
+                    <button
+                        className={`metronome-sound-btn ${clickSound === 'hard' ? 'active' : ''}`}
+                        onClick={() => onClickSoundChange('hard')}
+                    >Hard</button>
+                </div>
+
+                <div className="time-sig-selector">
+                    {[3, 4, 6].map(ts => (
+                        <button
+                            key={ts}
+                            className={`time-sig-btn ${timeSignature === ts ? 'active' : ''}`}
+                            onClick={() => onTimeSignatureChange(ts)}
+                        >
+                            {ts === 6 ? '6/8' : `${ts}/4`}
+                        </button>
+                    ))}
+                </div>
+
+                <input
+                    type="range"
+                    className="metronome-volume"
+                    min={0}
+                    max={100}
+                    value={volume}
+                    onChange={(e) => onVolumeChange(Number(e.target.value))}
+                    title={`Volume: ${volume}%`}
+                />
+            </div>
         </div>
     );
 };
