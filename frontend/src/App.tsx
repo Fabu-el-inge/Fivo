@@ -144,11 +144,12 @@ function App() {
           return pattern[timingIdx % pattern.length];
         };
 
-        audioEngine.attackNotes(currentArpNotes[noteIndex]);
+        const firstIv = getNextInterval(timingIndex);
+        timingIndex++;
+        audioEngine.arpAttackNotes(currentArpNotes[noteIndex], firstIv);
         noteIndex++;
 
         const playNextNote = () => {
-          audioEngine.releaseNotes();
           if (arpPatternRef.current === 0) {
             audioEngine.attackNotes(arpBaseNotesRef.current);
             return;
@@ -159,10 +160,11 @@ function App() {
             noteIndex = 0;
           }
           if (noteIndex >= currentArpNotes.length) noteIndex = 0;
-          audioEngine.attackNotes(currentArpNotes[noteIndex]);
-          noteIndex++;
+          const iv = getNextInterval(timingIndex);
           timingIndex++;
-          arpIntervalRef.current = window.setTimeout(playNextNote, getNextInterval(timingIndex));
+          audioEngine.arpAttackNotes(currentArpNotes[noteIndex], iv);
+          noteIndex++;
+          arpIntervalRef.current = window.setTimeout(playNextNote, iv);
         };
 
         arpIntervalRef.current = window.setTimeout(playNextNote, getNextInterval(timingIndex));
@@ -592,12 +594,12 @@ function App() {
         let lastPatternUsed = arpPattern;
 
         arpStartTime.current = performance.now();
-        audioEngine.attackNotes(arpNotes[noteIndex]);
+        const firstInterval = getNextInterval(timingIndex);
+        timingIndex++;
+        audioEngine.arpAttackNotes(arpNotes[noteIndex], firstInterval);
         noteIndex++;
 
         const playNextNote = () => {
-          audioEngine.releaseNotes();
-
           if (arpPatternRef.current !== lastPatternUsed) {
             if (arpPatternRef.current === 0) {
               audioEngine.attackNotes(arpBaseNotesRef.current);
@@ -624,14 +626,13 @@ function App() {
             }
           }
 
-          audioEngine.attackNotes(arpNotes[noteIndex]);
-          noteIndex++;
           const interval = getNextInterval(timingIndex);
           timingIndex++;
+          audioEngine.arpAttackNotes(arpNotes[noteIndex], interval);
+          noteIndex++;
           arpIntervalRef.current = window.setTimeout(playNextNote, interval);
         };
 
-        const firstInterval = getNextInterval(0);
         arpIntervalRef.current = window.setTimeout(playNextNote, firstInterval);
       } else if (strumEnabled) {
         audioEngine.attackNotesStrum(adjustedNotes, strumSpeed);

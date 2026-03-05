@@ -251,6 +251,35 @@ export class AudioEngine {
     // Multi-touch: per-touch strum timeout IDs (para poder cancelarlos en release)
     private touchStrumTimeouts: Map<string, number[]> = new Map();
 
+    // Arpeggiator: crisp note with auto-release, no overlap between steps
+    // intervalMs = duration of this step (note will auto-release at 80% of interval)
+    public async arpAttackNotes(midiNotes: number[], intervalMs: number) {
+        const token = this.attackCancelToken;
+        await this.init();
+        if (this.attackCancelToken !== token) return;
+        if (!this.synth) return;
+
+        // Hard-stop previous note immediately (no long release tail)
+        this.synth.releaseAll(Tone.now());
+        this.activeFreqs = [];
+
+        const freqs = midiNotes.map(n => Tone.Frequency(n, "midi").toFrequency());
+        this.activeFreqs = freqs;
+
+        const durationS = Math.max(0.04, (intervalMs / 1000) * 0.80);
+        const releaseS  = Math.min(0.06, durationS * 0.15);
+
+        this.synth.set({
+            envelope: {
+                attack:  0.004,
+                decay:   0.04,
+                sustain: 0.85,
+                release: releaseS,
+            }
+        });
+        this.synth.triggerAttackRelease(freqs, durationS);
+    }
+
     // Hold mode: Attack (start sound)
     public async attackNotes(midiNotes: number[]) {
         const token = this.attackCancelToken;
