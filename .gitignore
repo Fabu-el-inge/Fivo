@@ -31,3 +31,31 @@ Thumbs.db
 # Temporary
 tmp/
 temp/
+
+# Claude / tooling local
+.claude/
+backups/
+
+# Local env / deploy
+frontend/.env.vercel
+frontend/.env.production.local
+
+# Throwaway compile/test scratch
+test_*.cpp
+simple_test.cpp
+test_*.bat
+test_*.ps1
+compile*.bat
+compile*.ps1
+compile*.txt
+check*.ps1
+build_*.bat
+build_*.txt
+gpp_*.txt
+*_out.txt
+*_err.txt
+*_stdout.txt
+*_stderr.txt
+
+# Notas de recuperación
+codigo anterior que claude idiota borró.txt
