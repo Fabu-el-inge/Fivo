@@ -9,6 +9,7 @@ import type { FivoResponse, FivoContextResponse, FivoStyle, PowerMode } from './
 import { calcChordNotes } from './api/chordCalc';
 import { audioEngine } from './api/audio';
 import type { InstrumentName } from './api/audio';
+import { LITE_MODE } from './config';
 
 const MAJOR_NOTES = ['C', 'G', 'D', 'A', 'E', 'B', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F'];
 const MINOR_NOTES = ['Am', 'Em', 'Bm', 'F#m', 'C#m', 'G#m', 'Ebm', 'Bbm', 'Fm', 'Cm', 'Gm', 'Dm'];
@@ -40,9 +41,11 @@ function App() {
   // Inversion per note (default 0 = Root for all)
   const [inversionPerNote, setInversionPerNote] = useState<Record<string, number>>({});
   // Chord Mode - play 2-finger dyad instead of single note
-  const [chordMode, setChordMode] = useState(false);
+  // LITE: arranca ON; FULL: arranca OFF
+  const [chordMode, setChordMode] = useState(LITE_MODE);
   // Auto Voicing - automatically choose best inversion for smooth voice leading
-  const [autoVoicing, setAutoVoicing] = useState(false);
+  // LITE: siempre ON, sin toggle visible; FULL: toggle visible, arranca OFF
+  const [autoVoicing, setAutoVoicing] = useState(LITE_MODE);
   const lastPlayedNotes = useRef<number[]>([]); // Track last chord notes for auto voicing
   const [showFingersPanel, setShowFingersPanel] = useState(false);
   const [fingersPanelPos, setFingersPanelPos] = useState<{ x: number; y: number } | null>(null);
@@ -92,7 +95,9 @@ function App() {
   // Hold State - keeps chord/arp playing after release
   const [isHold, setIsHold] = useState(false);
 
-  // Arpeggio patterns — densidad creciente, voicings musicalmente sanos
+  // Arpeggio patterns
+  // LITE: modos direccionales — 1=Up, 2=Down, 3=Up-Down, 4=Down-Up, 5=Random
+  // FULL: voicing patterns — densidad creciente, voicings musicalmente sanos
   const getArpPattern = (pattern: number, notes: number[]): number[][] => {
     if (notes.length < 2) return notes.map(n => [n]);
     const R  = notes[0];                  // root
@@ -100,6 +105,23 @@ function App() {
     const F  = notes[2] || T;             // fifth
     const O  = R + 12;                    // root octave up
     const F2 = F + 12;                    // fifth octave up
+
+    if (LITE_MODE) {
+      const up = [R, T, F, O];
+      switch (pattern) {
+        case 1: return up.map(n => [n]);                                      // Up
+        case 2: return [...up].reverse().map(n => [n]);                       // Down
+        case 3: return [...up, ...up.slice(1, -1).reverse()].map(n => [n]);   // Up-Down: R T F O F T
+        case 4: {                                                              // Down-Up: O F T R T F
+          const dn = [...up].reverse();
+          return [...dn, ...dn.slice(1, -1).reverse()].map(n => [n]);
+        }
+        case 5: return [...up].sort(() => Math.random() - 0.5).map(n => [n]); // Random
+        default: return notes.map(n => [n]);
+      }
+    }
+
+    // FULL: voicing patterns originales
     switch (pattern) {
       // 1: cascada clásica — sube y baja
       case 1: return [[R], [F], [O], [T]];
@@ -180,11 +202,13 @@ function App() {
   };
 
   // Update Audio Engine when settings change
-  useEffect(() => { audioEngine.setAttack(attackOn ? effectLevel : 0); }, [attackOn, effectLevel]);
-  useEffect(() => { audioEngine.setSustain(colorOn ? 40 + effectLevel * 0.5 : 60); }, [colorOn, effectLevel]);
-  useEffect(() => { audioEngine.setRelease(releaseOn ? effectLevel : 0); }, [releaseOn, effectLevel]);
+  // LITE: ignora los toggles individuales y aplica todo siempre desde effectLevel.
+  // FULL: cada efecto solo se aplica si su toggle está ON.
+  useEffect(() => { audioEngine.setAttack(LITE_MODE || attackOn ? effectLevel : 0); }, [attackOn, effectLevel]);
+  useEffect(() => { audioEngine.setSustain(LITE_MODE || colorOn ? 40 + effectLevel * 0.5 : 60); }, [colorOn, effectLevel]);
+  useEffect(() => { audioEngine.setRelease(LITE_MODE || releaseOn ? effectLevel : 0); }, [releaseOn, effectLevel]);
   useEffect(() => { if (strumEnabled) setStrumSpeed(20 + effectLevel * 1.6); }, [effectLevel, strumEnabled]);
-  useEffect(() => { audioEngine.setExpression(expressionOn ? effectLevel : 100); }, [expressionOn, effectLevel]);
+  useEffect(() => { audioEngine.setExpression(LITE_MODE || expressionOn ? effectLevel : 100); }, [expressionOn, effectLevel]);
 
   // Metronome beat callback
   useEffect(() => {
@@ -876,6 +900,7 @@ function App() {
         {/* COL 1: LEFT TOOLS */}
         <div className="tools-left-container">
           <ToolsLeft
+            liteMode={LITE_MODE}
             strumEnabled={strumEnabled}
             attackOn={attackOn}
             releaseOn={releaseOn}
@@ -934,6 +959,7 @@ function App() {
         {/* COL 3: RIGHT TOOLS */}
         <div className="tools-right-container">
           <Arpeggiator
+            liteMode={LITE_MODE}
             value={arpPattern}
             swing={arpSwing}
             onValueChange={handleArpPatternChange}
@@ -966,16 +992,29 @@ function App() {
               instrument={instrument}
               onInstrumentChange={setInstrument}
             />
-            <StyleSelector
-              style={style.charAt(0).toUpperCase() + style.slice(1)}
-              onStyleChange={handleStyleChange}
-            />
-            <button
-              className={`hold-btn ${autoVoicing ? 'active' : ''}`}
-              onClick={() => setAutoVoicing(prev => !prev)}
-            >
-              auto voicing
-            </button>
+            {LITE_MODE ? (
+              // LITE: un solo switch Jazzy (off='pop', on='jazz')
+              <button
+                className={`hold-btn ${style === 'jazz' ? 'active' : ''}`}
+                onClick={() => setStyle(prev => prev === 'jazz' ? 'pop' : 'jazz')}
+              >
+                jazzy
+              </button>
+            ) : (
+              // FULL: selector completo Pop/Rock/Jazz/Bossa + toggle auto voicing
+              <>
+                <StyleSelector
+                  style={style.charAt(0).toUpperCase() + style.slice(1)}
+                  onStyleChange={handleStyleChange}
+                />
+                <button
+                  className={`hold-btn ${autoVoicing ? 'active' : ''}`}
+                  onClick={() => setAutoVoicing(prev => !prev)}
+                >
+                  auto voicing
+                </button>
+              </>
+            )}
           </div>
         </div>
 

@@ -91,6 +91,9 @@ app.get('/api/chord', (req, res) => {
     if (powerMode === 'auto' || powerMode === 'on') {
         args.push('--power', powerMode);
     }
+    if (req.query.lite === 'true') {
+        args.push('--lite');
+    }
     console.log('[DEBUG] minor param:', req.query.minor, '-> isMinor:', isMinor, '-> fingers:', fingersNum, '-> args:', args);
 
     execFile(CLI_PATH, args, { timeout: 5000, env: execEnv }, (error, stdout, stderr) => {
@@ -130,6 +133,9 @@ app.get('/api/context', (req, res) => {
 
     // Use execFile instead of exec for security
     const args = ['--context', key, '--style', style];
+    if (req.query.lite === 'true') {
+        args.push('--lite');
+    }
     console.log('[DEBUG] CLI_PATH:', CLI_PATH, 'args:', args);
 
     execFile(CLI_PATH, args, { timeout: 5000, env: execEnv }, (error, stdout, stderr) => {

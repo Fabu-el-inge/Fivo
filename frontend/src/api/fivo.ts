@@ -24,6 +24,8 @@ export interface FivoContextResponse {
 
 export type FivoStyle = 'pop' | 'rock' | 'jazz' | 'bossa';
 
+import { LITE_MODE } from '../config';
+
 // Use same host as frontend but port 3001 for BFF
 const getApiBase = () => {
     if (import.meta.env.VITE_API_BASE_URL) {
@@ -56,7 +58,7 @@ export const fetchChord = async (
     const cached = chordCache.get(ck);
     if (cached) return cached;
 
-    const url = `${API_BASE}/chord?key=${encodeURIComponent(key)}&root=${encodeURIComponent(root)}&inversion=${inversion}&style=${style}&minor=${isMinor}&power=${power}&fingers=${fingers}`;
+    const url = `${API_BASE}/chord?key=${encodeURIComponent(key)}&root=${encodeURIComponent(root)}&inversion=${inversion}&style=${style}&minor=${isMinor}&power=${power}&fingers=${fingers}&lite=${LITE_MODE}`;
     const res = await fetch(url);
     if (!res.ok) {
         throw new Error(`API Error: ${res.statusText}`);
@@ -81,7 +83,7 @@ export const prefetchChords = (key: string, style: FivoStyle, power: PowerMode =
 };
 
 export const fetchContext = async (key: string, style: FivoStyle = 'pop'): Promise<FivoContextResponse> => {
-    const response = await fetch(`${API_BASE}/context?key=${encodeURIComponent(key)}&style=${style}`);
+    const response = await fetch(`${API_BASE}/context?key=${encodeURIComponent(key)}&style=${style}&lite=${LITE_MODE}`);
     if (!response.ok) throw new Error('Failed to fetch Context');
     return response.json();
 };

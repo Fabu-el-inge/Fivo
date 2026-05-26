@@ -41,6 +41,11 @@ FivoColorCode fivo_style_get_minor_color_with_style(FivoNote key, FivoNote minor
 FivoColorCode fivo_style_get_color_minor_key(FivoNote minorKey, FivoNote targetRoot, FivoStyle style);
 FivoColorCode fivo_style_get_minor_color_minor_key(FivoNote minorKey, FivoNote targetRoot, FivoStyle style);
 
+// LITE_MODE: cuando está activo, ciertos acordes cambian de color
+// (ej: bIII en pop pasa de ORANGE a RED → la UI lo muestra sin color).
+// El CLI lo activa con --lite y propaga al BFF/frontend vía query param.
+void fivo_set_lite_mode(int on);
+
 #ifdef __cplusplus
 }
 #endif

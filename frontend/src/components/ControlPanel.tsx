@@ -6,6 +6,7 @@ import type { InstrumentName } from '../api/audio';
 // But keeping a loose contract is good.
 
 interface ToolsLeftProps {
+    liteMode?: boolean; // LITE: oculta los 4 toggles atck/rlse/color/expr, solo se ve el fader
     strumEnabled: boolean;
     attackOn: boolean;
     releaseOn: boolean;
@@ -216,6 +217,7 @@ const VerticalFader: React.FC<VerticalFaderProps> = ({ value, onChange, label, h
 type EffectKey = 'strum' | 'attack' | 'release' | 'color' | 'expression';
 
 export const ToolsLeft: React.FC<ToolsLeftProps> = ({
+    liteMode = false,
     strumEnabled, attackOn, releaseOn, colorOn, expressionOn,
     effectLevel,
     onStrumToggle, onAttackToggle, onReleaseToggle, onColorToggle, onExpressionToggle,
@@ -226,10 +228,16 @@ export const ToolsLeft: React.FC<ToolsLeftProps> = ({
             <div className="effects-box">
                 <div className="tools-left-buttons">
                     <SlideToggle on={strumEnabled}  onToggle={onStrumToggle}      label="strum" />
-                    <SlideToggle on={attackOn}      onToggle={onAttackToggle}     label="atck"  />
-                    <SlideToggle on={releaseOn}     onToggle={onReleaseToggle}    label="rlse"  />
-                    <SlideToggle on={colorOn}       onToggle={onColorToggle}      label="color" />
-                    <SlideToggle on={expressionOn}  onToggle={onExpressionToggle} label="expr." />
+                    {!liteMode && (
+                        // LITE: estos 4 toggles desaparecen — el fader 'level' aplica
+                        // attack/release/sustain/expression a la vez (MOD CC1 + EXPR CC11 + CUTOFF CC74).
+                        <>
+                            <SlideToggle on={attackOn}      onToggle={onAttackToggle}     label="atck"  />
+                            <SlideToggle on={releaseOn}     onToggle={onReleaseToggle}    label="rlse"  />
+                            <SlideToggle on={colorOn}       onToggle={onColorToggle}      label="color" />
+                            <SlideToggle on={expressionOn}  onToggle={onExpressionToggle} label="expr." />
+                        </>
+                    )}
                 </div>
                 <div className="level-fader-wrap">
                     <VerticalFader value={effectLevel} onChange={onEffectLevelChange} label="level" height={100} />
@@ -372,13 +380,65 @@ export const InstrumentSelector: React.FC<InstrumentSelectorProps> = ({ instrume
 
 // Arpeggiator Component
 interface ArpeggiatorProps {
+    liteMode?: boolean; // LITE: switch ON/OFF + selector direccional (Up/Down/Up-Down/Down-Up/Random)
     value: number;
     swing: number;
     onValueChange: (v: number) => void;
     onSwingChange: (v: number) => void;
 }
 
-export const Arpeggiator: React.FC<ArpeggiatorProps> = ({ value, swing, onValueChange, onSwingChange }) => {
+// LITE: modos direccionales con íconos
+const ARP_MODES_LITE: { id: number; label: string; title: string }[] = [
+    { id: 1, label: '↑',  title: 'Up' },
+    { id: 2, label: '↓',  title: 'Down' },
+    { id: 3, label: '↑↓', title: 'Up-Down' },
+    { id: 4, label: '↓↑', title: 'Down-Up' },
+    { id: 5, label: '⤭',  title: 'Random' },
+];
+
+export const Arpeggiator: React.FC<ArpeggiatorProps> = ({ liteMode = false, value, swing, onValueChange, onSwingChange }) => {
+    const lastMode = useRef<number>(value > 0 ? value : 1);
+    if (value > 0) lastMode.current = value;
+
+    // LITE: switch ON/OFF separado del selector + íconos direccionales en línea
+    if (liteMode) {
+        const isOn = value > 0;
+        const toggleOn = () => onValueChange(isOn ? 0 : lastMode.current);
+        return (
+            <div className="arpeggiator-control">
+                <span className="arp-title-lite">arpeggiator</span>
+                <div className="arp-controls-row">
+                    <SlideToggle on={isOn} onToggle={toggleOn} label="" />
+                    <div className="arp-mode-selector">
+                        {ARP_MODES_LITE.map(m => (
+                            <button
+                                key={m.id}
+                                className={`arp-mode-btn ${value === m.id ? 'active' : ''}`}
+                                onClick={() => onValueChange(m.id)}
+                                disabled={!isOn}
+                                title={m.title}
+                            >
+                                {m.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                <div className="arp-swing-row">
+                    <span className="arp-swing-label">swing</span>
+                    <input
+                        type="range"
+                        className="arp-swing-slider"
+                        min={0} max={100} step={1}
+                        value={swing}
+                        onChange={(e) => onSwingChange(Number(e.target.value))}
+                    />
+                    <span className="arp-swing-value">{swing}%</span>
+                </div>
+            </div>
+        );
+    }
+
+    // FULL: knob original con voicing patterns numerados (Off, 1, 2, 3, 4, 5)
     const patterns = ['Off', '1', '2', '3', '4', '5'];
 
     const handleKnobClick = () => {

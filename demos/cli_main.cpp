@@ -129,6 +129,11 @@ int main(int argc, char* argv[]) {
         type = CHORD_MINOR;
     }
 
+    // Parse --lite flag (versión demo: cambia color de algunos acordes)
+    if (has_flag(argc, argv, "--lite")) {
+        fivo_set_lite_mode(1);
+    }
+
     // Parse --power flag (power chord = root + fifth only)
     // Values: "on", "off", "auto" (default: off)
     bool isPower = false;
@@ -244,37 +249,65 @@ int main(int argc, char* argv[]) {
     }
 
     // Auto power chord: use power chord for ORANGE/RED chords (less clash)
-    if (powerAuto && !isMinor && (color == COLOR_ORANGE || color == COLOR_RED)) {
+    // En jazz/bossa no aplica — esos estilos usan voicings extendidos propios.
+    if (powerAuto && !isMinor && (color == COLOR_ORANGE || color == COLOR_RED)
+        && style != STYLE_JAZZ && style != STYLE_BOSSA) {
         isPower = true;
         type = CHORD_POWER5;
     }
 
-    // Jazz auto-voicing: upgrade to 7th/9th chords based on scale degree
+    // Jazz auto-voicing: mapeo por grado según slide "ACORDES JAZZY" (Daniel 2026-05-06)
     if (style == STYLE_JAZZ && !isPower) {
         int scaleDegree = (root - key + 12) % 12;
         if (isMinor) {
-            // Minor chords in jazz → min9
-            type = CHORD_MIN9;
-        } else {
-            // Major chords in jazz → depends on scale degree
+            // Minor chord voicings — slide:
+            // m9: i(0), ii(2), bIII(3), v(7), bVI fictional, bVII(10), vi(9)
+            // m7(11): bII(1), iii(4), #iv(6), bvi(8), vii(11)
+            // m9(11): iv(5) — F-7(9,11)
             switch (scaleDegree) {
-                case 0:  // I  → maj9
-                case 5:  // IV → maj9
-                    type = CHORD_MAJ9;
+                case 5:  // iv → m7(9,11) — Fm en Am
+                    type = CHORD_MIN11;
                     break;
-                case 7:  // V  → dom9
-                    type = CHORD_DOM9;
+                case 1:  // bii  → m7(11)
+                case 4:  // iii  → m7(11)
+                case 6:  // #iv  → m7(11)
+                case 8:  // bvi  → m7(11)
+                case 11: // vii  → m7(11)
+                    type = CHORD_MIN7_ADD11;
                     break;
-                case 2:  // ii  (as major chord) → dom9 (secondary dominant)
-                case 4:  // iii (as major chord) → dom9
-                case 9:  // vi  (as major chord) → dom9
-                    type = CHORD_DOM9;
-                    break;
-                default: // Everything else → dom9 (chromatic approach, subs, etc)
-                    type = CHORD_DOM9;
+                case 0:  // i / parallel minor
+                case 2:  // ii
+                case 3:  // biii
+                case 7:  // v
+                case 9:  // vi
+                case 10: // bvii
+                default:
+                    type = CHORD_MIN9;
                     break;
             }
+        } else {
+            // Major chord voicings — slide:
+            switch (scaleDegree) {
+                case 0:  type = CHORD_MAJ7;        break; // I  → Cmaj7
+                case 5:  type = CHORD_MAJ7;        break; // IV → Fmaj7
+                case 3:  type = CHORD_MAJ7;        break; // bIII → Ebmaj7
+                case 11: type = CHORD_MAJ7_ADD6;   break; // VII → Bmaj7(6)
+                case 1:  type = CHORD_MAJ9;        break; // bII → Dbmaj9
+                case 6:  type = CHORD_MAJ9;        break; // #IV/bV → Gbmaj9
+                case 8:  type = CHORD_MAJ9;        break; // bVI → Abmaj9
+                case 7:  type = CHORD_DOM13;       break; // V → G7(13)
+                case 9:  type = CHORD_DOM7_FLAT13; break; // VI → A7(b13)
+                case 4:  type = CHORD_DOM7_SHARP9; break; // III → E7(#9)
+                case 2:  type = CHORD_DOM9;        break; // II → D9
+                case 10: type = CHORD_DOM9;        break; // bVII → Bb9
+                default: type = CHORD_DOM9;        break;
+            }
         }
+        // Para que la "color note" (13, b13, #9, 11, 9, 6) suene,
+        // necesitamos al menos 4 voces. Si el usuario pidió menos, subimos.
+        if (fingers < 4) fingers = 4;
+        // Min11 ideal: 5 voces para que el 9 y el 11 convivan
+        if (type == CHORD_MIN11 && fingers < 5) fingers = 5;
     }
 
     // Bossa auto-voicing: 7ths (not 9ths - more subtle than jazz)

@@ -2790,6 +2790,61 @@ body {
   margin-bottom: 16px;
 }
 
+/* LITE arpeggiator: switch + selector direccional + tempo en línea */
+.arp-title-lite {
+  font-size: 0.7rem;
+  text-transform: lowercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.arp-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  justify-content: center;
+}
+
+.arp-mode-selector {
+  display: flex;
+  gap: 4px;
+}
+
+.arp-mode-btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: var(--glass-bg, rgba(255,255,255,0.4));
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.arp-mode-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.6);
+}
+
+.arp-mode-btn.active {
+  background: var(--accent-active);
+  color: white;
+  border-color: var(--accent-active);
+}
+
+.arp-mode-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .arp-knob-container {
   position: relative;
   width: 90px;

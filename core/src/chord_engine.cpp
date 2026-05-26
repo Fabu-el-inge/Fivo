@@ -73,6 +73,44 @@ FivoChordResult fivo_get_chord(FivoNote root, FivoChordType type, int inversion,
             intervals.push_back(10);
             intervals.push_back(14); // Major 9th
             break;
+        // --- Jazz extended voicings ---
+        case CHORD_DOM13:
+            intervals.push_back(4);  // 3
+            intervals.push_back(7);  // 5
+            intervals.push_back(10); // b7
+            intervals.push_back(21); // 13 (octave + M6)
+            break;
+        case CHORD_DOM7_FLAT13:
+            intervals.push_back(4);
+            intervals.push_back(7);
+            intervals.push_back(10);
+            intervals.push_back(20); // b13 (octave + m6)
+            break;
+        case CHORD_DOM7_SHARP9:
+            intervals.push_back(4);
+            intervals.push_back(7);
+            intervals.push_back(10);
+            intervals.push_back(15); // #9
+            break;
+        case CHORD_MAJ7_ADD6:
+            intervals.push_back(4);  // 3
+            intervals.push_back(7);  // 5
+            intervals.push_back(9);  // 6
+            intervals.push_back(11); // maj7
+            break;
+        case CHORD_MIN7_ADD11:
+            intervals.push_back(3);
+            intervals.push_back(7);
+            intervals.push_back(10);
+            intervals.push_back(17); // 11 (octave + P4)
+            break;
+        case CHORD_MIN11:
+            intervals.push_back(3);
+            intervals.push_back(7);
+            intervals.push_back(10);
+            intervals.push_back(14); // 9
+            intervals.push_back(17); // 11
+            break;
     }
 
     // 2. Apply Inversion
@@ -203,45 +241,77 @@ FivoChordResult fivo_get_chord_ex(FivoNote root, FivoChordType type, int inversi
             intervals.push_back(10);
             intervals.push_back(14);
             break;
+        // --- Jazz extended voicings ---
+        case CHORD_DOM13:
+            intervals.push_back(4);
+            intervals.push_back(7);
+            intervals.push_back(10);
+            intervals.push_back(21);
+            break;
+        case CHORD_DOM7_FLAT13:
+            intervals.push_back(4);
+            intervals.push_back(7);
+            intervals.push_back(10);
+            intervals.push_back(20);
+            break;
+        case CHORD_DOM7_SHARP9:
+            intervals.push_back(4);
+            intervals.push_back(7);
+            intervals.push_back(10);
+            intervals.push_back(15);
+            break;
+        case CHORD_MAJ7_ADD6:
+            intervals.push_back(4);
+            intervals.push_back(7);
+            intervals.push_back(9);
+            intervals.push_back(11);
+            break;
+        case CHORD_MIN7_ADD11:
+            intervals.push_back(3);
+            intervals.push_back(7);
+            intervals.push_back(10);
+            intervals.push_back(17);
+            break;
+        case CHORD_MIN11:
+            intervals.push_back(3);
+            intervals.push_back(7);
+            intervals.push_back(10);
+            intervals.push_back(14);
+            intervals.push_back(17);
+            break;
     }
 
-    // 2. Limit by fingers
-    // For 7th/9th chords: prioritize root, 7th, 3rd, 9th (drop 5th - jazz voicing)
-    // For triads: prioritize root, 5th, 3rd
-    bool is7thOrMore = (type == CHORD_DOM7 || type == CHORD_MAJ7 || type == CHORD_MIN7 ||
-                        type == CHORD_DOM9 || type == CHORD_MAJ9 || type == CHORD_MIN9);
-    bool is9th = (type == CHORD_DOM9 || type == CHORD_MAJ9 || type == CHORD_MIN9);
-
+    // 2. Limit by fingers — priorities per tipo de acorde
+    //    para preservar la nota "color" característica (7, 9, 13, b13, #9, 11, etc.)
+    //    en lugar de la quinta (que se suele dropear en jazz voicing).
     std::vector<int> limited_intervals;
+    auto pick = [&](std::initializer_list<int> priority) {
+        int i = 0;
+        for (int iv : priority) {
+            if (i++ >= fingers) break;
+            limited_intervals.push_back(iv);
+        }
+    };
 
-    if (is7thOrMore) {
-        // Jazz voicing priority: root, 3rd, 7th, 9th (drop 5th)
-        // intervals layout for 7th: [0=root, 1=3rd, 2=5th, 3=7th]
-        // intervals layout for 9th: [0=root, 1=3rd, 2=5th, 3=7th, 4=9th]
-        if (fingers >= 1) limited_intervals.push_back(intervals[0]); // root
-        if (fingers >= 2 && intervals.size() >= 4) {
-            limited_intervals.push_back(intervals[3]); // 7th
-        }
-        if (fingers >= 3 && intervals.size() >= 2) {
-            limited_intervals.push_back(intervals[1]); // 3rd
-        }
-        // For 9th chords with 3 fingers, also add the 9th
-        if (fingers >= 3 && is9th && intervals.size() >= 5) {
-            limited_intervals.push_back(intervals[4]); // 9th
-        }
-    } else {
-        // Triad priority: root, 5th, 3rd
-        if (fingers >= 1) limited_intervals.push_back(intervals[0]); // root
-        if (fingers >= 2 && intervals.size() > 1) {
-            if (intervals.size() >= 3) {
-                limited_intervals.push_back(intervals[2]); // 5th
-            } else if (intervals.size() >= 2) {
-                limited_intervals.push_back(intervals[1]);
-            }
-        }
-        if (fingers >= 3 && intervals.size() >= 3) {
-            limited_intervals.push_back(intervals[1]); // 3rd
-        }
+    switch (type) {
+        case CHORD_MAJOR:       pick({0, 7, 4});            break;
+        case CHORD_MINOR:       pick({0, 7, 3});            break;
+        case CHORD_DIMINISHED:  pick({0, 6, 3});            break;
+        case CHORD_AUGMENTED:   pick({0, 8, 4});            break;
+        case CHORD_POWER5:      pick({0, 7});               break;
+        case CHORD_DOM7:        pick({0, 10, 4, 7});        break;
+        case CHORD_MAJ7:        pick({0, 11, 4, 7});        break;
+        case CHORD_MIN7:        pick({0, 10, 3, 7});        break;
+        case CHORD_DOM9:        pick({0, 10, 4, 14, 7});    break;
+        case CHORD_MAJ9:        pick({0, 11, 4, 14, 7});    break;
+        case CHORD_MIN9:        pick({0, 10, 3, 14, 7});    break;
+        // Jazz extended: extension (13, b13, #9, 6, 11) viene antes que la 5ta
+        case CHORD_DOM13:       pick({0, 10, 4, 21, 7});    break;
+        case CHORD_DOM7_FLAT13: pick({0, 10, 4, 20, 7});    break;
+        case CHORD_DOM7_SHARP9: pick({0, 10, 4, 15, 7});    break;
+        case CHORD_MAJ7_ADD6:   pick({0, 11, 4, 9, 7});     break;
+        case CHORD_MIN7_ADD11:  pick({0, 10, 3, 17, 7});    break;
+        case CHORD_MIN11:       pick({0, 10, 3, 17, 14, 7}); break;
     }
 
     // Sort to keep proper order

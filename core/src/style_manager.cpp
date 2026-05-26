@@ -10,6 +10,11 @@ extern "C" {
 
 extern "C" {
 
+// LITE_MODE flag — seteado desde el CLI con --lite, leído por las funciones de color.
+// Cuando es 1, ciertos acordes (ej: bIII en pop) caen a RED en vez de ORANGE.
+static int g_lite_mode = 0;
+void fivo_set_lite_mode(int on) { g_lite_mode = on ? 1 : 0; }
+
 // ============================================================================
 // STYLE-BASED COLOR LOGIC FOR CIRCLE OF FIFTHS
 // ============================================================================
@@ -66,10 +71,15 @@ static FivoColorCode get_color_pop(FivoNote key, FivoNote target, int scaleDegre
             return COLOR_GREEN;
     }
 
+    // bIII (Eb en C) - en FULL es ORANGE (préstamo menor usado para color),
+    // en LITE cae a RED (decisión Daniel 2026-05-06: "va sin color")
+    if (scaleDegree == 3) {
+        return g_lite_mode ? COLOR_RED : COLOR_ORANGE;
+    }
+
     // Acordes mayores de color comunes en pop = ORANGE
     switch(scaleDegree) {
         case 10: // bVII - Préstamo mixolidio (Bb en C) - muy común en pop
-        case 3:  // bIII - Préstamo menor (Eb en C) - usado para color
         case 9:  // VI - (A en C) - dominante secundario V/ii
         case 2:  // II - (D en C) - dominante secundario V/V
         case 4:  // III - (E en C) - dominante secundario V/vi → resuelve a Am

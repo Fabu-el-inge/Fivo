@@ -34,7 +34,14 @@ typedef enum {
     CHORD_POWER5 = 7,
     CHORD_DOM9 = 8,
     CHORD_MAJ9 = 9,
-    CHORD_MIN9 = 10
+    CHORD_MIN9 = 10,
+    // --- Jazz extended voicings (slide "ACORDES JAZZY" 2026-05-06) ---
+    CHORD_DOM13 = 11,        // 1, 3, 5, b7, 13         (G7(13) — semitones 0,4,7,10,21)
+    CHORD_DOM7_FLAT13 = 12,  // 1, 3, 5, b7, b13        (A7(b13) — 0,4,7,10,20)
+    CHORD_DOM7_SHARP9 = 13,  // 1, 3, 5, b7, #9         (E7(#9) — 0,4,7,10,15)
+    CHORD_MAJ7_ADD6 = 14,    // 1, 3, 5, 6, 7           (Bmaj7(6) — 0,4,7,9,11)
+    CHORD_MIN7_ADD11 = 15,   // 1, b3, 5, b7, 11        (Em7(11) — 0,3,7,10,17)
+    CHORD_MIN11 = 16         // 1, b3, 5, b7, 9, 11     (Fm7(9,11) — 0,3,7,10,14,17)
 } FivoChordType;
 
 typedef struct {
