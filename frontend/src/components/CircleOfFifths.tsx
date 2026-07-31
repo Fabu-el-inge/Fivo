@@ -1,6 +1,6 @@
 
 import type React from 'react';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 
 interface Props {
     currentKey: string;
@@ -11,6 +11,9 @@ interface Props {
     contextMap?: Record<string, number>;
     minorContextMap?: Record<string, number>;
     fingersPerNote?: Record<string, number>;
+    majorKeys: string[];
+    minorKeys: string[];
+    onKeyChange: (key: string) => void;
 }
 
 // Circle of Fifths order - Major chords
@@ -141,8 +144,13 @@ export const CircleOfFifths: React.FC<Props> = ({
     onRootGlide,
     contextMap,
     minorContextMap,
-    fingersPerNote = {}
+    fingersPerNote = {},
+    majorKeys,
+    minorKeys,
+    onKeyChange,
 }) => {
+    const [isKeyOpen, setIsKeyOpen] = useState(false);
+
     // Get fingers for a note (default 3)
     const getFingers = (note: string): number => fingersPerNote[note] ?? 3;
 
@@ -197,10 +205,59 @@ export const CircleOfFifths: React.FC<Props> = ({
 
     return (
         <div className="circle-wrapper">
-            {/* Center Label */}
-            <div className="circle-center">
-                <div className="key-label">Key</div>
-                <div className="key-value">{currentKey}</div>
+            <div className="circle-key-selector">
+                <button
+                    type="button"
+                    className={`circle-center ${isKeyOpen ? 'active' : ''}`}
+                    onClick={() => setIsKeyOpen(prev => !prev)}
+                    aria-haspopup="listbox"
+                    aria-expanded={isKeyOpen}
+                >
+                    <span className="key-label">Key</span>
+                    <span className="key-value">{currentKey}</span>
+                </button>
+
+                {isKeyOpen && (
+                    <>
+                        <div className="circle-key-options key-options-container">
+                            <div className="key-section">
+                                <span className="key-section-label">Major</span>
+                                <div className="key-options-grid">
+                                    {majorKeys.map(key => (
+                                        <button
+                                            key={key}
+                                            className={`key-option ${currentKey === key ? 'selected' : ''}`}
+                                            onClick={() => {
+                                                onKeyChange(key);
+                                                setIsKeyOpen(false);
+                                            }}
+                                        >
+                                            {key}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="key-section">
+                                <span className="key-section-label">Minor</span>
+                                <div className="key-options-grid">
+                                    {minorKeys.map(key => (
+                                        <button
+                                            key={key}
+                                            className={`key-option minor ${currentKey === key ? 'selected' : ''}`}
+                                            onClick={() => {
+                                                onKeyChange(key);
+                                                setIsKeyOpen(false);
+                                            }}
+                                        >
+                                            {key}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="backdrop circle-key-backdrop" onClick={() => setIsKeyOpen(false)} />
+                    </>
+                )}
             </div>
 
             {/* SVG Ring Container */}

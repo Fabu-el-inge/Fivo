@@ -29,7 +29,15 @@ import { LITE_MODE } from '../config';
 // Use same host as frontend but port 3001 for BFF
 const getApiBase = () => {
     if (import.meta.env.VITE_API_BASE_URL) {
-        return import.meta.env.VITE_API_BASE_URL;
+        const configuredUrl = new URL(import.meta.env.VITE_API_BASE_URL);
+        const isLocalApi = configuredUrl.hostname === 'localhost' || configuredUrl.hostname === '127.0.0.1';
+        const isLocalPage = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+        if (isLocalApi && isLocalPage) {
+            configuredUrl.hostname = window.location.hostname;
+        }
+
+        return configuredUrl.toString().replace(/\/$/, '');
     }
     // Use current hostname (works for localhost and IP access)
     const host = window.location.hostname;

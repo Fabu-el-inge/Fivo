@@ -6,7 +6,7 @@ import type { InstrumentName } from '../api/audio';
 // But keeping a loose contract is good.
 
 interface ToolsLeftProps {
-    liteMode?: boolean; // LITE: oculta los 4 toggles atck/rlse/color/expr, solo se ve el fader
+    liteMode?: boolean;
     strumEnabled: boolean;
     attackOn: boolean;
     releaseOn: boolean;
@@ -178,6 +178,7 @@ const SlideToggle: React.FC<SlideToggleProps> = ({ on, onToggle, label, sub }) =
 
 const VerticalFader: React.FC<VerticalFaderProps> = ({ value, onChange, label, height = 160 }) => {
     const trackRef = useRef<HTMLDivElement>(null);
+    const [isDragging, setIsDragging] = useState(false);
 
     const handleMove = (clientY: number) => {
         const rect = trackRef.current?.getBoundingClientRect();
@@ -187,17 +188,35 @@ const VerticalFader: React.FC<VerticalFaderProps> = ({ value, onChange, label, h
     };
 
     const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsDragging(true);
         e.currentTarget.setPointerCapture(e.pointerId);
         handleMove(e.clientY);
     };
 
     const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (!(e.buttons & 1)) return;
+        if (!isDragging) return;
+        e.preventDefault();
         handleMove(e.clientY);
     };
 
+    const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+        setIsDragging(false);
+        try {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+        } catch {
+            // Pointer capture can already be gone if the browser cancels a touch.
+        }
+    };
+
+    const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -4 : 4;
+        onChange(Math.max(0, Math.min(100, value + delta)));
+    };
+
     return (
-        <div className="vfader-wrap">
+        <div className="vfader-wrap" onWheel={handleWheel}>
             <span className="vfader-label">{label}</span>
             <div
                 className="vfader-track"
@@ -205,6 +224,9 @@ const VerticalFader: React.FC<VerticalFaderProps> = ({ value, onChange, label, h
                 style={{ height }}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
+                onLostPointerCapture={() => setIsDragging(false)}
             >
                 <div className="vfader-fill" style={{ height: `${value}%` }} />
                 <div className="vfader-thumb" style={{ bottom: `${value}%` }} />
@@ -213,8 +235,6 @@ const VerticalFader: React.FC<VerticalFaderProps> = ({ value, onChange, label, h
         </div>
     );
 };
-
-type EffectKey = 'strum' | 'attack' | 'release' | 'color' | 'expression';
 
 export const ToolsLeft: React.FC<ToolsLeftProps> = ({
     liteMode = false,
@@ -240,7 +260,7 @@ export const ToolsLeft: React.FC<ToolsLeftProps> = ({
                     )}
                 </div>
                 <div className="level-fader-wrap">
-                    <VerticalFader value={effectLevel} onChange={onEffectLevelChange} label="level" height={100} />
+                    <VerticalFader value={effectLevel} onChange={onEffectLevelChange} label="Expression" height={260} />
                 </div>
             </div>
         </div>
@@ -358,7 +378,7 @@ interface InstrumentSelectorProps {
 }
 
 export const InstrumentSelector: React.FC<InstrumentSelectorProps> = ({ instrument, onInstrumentChange }) => {
-    const instruments: InstrumentName[] = ['Piano', 'E.Piano', 'Synth', 'Organ'];
+    const instruments: InstrumentName[] = ['EP2', 'Messy', 'Canadians', 'E-Bass'];
 
     return (
         <div className="style-selector-apple">
@@ -383,8 +403,10 @@ interface ArpeggiatorProps {
     liteMode?: boolean; // LITE: switch ON/OFF + selector direccional (Up/Down/Up-Down/Down-Up/Random)
     value: number;
     swing: number;
+    tempo: number;
     onValueChange: (v: number) => void;
     onSwingChange: (v: number) => void;
+    onTempoChange: (v: number) => void;
 }
 
 // LITE: modos direccionales con íconos
@@ -396,32 +418,98 @@ const ARP_MODES_LITE: { id: number; label: string; title: string }[] = [
     { id: 5, label: '⤭',  title: 'Random' },
 ];
 
-export const Arpeggiator: React.FC<ArpeggiatorProps> = ({ liteMode = false, value, swing, onValueChange, onSwingChange }) => {
-    const lastMode = useRef<number>(value > 0 ? value : 1);
-    if (value > 0) lastMode.current = value;
+export const Arpeggiator: React.FC<ArpeggiatorProps> = ({
+    liteMode = false,
+    value,
+    swing,
+    tempo,
+    onValueChange,
+    onSwingChange,
+    onTempoChange,
+}) => {
+    const [selectedMode, setSelectedMode] = useState(value > 0 ? value : 1);
+
+    React.useEffect(() => {
+        if (value > 0) setSelectedMode(value);
+    }, [value]);
 
     // LITE: switch ON/OFF separado del selector + íconos direccionales en línea
     if (liteMode) {
         const isOn = value > 0;
-        const toggleOn = () => onValueChange(isOn ? 0 : lastMode.current);
+        const toggleOn = () => onValueChange(isOn ? 0 : selectedMode);
+        const selectMode = (mode: number) => {
+            setSelectedMode(mode);
+            if (isOn) onValueChange(mode);
+        };
+
         return (
             <div className="arpeggiator-control">
                 <span className="arp-title-lite">arpeggiator</span>
-                <div className="arp-controls-row">
-                    <SlideToggle on={isOn} onToggle={toggleOn} label="" />
-                    <div className="arp-mode-selector">
-                        {ARP_MODES_LITE.map(m => (
-                            <button
-                                key={m.id}
-                                className={`arp-mode-btn ${value === m.id ? 'active' : ''}`}
-                                onClick={() => onValueChange(m.id)}
-                                disabled={!isOn}
-                                title={m.title}
-                            >
-                                {m.label}
-                            </button>
-                        ))}
+                <div className="arp-demo-row">
+                    <div className="arp-demo-control">
+                        <span className="arp-demo-label">On/Off</span>
+                        <button
+                            type="button"
+                            className={`arp-power-switch ${isOn ? 'on' : ''}`}
+                            onClick={toggleOn}
+                            role="switch"
+                            aria-checked={isOn}
+                            aria-label={isOn ? 'Apagar arpegiador' : 'Encender arpegiador'}
+                        >
+                            <span className="arp-power-thumb" />
+                        </button>
                     </div>
+
+                    <div className="arp-demo-control arp-type-control">
+                        <RotaryKnob
+                            value={selectedMode}
+                            onChange={selectMode}
+                            min={1}
+                            max={5}
+                            step={1}
+                            label="Type"
+                            formatValue={(v) => ARP_MODES_LITE.find(mode => mode.id === v)?.title ?? v}
+                        />
+                    </div>
+
+                    <div className="arp-demo-control">
+                        <RotaryKnob
+                            value={tempo}
+                            onChange={onTempoChange}
+                            min={30}
+                            max={300}
+                            step={1}
+                            label="Tempo"
+                            formatValue={(v) => `${v}`}
+                        />
+                    </div>
+                </div>
+
+                {/* FULL VERSION:
+                <div className="arp-header">
+                    <span className="arp-title-lite">arpeggiator</span>
+                    <button
+                        type="button"
+                        className={`arp-power-switch ${isOn ? 'on' : ''}`}
+                        onClick={toggleOn}
+                        role="switch"
+                        aria-checked={isOn}
+                        aria-label={isOn ? 'Apagar arpegiador' : 'Encender arpegiador'}
+                    >
+                        <span className="arp-power-thumb" />
+                    </button>
+                </div>
+                <div className="arp-mode-selector">
+                    {ARP_MODES_LITE.map(m => (
+                        <button
+                            key={m.id}
+                            className={`arp-mode-btn ${selectedMode === m.id ? 'active' : ''}`}
+                            onClick={() => selectMode(m.id)}
+                            title={m.title}
+                        >
+                            {m.label}
+                        </button>
+                    ))}
                 </div>
                 <div className="arp-swing-row">
                     <span className="arp-swing-label">swing</span>
@@ -434,6 +522,7 @@ export const Arpeggiator: React.FC<ArpeggiatorProps> = ({ liteMode = false, valu
                     />
                     <span className="arp-swing-value">{swing}%</span>
                 </div>
+                */}
             </div>
         );
     }
@@ -1463,7 +1552,7 @@ export const Metronome: React.FC<MetronomeProps> = ({
 }) => {
     return (
         <div className="metronome-section">
-            {/* COL 1: Tempo knob */}
+            {/* FULL VERSION: shared tempo control can return to the metronome.
             <div className="metro-tempo-col">
                 <RotaryKnob
                     value={tempo}
@@ -1475,8 +1564,8 @@ export const Metronome: React.FC<MetronomeProps> = ({
                     formatValue={(v) => `${v} bpm`}
                 />
             </div>
+            */}
 
-            {/* COL 2: Metro controls */}
             <div className="metro-controls-col">
                 <div className="metronome-header">
                     <button

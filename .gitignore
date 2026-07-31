@@ -35,15 +35,18 @@ temp/
 # Claude / tooling local
 .claude/
 backups/
+_sample_backups_offsite/
+tools/
+frontend/public/reference/
 
 # Local env / deploy
 frontend/.env.vercel
 frontend/.env.production.local
 
-# Throwaway compile/test scratch
-test_*.cpp
-simple_test.cpp
-test_*.bat
+# Throwaway compile/test scratch (anclados a la raiz para no pisar tests/test_main.cpp)
+/test_*.cpp
+/simple_test.cpp
+/test_*.bat
 test_*.ps1
 compile*.bat
 compile*.ps1

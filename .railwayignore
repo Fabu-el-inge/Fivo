@@ -1,1 +1,32 @@
+# El backend solo necesita: CMakeLists.txt, core/, demos/, tests/, bff/
+# Todo lo demas no entra al build context de Railway.
+
+# Dependencias y build outputs
+node_modules
+bff/node_modules
+frontend/node_modules
+build
+frontend/dist
+
+# Frontend completo (vive en Vercel, incluye 376MB de samples)
+frontend
+
+# Tooling de generacion de samples (REAPER/Python, no backend)
+tools
+
+# Git, logs, notas
+.git
+*.log
+bff_output.log
+codigo anterior que claude idiota borró.txt
+.claude
+
+# OS / scratch
+.DS_Store
+Thumbs.db
+*.bat
+*.ps1
 nul
+
+# El test del core SI debe subir (lo necesita CMake), aunque .gitignore matchee test_*.cpp
+!tests/test_main.cpp

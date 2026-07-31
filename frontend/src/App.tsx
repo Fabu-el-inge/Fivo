@@ -18,20 +18,34 @@ const MINOR_NOTES = ['Am', 'Em', 'Bm', 'F#m', 'C#m', 'G#m', 'Ebm', 'Bbm', 'Fm', 
 const MAJOR_PANEL = ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'Db', 'Eb', 'Gb', 'Ab', 'Bb'];
 const MINOR_PANEL = ['Cm', 'Dm', 'Em', 'Fm', 'Gm', 'Am', 'Bm', 'C#m', 'Ebm', 'F#m', 'G#m', 'Bbm'];
 const ALL_NOTES = [...MAJOR_NOTES, ...MINOR_NOTES];
+const KEYBOARD_MAP: Record<string, { note: string; isMinor: boolean }> = {
+  KeyZ: { note: 'C', isMinor: false },
+  KeyS: { note: 'Db', isMinor: false },
+  KeyX: { note: 'D', isMinor: false },
+  KeyD: { note: 'Eb', isMinor: false },
+  KeyC: { note: 'E', isMinor: false },
+  KeyV: { note: 'F', isMinor: false },
+  KeyG: { note: 'Gb', isMinor: false },
+  KeyB: { note: 'G', isMinor: false },
+  KeyH: { note: 'Ab', isMinor: false },
+  KeyN: { note: 'A', isMinor: false },
+  KeyJ: { note: 'Bb', isMinor: false },
+  KeyM: { note: 'B', isMinor: false },
+};
 
 // Convert minor chord name to root note for API
 const getMinorRoot = (minorNote: string): string => {
   return minorNote.replace('m', '');
 };
 
-function App() {
+function FivoWorkspace() {
   const [currentKey, setCurrentKey] = useState('C');
   const [pressedRoot, setPressedRoot] = useState<string | null>(null);
   const [pressedRoots, setPressedRoots] = useState<Set<string>>(new Set());
   const activeTouches = useRef<Map<string, { note: string; isMinor: boolean }>>(new Map());
   const lastGlideTimes = useRef<Map<string, number>>(new Map());
   const [, setIsMinorPressed] = useState(false);
-  const [octave, setOctave] = useState(4);
+  const [octave, setOctave] = useState(3);
   const [inversion, setInversion] = useState(0);
   const [strumEnabled, setStrumEnabled] = useState(false);
   const [style, setStyle] = useState<FivoStyle>('pop');
@@ -47,6 +61,7 @@ function App() {
   // LITE: siempre ON, sin toggle visible; FULL: toggle visible, arranca OFF
   const [autoVoicing, setAutoVoicing] = useState(LITE_MODE);
   const lastPlayedNotes = useRef<number[]>([]); // Track last chord notes for auto voicing
+  const lastPlayedRootRef = useRef<{ note: string; isMinor: boolean } | null>(null);
   const [showFingersPanel, setShowFingersPanel] = useState(false);
   const [fingersPanelPos, setFingersPanelPos] = useState<{ x: number; y: number } | null>(null);
   const [fingersPanelSize, setFingersPanelSize] = useState<{ w: number; h: number }>({ w: 420, h: 500 });
@@ -65,7 +80,7 @@ function App() {
   const [strumSpeed, setStrumSpeed] = useState(80);
   // Un nivel compartido para todos los efectos (0-100)
   const [effectLevel, setEffectLevel] = useState(50);
-  const [instrument, setInstrument] = useState<InstrumentName>('Piano');
+  const [instrument, setInstrument] = useState<InstrumentName>('EP2');
 
   // Metronome State
   const [metronomeActive, setMetronomeActive] = useState(false);
@@ -88,12 +103,61 @@ function App() {
   const savedFingersRef = useRef<Record<string, number> | null>(null);
   const lastGlideTime = useRef<number>(0); // Throttle glide events (monophonic fallback)
   const arpStartTime = useRef<number>(0);
+  const arpClockOrigin = useRef<number>(performance.now());
   const pendingGlide = useRef<{ note: string; isMinor: boolean; arpNotes?: number[][]; baseNotes?: number[]; chordData?: FivoResponse } | null>(null);
   const currentPressedRef = useRef<string | null>(null); // Track current pressed note (avoid state timing issues)
   const strumInversionRef = useRef<Record<string, number>>({}); // Inversion cycle per note for strum
+  const keyboardHeldKeys = useRef<Set<string>>(new Set());
 
   // Hold State - keeps chord/arp playing after release
   const [isHold, setIsHold] = useState(false);
+  const isHoldRef = useRef(false);
+
+  const updateHold = useCallback((hold: boolean) => {
+    isHoldRef.current = hold;
+    audioEngine.setHoldMode(hold);
+    setIsHold(hold);
+  }, []);
+
+  useEffect(() => {
+    let unlocked = false;
+    const unlockAudio = () => {
+      if (unlocked) return;
+      unlocked = true;
+      void audioEngine.unlock().catch(error => {
+        console.error('Audio unlock failed', error);
+      });
+    };
+
+    const addOptions: AddEventListenerOptions = { capture: true, once: true };
+    const removeOptions: EventListenerOptions = { capture: true };
+    window.addEventListener('pointerdown', unlockAudio, addOptions);
+    window.addEventListener('touchstart', unlockAudio, addOptions);
+    window.addEventListener('keydown', unlockAudio, addOptions);
+
+    return () => {
+      window.removeEventListener('pointerdown', unlockAudio, removeOptions);
+      window.removeEventListener('touchstart', unlockAudio, removeOptions);
+      window.removeEventListener('keydown', unlockAudio, removeOptions);
+    };
+  }, []);
+
+  const toggleHold = useCallback(() => {
+    const nextHold = !isHoldRef.current;
+    updateHold(nextHold);
+    if (!nextHold) {
+      audioEngine.releaseAll();
+    }
+  }, [updateHold]);
+
+  const getNextArpGridDelay = (): number => {
+    const eighthMs = 30000 / arpTempoRef.current;
+    const elapsed = performance.now() - arpClockOrigin.current;
+    const remainder = ((elapsed % eighthMs) + eighthMs) % eighthMs;
+
+    // Never fire late inside a step; advance to the next eighth-note boundary.
+    return remainder < 4 ? 0 : eighthMs - remainder;
+  };
 
   // Arpeggio patterns
   // LITE: modos direccionales — 1=Up, 2=Down, 3=Up-Down, 4=Down-Up, 5=Random
@@ -107,16 +171,16 @@ function App() {
     const F2 = F + 12;                    // fifth octave up
 
     if (LITE_MODE) {
-      const up = [R, T, F, O];
+      const up = [...notes].sort((a, b) => a - b);
       switch (pattern) {
-        case 1: return up.map(n => [n]);                                      // Up
-        case 2: return [...up].reverse().map(n => [n]);                       // Down
-        case 3: return [...up, ...up.slice(1, -1).reverse()].map(n => [n]);   // Up-Down: R T F O F T
-        case 4: {                                                              // Down-Up: O F T R T F
+        case 1: return up.map(n => [n]);                                    // Up: C E G
+        case 2: return [...up].reverse().map(n => [n]);                     // Down: G E C
+        case 3: return [...up, ...up.slice(1, -1).reverse()].map(n => [n]); // Up-Down: C E G E
+        case 4: {                                                            // Down-Up: G E C E
           const dn = [...up].reverse();
           return [...dn, ...dn.slice(1, -1).reverse()].map(n => [n]);
         }
-        case 5: return [...up].sort(() => Math.random() - 0.5).map(n => [n]); // Random
+        case 5: return [...up].sort(() => Math.random() - 0.5).map(n => [n]);
         default: return notes.map(n => [n]);
       }
     }
@@ -137,8 +201,11 @@ function App() {
     }
   };
 
+  const getArpFingers = (): number => 3;
+
   // Handle arpeggiator pattern change - save/restore fingers
   const handleArpPatternChange = (newPattern: number) => {
+    arpPatternRef.current = newPattern;
     const wasOff = arpPattern === 0;
     const willBeOff = newPattern === 0;
 
@@ -148,14 +215,24 @@ function App() {
       ALL_NOTES.forEach(note => { allNotesFingers[note] = 3; });
       setFingersPerNote(allNotesFingers);
 
-      if (isHold && pressedRoot && lastPlayedNotes.current.length > 0) {
-        arpPatternRef.current = newPattern;
-        arpBaseNotesRef.current = lastPlayedNotes.current;
-        audioEngine.releaseNotes();
+      if (isHold && pressedRoot && lastPlayedRootRef.current) {
+        const heldRoot = lastPlayedRootRef.current;
+        const apiRoot = heldRoot.isMinor ? getMinorRoot(heldRoot.note) : heldRoot.note;
+        const noteFingers = getArpFingers();
+        const noteInversion = autoVoicing ? 0 : getInversionForNote(heldRoot.note);
+        const baseNotes = calcChordNotes(currentKey, apiRoot, heldRoot.isMinor, style, noteInversion, noteFingers, 'off', contextData?.map)
+          .map(n => n + (octave - 3) * 12);
+        const adjustedNotes = autoVoicing && lastPlayedNotes.current.length > 0
+          ? voiceLeadNotes(baseNotes, lastPlayedNotes.current)
+          : baseNotes;
+
+        lastPlayedNotes.current = adjustedNotes;
+        arpBaseNotesRef.current = adjustedNotes;
+        audioEngine.releaseAll();
 
         let noteIndex = 0;
         let timingIndex = 0;
-        let currentArpNotes = getArpPattern(newPattern, lastPlayedNotes.current);
+        let currentArpNotes = getArpPattern(newPattern, adjustedNotes);
         let lastPatternUsed = newPattern;
 
         const getNextInterval = (timingIdx: number): number => {
@@ -165,11 +242,6 @@ function App() {
           const pattern = [eighth * (1 + sf), eighth * (1 - sf), eighth * (1 + sf), eighth * (1 - sf)];
           return pattern[timingIdx % pattern.length];
         };
-
-        const firstIv = getNextInterval(timingIndex);
-        timingIndex++;
-        audioEngine.arpAttackNotes(currentArpNotes[noteIndex], firstIv);
-        noteIndex++;
 
         const playNextNote = () => {
           if (arpPatternRef.current === 0) {
@@ -189,7 +261,16 @@ function App() {
           arpIntervalRef.current = window.setTimeout(playNextNote, iv);
         };
 
-        arpIntervalRef.current = window.setTimeout(playNextNote, getNextInterval(timingIndex));
+        const startOnGrid = () => {
+          const firstIv = getNextInterval(timingIndex);
+          timingIndex++;
+          audioEngine.arpAttackNotes(currentArpNotes[noteIndex], firstIv);
+          noteIndex++;
+          arpIntervalRef.current = window.setTimeout(playNextNote, firstIv);
+        };
+
+        arpIntervalRef.current = window.setTimeout(startOnGrid, getNextArpGridDelay());
+        fetchChordData(currentKey, heldRoot.note, heldRoot.isMinor, noteInversion, style, 'off', noteFingers);
       }
     } else if (!wasOff && willBeOff) {
       if (savedFingersRef.current !== null) {
@@ -204,11 +285,16 @@ function App() {
   // Update Audio Engine when settings change
   // LITE: ignora los toggles individuales y aplica todo siempre desde effectLevel.
   // FULL: cada efecto solo se aplica si su toggle está ON.
-  useEffect(() => { audioEngine.setAttack(LITE_MODE || attackOn ? effectLevel : 0); }, [attackOn, effectLevel]);
-  useEffect(() => { audioEngine.setSustain(LITE_MODE || colorOn ? 40 + effectLevel * 0.5 : 60); }, [colorOn, effectLevel]);
-  useEffect(() => { audioEngine.setRelease(LITE_MODE || releaseOn ? effectLevel : 0); }, [releaseOn, effectLevel]);
-  useEffect(() => { if (strumEnabled) setStrumSpeed(20 + effectLevel * 1.6); }, [effectLevel, strumEnabled]);
-  useEffect(() => { audioEngine.setExpression(LITE_MODE || expressionOn ? effectLevel : 100); }, [expressionOn, effectLevel]);
+  useEffect(() => {
+    audioEngine.setExpressionControls(effectLevel);
+  }, [effectLevel]);
+
+  // FULL VERSION - preserved for later reactivation:
+  // useEffect(() => { audioEngine.setAttack(LITE_MODE || attackOn ? effectLevel : 0); }, [attackOn, effectLevel]);
+  // useEffect(() => { audioEngine.setSustain(LITE_MODE || colorOn ? 40 + effectLevel * 0.5 : 60); }, [colorOn, effectLevel]);
+  // useEffect(() => { audioEngine.setRelease(LITE_MODE || releaseOn ? effectLevel : 0); }, [releaseOn, effectLevel]);
+  // useEffect(() => { if (strumEnabled) setStrumSpeed(20 + effectLevel * 1.6); }, [effectLevel, strumEnabled]);
+  // useEffect(() => { audioEngine.setExpression(LITE_MODE || expressionOn ? effectLevel : 100); }, [expressionOn, effectLevel]);
 
   // Metronome beat callback
   useEffect(() => {
@@ -224,6 +310,7 @@ function App() {
   // Metronome start/stop
   useEffect(() => {
     if (metronomeActive) {
+      arpClockOrigin.current = performance.now();
       audioEngine.startMetronome(arpTempo, timeSignature);
     } else {
       audioEngine.stopMetronome();
@@ -279,6 +366,8 @@ function App() {
   // Track previous hold state to detect toggle OFF
   const prevHoldRef = useRef(isHold);
   useEffect(() => {
+    isHoldRef.current = isHold;
+
     // Only act when hold is turned OFF (was true, now false)
     if (prevHoldRef.current && !isHold) {
       if (arpIntervalRef.current) {
@@ -288,6 +377,7 @@ function App() {
       pendingGlide.current = null;
       currentPressedRef.current = null;
       activeTouches.current.clear();
+      keyboardHeldKeys.current.clear();
       audioEngine.releaseAll();
       setPressedRoot(null);
       setPressedRoots(new Set());
@@ -352,6 +442,8 @@ function App() {
   // Get fingers for a specific note
   // chordMode = 3 fingers (full chord), otherwise per-note setting (default 1)
   const getFingersForNote = (note: string): number => {
+    if (arpPattern > 0 || arpPatternRef.current > 0) return 3;
+    if (instrument === 'E-Bass') return 1;
     if (chordMode) return 3;
     return fingersPerNote[note] ?? 1;
   };
@@ -540,27 +632,39 @@ function App() {
 
   // User presses on a chord - START sound (síncrono: notas calculadas localmente)
   const handleRootPress = (note: string, isMinor: boolean, touchId: string = 'mouse') => {
-    // If hold is ON and tapping the same note that's playing, toggle it OFF
-    if (isHold && pressedRoot === note) {
-      if (arpIntervalRef.current) {
-        clearTimeout(arpIntervalRef.current);
-        arpIntervalRef.current = null;
-      }
+    lastPlayedRootRef.current = { note, isMinor };
+    const apiRoot = isMinor ? getMinorRoot(note) : note;
+
+    if (arpPattern > 0 && arpIntervalRef.current && (currentPressedRef.current === note || pressedRoot === note)) {
+      clearTimeout(arpIntervalRef.current);
+      arpIntervalRef.current = null;
       pendingGlide.current = null;
       currentPressedRef.current = null;
       activeTouches.current.clear();
-      audioEngine.releaseAll();
+      keyboardHeldKeys.current.clear();
+      audioEngine.releaseHeldNotes();
       setPressedRoot(null);
       setPressedRoots(new Set());
+      setIsMinorPressed(false);
       return;
     }
 
-    const apiRoot = isMinor ? getMinorRoot(note) : note;
+    if (isHoldRef.current && arpPattern === 0 && (currentPressedRef.current === note || pressedRoot === note)) {
+      pendingGlide.current = null;
+      currentPressedRef.current = null;
+      activeTouches.current.clear();
+      keyboardHeldKeys.current.clear();
+      audioEngine.releaseHeldNotes();
+      setPressedRoot(null);
+      setPressedRoots(new Set());
+      setIsMinorPressed(false);
+      return;
+    }
 
     // MONOPHONIC mode: hold ON or arp ON
-    if (isHold || arpPattern > 0) {
+    if (isHoldRef.current || arpPattern > 0) {
       // If Hold is ON and arpeggiator is already running, queue the change (quantized)
-      if (isHold && arpPattern > 0 && arpIntervalRef.current) {
+      if (isHoldRef.current && arpPattern > 0 && arpIntervalRef.current) {
         setPressedRoot(note);
         setPressedRoots(new Set([note]));
         setIsMinorPressed(isMinor);
@@ -568,11 +672,11 @@ function App() {
 
         const noteFingers = getFingersForNote(note);
         const noteInversion = getInversionForNote(note);
-        const adjustedNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, powerMode, contextData?.map)
+        const adjustedNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, 'off', contextData?.map)
           .map(n => n + (octave - 3) * 12);
         const newArpNotes = getArpPattern(arpPattern, adjustedNotes);
         pendingGlide.current = { note, isMinor, arpNotes: newArpNotes, baseNotes: adjustedNotes };
-        fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers);
+        fetchChordData(currentKey, note, isMinor, noteInversion, style, 'off', noteFingers);
         return;
       }
 
@@ -583,23 +687,26 @@ function App() {
       }
       pendingGlide.current = null;
       activeTouches.current.clear();
-      audioEngine.panic();
+      if (arpPattern > 0) {
+        audioEngine.panic();
+      }
 
       setPressedRoot(note);
       setPressedRoots(new Set([note]));
       setIsMinorPressed(isMinor);
       currentPressedRef.current = note;
       const noteFingers = getFingersForNote(note);
+      const playbackPowerMode = arpPattern > 0 ? 'off' : powerMode;
 
       const noteInversion = autoVoicing ? 0 : getInversionForNote(note);
-      const baseNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, powerMode, contextData?.map)
+      const baseNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, playbackPowerMode, contextData?.map)
         .map(n => n + (octave - 3) * 12);
       const adjustedNotes = autoVoicing && lastPlayedNotes.current.length > 0
         ? voiceLeadNotes(baseNotes, lastPlayedNotes.current)
         : baseNotes;
 
       lastPlayedNotes.current = adjustedNotes;
-      fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers);
+      fetchChordData(currentKey, note, isMinor, noteInversion, style, playbackPowerMode, noteFingers);
 
       if (arpPattern > 0) {
         arpBaseNotesRef.current = adjustedNotes;
@@ -616,12 +723,6 @@ function App() {
         let noteIndex = 0;
         let timingIndex = 0;
         let lastPatternUsed = arpPattern;
-
-        arpStartTime.current = performance.now();
-        const firstInterval = getNextInterval(timingIndex);
-        timingIndex++;
-        audioEngine.arpAttackNotes(arpNotes[noteIndex], firstInterval);
-        noteIndex++;
 
         const playNextNote = () => {
           if (arpPatternRef.current !== lastPatternUsed) {
@@ -657,7 +758,17 @@ function App() {
           arpIntervalRef.current = window.setTimeout(playNextNote, interval);
         };
 
-        arpIntervalRef.current = window.setTimeout(playNextNote, firstInterval);
+        const startDelay = getNextArpGridDelay();
+        arpStartTime.current = performance.now() + startDelay;
+        const startOnGrid = () => {
+          const firstInterval = getNextInterval(timingIndex);
+          timingIndex++;
+          audioEngine.arpAttackNotes(arpNotes[noteIndex], firstInterval);
+          noteIndex++;
+          arpIntervalRef.current = window.setTimeout(playNextNote, firstInterval);
+        };
+
+        arpIntervalRef.current = window.setTimeout(startOnGrid, startDelay);
       } else if (strumEnabled) {
         audioEngine.attackNotesStrum(adjustedNotes, strumSpeed);
       } else {
@@ -702,7 +813,7 @@ function App() {
 
   // User releases chord - STOP sound (unless hold is ON)
   const handleRootRelease = (touchId: string = 'mouse') => {
-    if (isHold) return;
+    if (isHoldRef.current) return;
 
     // MONOPHONIC mode (arp active): release all
     if (arpPattern > 0 && arpIntervalRef.current) {
@@ -743,9 +854,21 @@ function App() {
   };
 
   // User glides to another chord while holding - smooth transition, ahora síncrono
+  const handlePanic = () => {
+    if (arpIntervalRef.current) { clearTimeout(arpIntervalRef.current); arpIntervalRef.current = null; }
+    pendingGlide.current = null;
+    currentPressedRef.current = null;
+    activeTouches.current.clear();
+    keyboardHeldKeys.current.clear();
+    audioEngine.releaseAll();
+    setPressedRoot(null);
+    setPressedRoots(new Set());
+  };
+
   const handleRootGlide = (note: string, isMinor: boolean, touchId: string = 'mouse') => {
     const existingTouch = activeTouches.current.get(touchId);
     if (existingTouch?.note === note) return;
+    lastPlayedRootRef.current = { note, isMinor };
 
     // Throttle per touch ID
     const now = performance.now();
@@ -760,10 +883,11 @@ function App() {
     const apiRoot = isMinor ? getMinorRoot(note) : note;
     const noteFingers = getFingersForNote(note);
     const noteInversion = autoVoicing ? 0 : getInversionForNote(note);
+    const playbackPowerMode = arpPattern > 0 ? 'off' : powerMode;
 
     // MONOPHONIC mode (arp active)
     if (arpPattern > 0) {
-      const baseNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, powerMode, contextData?.map)
+      const baseNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, 'off', contextData?.map)
         .map(n => n + (octave - 3) * 12);
       const adjustedNotes = autoVoicing && lastPlayedNotes.current.length > 0
         ? voiceLeadNotes(baseNotes, lastPlayedNotes.current)
@@ -771,7 +895,7 @@ function App() {
       const newArpNotes = getArpPattern(arpPattern, adjustedNotes);
       pendingGlide.current = { note, isMinor, arpNotes: newArpNotes, baseNotes: adjustedNotes };
       setPressedRoots(new Set([note]));
-      fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers);
+      fetchChordData(currentKey, note, isMinor, noteInversion, style, 'off', noteFingers);
       return;
     }
 
@@ -791,7 +915,7 @@ function App() {
       return next;
     });
 
-    const baseNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, powerMode, contextData?.map)
+    const baseNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, playbackPowerMode, contextData?.map)
       .map(n => n + (octave - 3) * 12);
     const adjustedNotes = autoVoicing && lastPlayedNotes.current.length > 0
       ? voiceLeadNotes(baseNotes, lastPlayedNotes.current)
@@ -802,13 +926,13 @@ function App() {
     } else {
       audioEngine.attackNotesForTouch(adjustedNotes, touchId);
     }
-    fetchChordData(currentKey, note, isMinor, noteInversion, style, powerMode, noteFingers);
+    fetchChordData(currentKey, note, isMinor, noteInversion, style, playbackPowerMode, noteFingers);
   };
 
   // Global mouseup/touchend to catch releases outside the circle
   useEffect(() => {
     const handleGlobalMouseUp = () => {
-      if (isHold) return;
+      if (isHoldRef.current) return;
       const touch = activeTouches.current.get('mouse');
       if (touch) {
         activeTouches.current.delete('mouse');
@@ -828,7 +952,7 @@ function App() {
     };
 
     const handleGlobalTouchEnd = (e: TouchEvent) => {
-      if (isHold) return;
+      if (isHoldRef.current) return;
       Array.from(e.changedTouches).forEach(touch => {
         const tid = 'touch-' + touch.identifier;
         const activeTouch = activeTouches.current.get(tid);
@@ -840,16 +964,6 @@ function App() {
           if (activeTouches.current.size === 0) { setPressedRoot(null); currentPressedRef.current = null; }
         }
       });
-    };
-
-    const handlePanic = () => {
-      if (arpIntervalRef.current) { clearTimeout(arpIntervalRef.current); arpIntervalRef.current = null; }
-      pendingGlide.current = null;
-      currentPressedRef.current = null;
-      activeTouches.current.clear();
-      audioEngine.releaseAll();
-      setPressedRoot(null);
-      setPressedRoots(new Set());
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -870,6 +984,47 @@ function App() {
       window.removeEventListener('blur', handlePanic);
     };
   }, [pressedRoot, isHold]);
+
+  useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false;
+      const tag = target.tagName;
+      return target.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+    };
+
+    const handleKeyboardDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handlePanic();
+        return;
+      }
+
+      if (isEditableTarget(e.target)) return;
+      const mapped = KEYBOARD_MAP[e.code];
+      if (!mapped) return;
+      if (keyboardHeldKeys.current.has(e.code)) return;
+
+      keyboardHeldKeys.current.add(e.code);
+      handleRootPress(mapped.note, e.shiftKey ? true : mapped.isMinor, `keyboard-${e.code}`);
+      e.preventDefault();
+    };
+
+    const handleKeyboardUp = (e: KeyboardEvent) => {
+      const mapped = KEYBOARD_MAP[e.code];
+      if (!mapped) return;
+      if (!keyboardHeldKeys.current.has(e.code)) return;
+
+      keyboardHeldKeys.current.delete(e.code);
+      handleRootRelease(`keyboard-${e.code}`);
+      e.preventDefault();
+    };
+
+    window.addEventListener('keydown', handleKeyboardDown);
+    window.addEventListener('keyup', handleKeyboardUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyboardDown);
+      window.removeEventListener('keyup', handleKeyboardUp);
+    };
+  }, [handleRootPress, handleRootRelease, handlePanic]);
 
   // User changes inversion
   const handleInversionChange = (inv: number) => {
@@ -927,6 +1082,9 @@ function App() {
             contextMap={contextData?.map}
             minorContextMap={contextData?.minorMap}
             fingersPerNote={fingersPerNote}
+            majorKeys={MAJOR_NOTES}
+            minorKeys={MINOR_NOTES}
+            onKeyChange={handleKeyChange}
           />
 
           {/* Bottom row: Key + Acordes + Octave */}
@@ -948,8 +1106,20 @@ function App() {
               onOctaveChange={handleOctaveChange}
             />
             <button
+              type="button"
               className={`hold-btn ${isHold ? 'active' : ''}`}
-              onClick={() => setIsHold(prev => !prev)}
+              aria-pressed={isHold}
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleHold();
+              }}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                e.stopPropagation();
+                toggleHold();
+              }}
             >
               hold
             </button>
@@ -962,9 +1132,12 @@ function App() {
             liteMode={LITE_MODE}
             value={arpPattern}
             swing={arpSwing}
+            tempo={arpTempo}
             onValueChange={handleArpPatternChange}
             onSwingChange={setArpSwing}
+            onTempoChange={setArpTempo}
           />
+          {/* FULL VERSION: metronome is hidden in the demo.
           <Metronome
             active={metronomeActive}
             volume={metronomeVolume}
@@ -981,25 +1154,36 @@ function App() {
             onClickSoundChange={(sound) => { setMetronomeClickSound(sound); }}
             onTempoChange={setArpTempo}
           />
+          */}
           <div className="rec-instrument-row">
+            {/* FULL VERSION: REC and LOOP are hidden in the demo.
             <RecLoopHold
               isHold={isHold}
-              onHoldChange={setIsHold}
+              onHoldChange={updateHold}
               activeModal={activeModal}
               onModalFocus={setActiveModal}
             />
+            */}
             <InstrumentSelector
               instrument={instrument}
               onInstrumentChange={setInstrument}
             />
             {LITE_MODE ? (
-              // LITE: un solo switch Jazzy (off='pop', on='jazz')
-              <button
-                className={`hold-btn ${style === 'jazz' ? 'active' : ''}`}
-                onClick={() => setStyle(prev => prev === 'jazz' ? 'pop' : 'jazz')}
-              >
-                jazzy
-              </button>
+              // LITE: un solo switch Jazzy (off='pop', on='jazz').
+              <div className="jazzy-control">
+                <span className="jazzy-label">Jazzy</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-label="Activar estilo Jazzy"
+                  aria-checked={style === 'jazz'}
+                  className={`jazzy-switch ${style === 'jazz' ? 'on' : ''}`}
+                  onClick={() => setStyle(prev => prev === 'jazz' ? 'pop' : 'jazz')}
+                >
+                  <span className="jazzy-switch-thumb" aria-hidden="true" />
+                </button>
+                <span className="jazzy-state">{style === 'jazz' ? 'ON' : 'OFF'}</span>
+              </div>
             ) : (
               // FULL: selector completo Pop/Rock/Jazz/Bossa + toggle auto voicing
               <>
@@ -1166,6 +1350,10 @@ function App() {
       )}
     </div>
   );
+}
+
+function App() {
+  return <FivoWorkspace />;
 }
 
 export default App;

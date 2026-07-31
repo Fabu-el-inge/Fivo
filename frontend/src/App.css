@@ -2,32 +2,32 @@
 
 /* ===== DESIGN TOKENS - LIGHT INSTRUMENT THEME ===== */
 :root {
-  /* Backgrounds - Ultra light, clean */
-  --bg-base: #F5F6F7;
-  --bg-surface: #FFFFFF;
-  --bg-glass: rgba(255, 255, 255, 0.85);
-  --bg-glass-subtle: rgba(255, 255, 255, 0.6);
+  /* Backgrounds - MK1 dark hardware */
+  --bg-base: #0c0c0e;
+  --bg-surface: #1c1c20;
+  --bg-glass: rgba(28, 28, 32, 0.92);
+  --bg-glass-subtle: rgba(20, 20, 23, 0.7);
 
-  /* Text - Dark grays, never pure black */
-  --text-primary: #1a1a2e;
-  --text-secondary: #6b6b80;
-  --text-muted: #9999aa;
-  --text-label: #888899;
+  /* Text - light on dark */
+  --text-primary: #e8e8ec;
+  --text-secondary: #9a9aa2;
+  --text-muted: #7e7e88;
+  --text-label: #7e7e88;
 
-  /* Accent - Single color for active states ONLY */
-  --accent-active: #E5A800;
-  --accent-active-glow: rgba(229, 168, 0, 0.3);
+  /* Accent - MK1 orange for active states */
+  --accent-active: #ff7a3c;
+  --accent-active-glow: rgba(255, 122, 60, 0.45);
 
-  /* Harmonic colors - Subtle, desaturated */
-  --color-safe: #22c55e;
-  --color-tension: #f59e0b;
-  --color-avoid: #ef4444;
-  --color-tonic: #3b82f6;
-  --color-neutral: #e5e7eb;
+  /* Harmonic colors - vivid glows on dark */
+  --color-safe: #4ac878;
+  --color-tension: #f5a23e;
+  --color-avoid: #f06050;
+  --color-tonic: #5694ff;
+  --color-neutral: #3a3a40;
 
-  /* Glass effects */
-  --glass-border: rgba(0, 0, 0, 0.06);
-  --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  /* Panel / glass effects */
+  --glass-border: rgba(0, 0, 0, 0.5);
+  --glass-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
   --glass-blur: blur(12px);
 
   /* Spacing */
@@ -66,8 +66,9 @@ body,
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: var(--bg-base);
+  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: radial-gradient(130% 130% at 50% -10%, #2c2c33 0%, #17171a 55%, #0c0c0e 100%);
+  background-attachment: fixed;
   color: var(--text-primary);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -83,6 +84,61 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* ===== TEMPORARY ROLE LOGIN ===== */
+.login-screen {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 24px;
+  background: var(--bg-base);
+}
+
+.login-role-button {
+  width: min(240px, 40vw);
+  min-height: 88px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: var(--glass-shadow);
+  font: inherit;
+  font-size: 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.login-role-button:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-active);
+  box-shadow: 0 8px 28px var(--accent-active-glow);
+}
+
+.login-role-button:active {
+  transform: translateY(0);
+}
+
+.login-role-button:focus-visible {
+  outline: 3px solid var(--accent-active-glow);
+  outline-offset: 3px;
+}
+
+@media (max-width: 520px) {
+  .login-screen {
+    flex-direction: column;
+  }
+
+  .login-role-button {
+    width: min(280px, 85vw);
+  }
 }
 
 /* ===== MINIMAL HEADER - FLOATING ===== */
@@ -140,6 +196,11 @@ body {
   pointer-events: auto;
 }
 
+.tools-left-buttons {
+  /* DEMO: the full-version controls remain in ControlPanel. */
+  display: none;
+}
+
 /* RIGHT COLUMN - STYLE */
 .tools-right-container {
   padding-left: var(--space-lg);
@@ -186,7 +247,7 @@ body {
 
 .vfader-label {
   font-size: 0.55rem;
-  text-transform: lowercase;
+  text-transform: none;
   letter-spacing: 0.5px;
   color: var(--text-muted);
   font-weight: 600;
@@ -241,7 +302,7 @@ body {
 }
 
 .tools-left-buttons {
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: 6px;
   align-items: flex-start;
@@ -276,7 +337,7 @@ body {
 }
 
 .effects-box .level-fader-wrap {
-  padding-left: 10px;
+  padding-left: 0;
 }
 
 .level-fader-wrap {
@@ -422,6 +483,66 @@ body {
   background: var(--accent-active);
   color: #000;
   border-color: var(--accent-active);
+}
+
+.jazzy-control {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.jazzy-label,
+.jazzy-state {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.jazzy-label {
+  color: var(--text-secondary);
+}
+
+.jazzy-state {
+  min-width: 20px;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.jazzy-switch {
+  position: relative;
+  width: 34px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.14);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.jazzy-switch.on {
+  background: var(--accent-active);
+}
+
+.jazzy-switch:focus-visible {
+  outline: 2px solid var(--accent-active);
+  outline-offset: 2px;
+}
+
+.jazzy-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
+  transition: transform var(--transition-fast);
+}
+
+.jazzy-switch.on .jazzy-switch-thumb {
+  transform: translateX(16px);
 }
 
 /* CIRCLE WRAPPER */
@@ -2799,17 +2920,27 @@ body {
   margin-bottom: 4px;
 }
 
-.arp-controls-row {
+.arp-power-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   width: 100%;
   justify-content: center;
+}
+
+.arp-power-label {
+  min-width: 20px;
+  font-size: 0.55rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 .arp-mode-selector {
   display: flex;
   gap: 4px;
+  width: 100%;
+  justify-content: center;
 }
 
 .arp-mode-btn {
@@ -2829,7 +2960,7 @@ body {
   user-select: none;
 }
 
-.arp-mode-btn:hover:not(:disabled) {
+.arp-mode-btn:hover {
   color: var(--text-primary);
   background: rgba(255,255,255,0.6);
 }
@@ -2840,9 +2971,151 @@ body {
   border-color: var(--accent-active);
 }
 
-.arp-mode-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
+/* Compact Lite arpeggiator layout */
+.arpeggiator-control {
+  align-items: stretch;
+  gap: 10px;
+  width: 190px;
+  padding: 12px;
+  background: var(--bg-glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--glass-shadow);
+}
+
+.arp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.arp-title-lite {
+  margin-bottom: 0;
+  font-weight: 600;
+}
+
+.arp-power-switch {
+  position: relative;
+  width: 34px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+
+.arp-power-switch.on {
+  background: var(--accent-active);
+}
+
+.arp-power-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.18s ease;
+}
+
+.arp-power-switch.on .arp-power-thumb {
+  transform: translateX(16px);
+}
+
+.arp-mode-selector {
+  gap: 0;
+  padding: 3px;
+  background: rgba(0, 0, 0, 0.055);
+  border-radius: 8px;
+}
+
+.arp-mode-btn {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  background: transparent;
+  border: 0;
+}
+
+.arp-mode-btn:hover {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.arp-mode-btn.active {
+  background: var(--bg-surface);
+  color: var(--accent-active);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.12);
+}
+
+.arpeggiator-control {
+  width: 250px;
+}
+
+.arp-title-lite {
+  text-align: center;
+}
+
+.arp-demo-row {
+  display: grid;
+  grid-template-columns: 50px 82px 64px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.arp-demo-control {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.arp-demo-label {
+  font-size: 0.55rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.arp-demo-control .knob-wrapper {
+  gap: 4px;
+}
+
+.arp-demo-control .knob-wrapper > label {
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.arp-demo-control .knob-control {
+  width: 34px;
+  height: 34px;
+}
+
+.arp-demo-control .knob-indicator {
+  height: 9px;
+}
+
+.arp-demo-control .knob-value-label {
+  font-size: 0.58rem;
+}
+
+.arp-type-control .knob-wrapper {
+  width: 92px;
+}
+
+.arp-type-control .knob-value-label {
+  min-height: 24px;
+  max-width: 92px;
+  line-height: 1.1;
+  white-space: normal;
 }
 
 .arp-knob-container {
@@ -3240,4 +3513,517 @@ body {
   background: var(--accent-active);
   color: #000;
   font-weight: 600;
+}
+
+/* =====================================================================
+   ============  MK1 DARK HARDWARE THEME  (boceto override)  ===========
+   FIVO · HARMONIC INSTRUMENT · MK1 — re-skin, funcionalidad intacta.
+   ===================================================================== */
+
+/* ---- Faceplate ---- */
+.app-container {
+  background: transparent;
+  padding: clamp(10px, 2vw, 28px);
+}
+
+.main-layout {
+  background: linear-gradient(158deg, #27272c 0%, #1d1d21 42%, #161619 100%);
+  border-radius: 32px;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.025),
+    inset 0 -4px 16px rgba(0, 0, 0, 0.7),
+    0 44px 100px rgba(0, 0, 0, 0.6);
+  padding: clamp(18px, 3vw, 40px);
+  position: relative;
+}
+/* brushed-metal micro texture + top sheen */
+.main-layout::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 32px;
+  pointer-events: none;
+  background:
+    radial-gradient(78% 58% at 50% 30%, rgba(255, 255, 255, 0.035), transparent 72%),
+    repeating-linear-gradient(94deg, rgba(255, 255, 255, 0.012) 0 2px, rgba(0, 0, 0, 0.014) 2px 4px);
+}
+
+/* Transparent structural wrappers — the modules carry the panel look */
+.tools-left-container,
+.tools-right-container,
+.center-panel,
+.tools-left.glass-panel,
+.tools-left {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* ---- Shared module panel ---- */
+.effects-box,
+.arpeggiator-control,
+.style-selector-apple,
+.wheel-bottom-row,
+.jazzy-control,
+.key-selector-custom .key-options-container {
+  background: linear-gradient(180deg, #1c1c20, #141417);
+  border: 1px solid rgba(0, 0, 0, 0.45);
+  border-radius: 22px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -2px 10px rgba(0, 0, 0, 0.55),
+    0 14px 34px rgba(0, 0, 0, 0.42);
+}
+
+/* Module title labels */
+.arp-title-lite,
+.arp-title,
+.style-selector-apple > label,
+.vfader-label,
+.arp-demo-label,
+.arp-label {
+  font-family: 'Space Grotesk', sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.22em !important;
+  text-transform: uppercase !important;
+  color: var(--text-muted) !important;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* ---- Vertical Fader (Expression) ---- */
+.vfader-track {
+  background: linear-gradient(180deg, #0b0b0d, #101013);
+  border-radius: 10px;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.85), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  border: none;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+.vfader-fill {
+  background: linear-gradient(180deg, #ffa55a, #ef6a22);
+  box-shadow: 0 0 16px rgba(245, 140, 60, 0.45);
+  border-radius: 10px;
+  pointer-events: none;
+}
+.vfader-thumb {
+  background: linear-gradient(180deg, #3c3c42, #1a1a1d);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -2px 5px rgba(0, 0, 0, 0.6);
+  border: none;
+  border-radius: 8px;
+  pointer-events: none;
+}
+.vfader-value {
+  font-family: 'DM Mono', monospace !important;
+  color: #e8e8ec !important;
+}
+
+/* ---- Rotary knobs (arp type / tempo) ---- */
+.knob-control,
+.arp-knob {
+  background: radial-gradient(circle at 38% 30%, #3a3a40, #141416 66%);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.6), inset 0 2px 3px rgba(255, 255, 255, 0.06), inset 0 -3px 7px rgba(0, 0, 0, 0.6);
+  border: none;
+}
+.knob-indicator,
+.arp-knob-indicator {
+  background: #ff7a3c;
+  box-shadow: 0 0 7px rgba(255, 122, 60, 0.6);
+}
+.knob-value-label,
+.knob-value-input,
+.arp-swing-value {
+  font-family: 'DM Mono', monospace !important;
+  color: #d8d8de !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+/* ---- Toggle switches (strum / arp power / jazzy) ---- */
+.slide-toggle-track,
+.arp-power-switch,
+.jazzy-switch {
+  background: #0c0c0e;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.75);
+  border: none;
+}
+.slide-toggle-wrap.on .slide-toggle-track,
+.slide-toggle-track.on,
+.arp-power-switch.on,
+.jazzy-switch.on {
+  background: #ff7a3c;
+}
+.slide-toggle-thumb,
+.arp-power-thumb,
+.jazzy-switch-thumb {
+  background: linear-gradient(180deg, #f5f5f7, #cfcfd4);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+.slide-toggle-label,
+.jazzy-label {
+  color: var(--text-secondary) !important;
+  font-family: 'Space Grotesk', sans-serif !important;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+.jazzy-state {
+  font-family: 'DM Mono', monospace !important;
+  color: var(--text-muted) !important;
+  letter-spacing: 0.1em;
+}
+
+/* ---- Instrument list ---- */
+.style-list-apple {
+  gap: 12px;
+}
+.style-item-apple {
+  position: relative;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--text-secondary) !important;
+  font-family: 'Space Grotesk', sans-serif !important;
+  font-size: 20px !important;
+  font-weight: 500 !important;
+  text-align: center;
+  padding: 2px 0 6px !important;
+  width: fit-content;
+}
+.style-item-apple.active {
+  color: #fff !important;
+  font-weight: 700 !important;
+}
+.style-item-apple.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: #ff7a3c;
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(255, 122, 60, 0.55);
+}
+
+/* ---- Key selector circle + dropdown ---- */
+.key-trigger {
+  background: radial-gradient(circle at 38% 30%, #36363d, #121214 62%) !important;
+  border: none !important;
+  backdrop-filter: none !important;
+  box-shadow:
+    0 7px 16px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 2.5px rgba(86, 148, 255, 0.9),
+    0 0 18px rgba(86, 148, 255, 0.45) !important;
+}
+.current-key {
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  -webkit-text-fill-color: #fff !important;
+  color: #fff !important;
+  font-family: 'DM Mono', monospace !important;
+  box-shadow: none !important;
+}
+.key-section-label {
+  color: var(--text-muted) !important;
+}
+.key-option {
+  background: linear-gradient(180deg, #26262a, #191a1d) !important;
+  color: var(--text-secondary) !important;
+  border: 1px solid rgba(0, 0, 0, 0.45) !important;
+  font-family: 'DM Mono', monospace !important;
+}
+.key-option.selected {
+  background: linear-gradient(180deg, #ffa55a, #ef6a22) !important;
+  color: #23120a !important;
+}
+
+/* ---- Octave control (− value +) ---- */
+.octave-control {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+.octave-control button {
+  background: radial-gradient(circle at 40% 32%, #33333a, #141416 70%) !important;
+  color: #d8d8de !important;
+  border: none !important;
+  border-radius: 50% !important;
+  box-shadow: 0 5px 11px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+.value-display {
+  font-family: 'DM Mono', monospace !important;
+  color: #fff !important;
+}
+
+/* ---- Pill buttons: acordes / hold / auto voicing ---- */
+.hold-btn {
+  background: linear-gradient(180deg, #26262a, #191a1d) !important;
+  color: #c7c7cf !important;
+  border: 1px solid rgba(0, 0, 0, 0.45) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  font-family: 'Space Grotesk', sans-serif !important;
+  font-weight: 600 !important;
+}
+.hold-btn.active {
+  background: linear-gradient(180deg, #ffa55a, #ef6a22) !important;
+  color: #23120a !important;
+}
+
+/* ---- Circle of Fifths (current structure, MK1 colors) ---- */
+.circle-svg {
+  background: transparent;
+}
+.glass-divider {
+  stroke: rgba(255, 255, 255, 0.05);
+}
+.glass-pad-group.neutral .glass-pad-color {
+  fill: #24242b;
+  fill-opacity: 0.92;
+}
+.glass-pad-group.neutral .glass-pad-shine {
+  opacity: 0.18;
+}
+.glass-pad-label {
+  font-family: 'DM Mono', monospace !important;
+}
+.glass-pad-group.neutral .glass-pad-label {
+  fill: #6f6f78;
+  opacity: 1;
+}
+
+/* Center KEY display — dark with blue glow */
+.circle-center {
+  background: radial-gradient(circle at 42% 30%, #2c2c33 0%, #151518 62%, #0c0c0e 100%);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  box-shadow:
+    0 16px 34px rgba(0, 0, 0, 0.6),
+    inset 0 2px 2px rgba(255, 255, 255, 0.07),
+    inset 0 -7px 16px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(86, 148, 255, 0.28),
+    0 0 36px rgba(86, 148, 255, 0.2);
+}
+.circle-center .key-label {
+  color: #7d8aa6;
+  letter-spacing: 0.34em;
+}
+.circle-center .key-value {
+  font-family: 'DM Mono', monospace;
+  color: #fff;
+  text-shadow: 0 0 22px rgba(86, 148, 255, 0.45);
+}
+
+.circle-key-selector {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 22%;
+  height: 22%;
+  min-width: 80px;
+  min-height: 80px;
+  transform: translate(-50%, -50%);
+  z-index: 120;
+}
+
+.circle-key-selector .circle-center {
+  position: relative;
+  inset: auto;
+  top: auto;
+  left: auto;
+  transform: none;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.circle-key-selector .circle-center:hover,
+.circle-key-selector .circle-center.active,
+.circle-key-selector .circle-center:focus-visible {
+  box-shadow:
+    0 16px 34px rgba(0, 0, 0, 0.6),
+    inset 0 2px 2px rgba(255, 255, 255, 0.07),
+    inset 0 -7px 16px rgba(0, 0, 0, 0.7),
+    0 0 0 2.5px rgba(86, 148, 255, 0.95),
+    0 0 28px rgba(86, 148, 255, 0.42);
+}
+
+.circle-key-selector .circle-center:active {
+  transform: scale(0.98);
+}
+
+.circle-key-options {
+  top: calc(100% + 14px);
+  bottom: auto;
+  width: min(520px, calc(100vw - 32px));
+  max-height: min(260px, calc(100vh - 150px));
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.circle-key-options .key-section {
+  margin-bottom: 0;
+}
+
+.circle-key-options .key-options-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.circle-key-backdrop {
+  z-index: 90;
+}
+
+.vfader-wrap,
+.vfader-label,
+.vfader-value,
+.effects-box {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.vfader-wrap {
+  touch-action: none;
+  cursor: default;
+}
+
+/* ---- FIVO branding (footer-right) ---- */
+.app-header {
+  position: fixed;
+  right: clamp(20px, 3vw, 52px);
+  bottom: clamp(16px, 2.5vw, 34px);
+  left: auto;
+  top: auto;
+  background: transparent;
+  box-shadow: none;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  pointer-events: none;
+}
+.app-header h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: 0.28em;
+  color: #3f3f46;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5), 0 -1px 0 rgba(255, 255, 255, 0.03);
+  text-transform: uppercase;
+  margin: 0;
+}
+.app-header::after {
+  content: "HARMONIC INSTRUMENT · MK1";
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: #4a4a52;
+}
+
+/* ---- Footer status (bottom-left chord readout) ---- */
+.bottom-left-corner {
+  font-family: 'DM Mono', monospace;
+  color: var(--text-muted);
+  letter-spacing: 0.12em;
+}
+
+/* =====================================================================
+   ============  MK1 PROPORTIONS / LAYOUT POLISH  =====================
+   ===================================================================== */
+
+/* ---- Expression module: tall column, not flattened ---- */
+.effects-box {
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 22px !important;
+  padding: 26px 24px !important;
+  min-height: 430px;
+  overflow: visible !important;
+}
+.effects-box .tools-left-buttons {
+  order: 2;
+  flex-direction: column;
+}
+.effects-box .level-fader-wrap {
+  order: 1;
+}
+.vfader-wrap {
+  gap: 18px !important;
+}
+.vfader-track {
+  width: 18px !important;
+  height: 300px !important;
+}
+
+/* ---- Instrument + Jazzy: stacked roomy panels ---- */
+.rec-instrument-row {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 16px !important;
+}
+.style-selector-apple {
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px 28px !important;
+  min-width: 250px;
+  min-height: 300px;
+  gap: 18px !important;
+}
+.jazzy-control {
+  padding: 18px 24px !important;
+  justify-content: flex-start;
+  min-width: 250px;
+  gap: 12px !important;
+}
+
+/* ---- Bottom bar: longer, buttons well placed ---- */
+.center-panel {
+  width: 100%;
+  align-items: center;
+}
+.wheel-bottom-row {
+  justify-content: flex-start !important;
+  gap: 20px !important;
+  padding: 16px 30px !important;
+  min-height: 84px;
+  width: min(680px, 92%);
+  margin: 22px auto 0 !important;
+}
+.key-selector-custom {
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 12px !important;
+  width: auto !important;
+}
+.key-selector-custom > label {
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  order: -1;
+}
+.wheel-bottom-row .octave-control {
+  margin-left: auto;
 }
