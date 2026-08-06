@@ -6,7 +6,7 @@ export type MetronomeBeatCallback = (beat: number, isAccent: boolean) => void;
 
 type SampleUrls = Record<string, string>;
 type SurgeInstrumentName = Extract<InstrumentName, 'EP2' | 'Messy' | 'Canadians' | 'E-Bass'>;
-const SURGE_ASSET_VERSION = "hold-same-note-ebass-20260731-3";
+const SURGE_ASSET_VERSION = "instrument-tail-20260801-1";
 const SURGE_ENGINE_GAIN = 0.78;
 const SURGE_OUTPUT_GAIN = 1.85;
 
@@ -872,7 +872,11 @@ export class AudioEngine {
         this.currentInstrument = name;
         if (!this.polySynth || !this.ep2Sampler || !this.messySampler || !this.canadiansSampler || !this.ebassSampler || !this.chorus || !this.reverb) return;
         if (this.synth && this.synth !== this.getSamplerForInstrument(name)) {
-            this.releaseEveryInstrument(true);
+            this.attackCancelToken++;
+            this.cancelStrumTimeouts();
+            this.touchStrumTimeouts.forEach(ids => ids.forEach(id => clearTimeout(id)));
+            this.touchStrumTimeouts.clear();
+            this.releaseEveryInstrument(false);
         }
 
         switch (name) {
@@ -968,9 +972,17 @@ export class AudioEngine {
     }
 
     private playableMidiNotes(midiNotes: number[]) {
-        return this.currentInstrument === 'E-Bass' && midiNotes.length > 1
+        const notes = this.currentInstrument === 'E-Bass' && midiNotes.length > 1
             ? [midiNotes[0]]
             : midiNotes;
+        const transpose = this.instrumentTransposeSemitones(this.currentInstrument);
+        return transpose === 0
+            ? notes
+            : notes.map(note => Math.max(0, Math.min(127, note + transpose)));
+    }
+
+    private instrumentTransposeSemitones(instrument: InstrumentName) {
+        return instrument === 'Canadians' ? 12 : 0;
     }
 
     public async playNotes(midiNotes: number[], duration: string = "2n") {

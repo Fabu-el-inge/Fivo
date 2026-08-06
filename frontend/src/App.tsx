@@ -201,7 +201,7 @@ function FivoWorkspace() {
     }
   };
 
-  const getArpFingers = (): number => 3;
+  const getArpFingers = (): number => instrument === 'E-Bass' ? 1 : 3;
 
   // Handle arpeggiator pattern change - save/restore fingers
   const handleArpPatternChange = (newPattern: number) => {
@@ -219,10 +219,11 @@ function FivoWorkspace() {
         const heldRoot = lastPlayedRootRef.current;
         const apiRoot = heldRoot.isMinor ? getMinorRoot(heldRoot.note) : heldRoot.note;
         const noteFingers = getArpFingers();
-        const noteInversion = autoVoicing ? 0 : getInversionForNote(heldRoot.note);
+        const useVoiceLeading = autoVoicing && instrument !== 'E-Bass';
+        const noteInversion = useVoiceLeading ? 0 : getInversionForNote(heldRoot.note);
         const baseNotes = calcChordNotes(currentKey, apiRoot, heldRoot.isMinor, style, noteInversion, noteFingers, 'off', contextData?.map)
           .map(n => n + (octave - 3) * 12);
-        const adjustedNotes = autoVoicing && lastPlayedNotes.current.length > 0
+        const adjustedNotes = useVoiceLeading && lastPlayedNotes.current.length > 0
           ? voiceLeadNotes(baseNotes, lastPlayedNotes.current)
           : baseNotes;
 
@@ -360,6 +361,7 @@ function FivoWorkspace() {
 
   // Update instrument when changed
   useEffect(() => {
+    lastPlayedNotes.current = [];
     audioEngine.setInstrument(instrument);
   }, [instrument]);
 
@@ -697,11 +699,12 @@ function FivoWorkspace() {
       currentPressedRef.current = note;
       const noteFingers = getFingersForNote(note);
       const playbackPowerMode = arpPattern > 0 ? 'off' : powerMode;
+      const useVoiceLeading = autoVoicing && instrument !== 'E-Bass';
 
-      const noteInversion = autoVoicing ? 0 : getInversionForNote(note);
+      const noteInversion = useVoiceLeading ? 0 : getInversionForNote(note);
       const baseNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, playbackPowerMode, contextData?.map)
         .map(n => n + (octave - 3) * 12);
-      const adjustedNotes = autoVoicing && lastPlayedNotes.current.length > 0
+      const adjustedNotes = useVoiceLeading && lastPlayedNotes.current.length > 0
         ? voiceLeadNotes(baseNotes, lastPlayedNotes.current)
         : baseNotes;
 
@@ -792,12 +795,12 @@ function FivoWorkspace() {
       noteInversion = prev;
       strumInversionRef.current[note] = (prev + 1) % 3;
     } else {
-      noteInversion = autoVoicing ? 0 : getInversionForNote(note);
+      noteInversion = autoVoicing && instrument !== 'E-Bass' ? 0 : getInversionForNote(note);
     }
 
     const baseNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, powerMode, contextData?.map)
       .map(n => n + (octave - 3) * 12);
-    const adjustedNotes = (!strumEnabled && autoVoicing && lastPlayedNotes.current.length > 0)
+    const adjustedNotes = (!strumEnabled && autoVoicing && instrument !== 'E-Bass' && lastPlayedNotes.current.length > 0)
       ? voiceLeadNotes(baseNotes, lastPlayedNotes.current)
       : baseNotes;
 
@@ -882,14 +885,15 @@ function FivoWorkspace() {
 
     const apiRoot = isMinor ? getMinorRoot(note) : note;
     const noteFingers = getFingersForNote(note);
-    const noteInversion = autoVoicing ? 0 : getInversionForNote(note);
+    const useVoiceLeading = autoVoicing && instrument !== 'E-Bass';
+    const noteInversion = useVoiceLeading ? 0 : getInversionForNote(note);
     const playbackPowerMode = arpPattern > 0 ? 'off' : powerMode;
 
     // MONOPHONIC mode (arp active)
     if (arpPattern > 0) {
       const baseNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, 'off', contextData?.map)
         .map(n => n + (octave - 3) * 12);
-      const adjustedNotes = autoVoicing && lastPlayedNotes.current.length > 0
+      const adjustedNotes = useVoiceLeading && lastPlayedNotes.current.length > 0
         ? voiceLeadNotes(baseNotes, lastPlayedNotes.current)
         : baseNotes;
       const newArpNotes = getArpPattern(arpPattern, adjustedNotes);
@@ -917,7 +921,7 @@ function FivoWorkspace() {
 
     const baseNotes = calcChordNotes(currentKey, apiRoot, isMinor, style, noteInversion, noteFingers, playbackPowerMode, contextData?.map)
       .map(n => n + (octave - 3) * 12);
-    const adjustedNotes = autoVoicing && lastPlayedNotes.current.length > 0
+    const adjustedNotes = useVoiceLeading && lastPlayedNotes.current.length > 0
       ? voiceLeadNotes(baseNotes, lastPlayedNotes.current)
       : baseNotes;
 

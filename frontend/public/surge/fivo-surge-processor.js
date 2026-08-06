@@ -20,6 +20,8 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
         this.holdEnabled = new Map();
         this.activeNotes = new Map();
         this.holdStates = new Map();
+        this.instrumentTails = new Map();
+        this.instrumentTailSamples = Math.round(sampleRate * 0.45);
         this.holdWarmupSamples = Math.round(sampleRate * 0.09);
         this.holdTargetRms = 0.055;
         this.holdFloorRms = 0.00035;
@@ -121,7 +123,13 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
 
         switch (message.type) {
             case "instrument":
-                if (this.engines.has(instrument) || this.polyEngines.has(instrument)) this.currentInstrument = instrument;
+                if (this.engines.has(instrument) || this.polyEngines.has(instrument)) {
+                    if (instrument !== this.currentInstrument) {
+                        this.instrumentTails.set(this.currentInstrument, this.instrumentTailSamples);
+                        this.instrumentTails.delete(instrument);
+                    }
+                    this.currentInstrument = instrument;
+                }
                 break;
 
             case "noteOn":
@@ -149,6 +157,7 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
                     group.activeNotes.clear();
                 }
                 for (const notes of this.activeNotes.values()) notes.clear();
+                this.instrumentTails.clear();
                 for (const instrumentName of this.holdStates.keys()) this.resetHoldState(instrumentName);
                 break;
 
@@ -441,6 +450,7 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
 
         if (polyGroup) {
             this.processPolyGroup(polyGroup, leftOut, rightOut, frameCount);
+            this.mixInstrumentTails(leftOut, rightOut, frameCount);
             return true;
         }
 
@@ -475,6 +485,7 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
                 leftOut.set(leftData);
                 rightOut.set(rightData);
             }
+            this.mixInstrumentTails(leftOut, rightOut, frameCount);
         } catch (error) {
             this.error = error instanceof Error ? error.message : String(error);
             leftOut.fill(0);
@@ -486,6 +497,81 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
         }
 
         return true;
+    }
+
+    mixInstrumentTails(leftOut, rightOut, frameCount) {
+        if (this.instrumentTails.size === 0) return;
+
+        for (const [instrument, samplesLeft] of [...this.instrumentTails.entries()]) {
+            if (instrument === this.currentInstrument) {
+                this.instrumentTails.delete(instrument);
+                continue;
+            }
+
+            if (samplesLeft <= 0) {
+                this.allSoundOffInstrument(instrument);
+                this.instrumentTails.delete(instrument);
+                continue;
+            }
+
+            this.mixInstrumentTail(instrument, leftOut, rightOut, frameCount, samplesLeft);
+
+            const nextSamplesLeft = samplesLeft - frameCount;
+            if (nextSamplesLeft <= 0) {
+                this.allSoundOffInstrument(instrument);
+                this.instrumentTails.delete(instrument);
+            } else {
+                this.instrumentTails.set(instrument, nextSamplesLeft);
+            }
+        }
+    }
+
+    mixInstrumentTail(instrument, leftOut, rightOut, frameCount, samplesLeft) {
+        const polyGroup = this.polyEngines.get(instrument);
+        if (polyGroup) {
+            for (const engine of polyGroup.engines) {
+                this.mixEngineTail(engine, leftOut, rightOut, frameCount, samplesLeft, 0.85);
+            }
+            return;
+        }
+
+        const engine = this.engines.get(instrument);
+        if (engine) this.mixEngineTail(engine, leftOut, rightOut, frameCount, samplesLeft, 1);
+    }
+
+    mixEngineTail(engine, leftOut, rightOut, frameCount, samplesLeft, voiceGain) {
+        const Module = this.module;
+        Module._fivo_surge_process(engine, this.leftPtr, this.rightPtr, frameCount);
+
+        const leftOffset = this.leftPtr >> 2;
+        const rightOffset = this.rightPtr >> 2;
+        const leftData = Module.HEAPF32.subarray(leftOffset, leftOffset + frameCount);
+        const rightData = Module.HEAPF32.subarray(rightOffset, rightOffset + frameCount);
+        const total = Math.max(1, this.instrumentTailSamples);
+
+        for (let i = 0; i < frameCount; i++) {
+            const fade = Math.max(0, Math.min(1, (samplesLeft - i) / total));
+            const gain = fade * voiceGain;
+            leftOut[i] += (leftData[i] || 0) * gain;
+            rightOut[i] += (rightData[i] || 0) * gain;
+        }
+    }
+
+    allSoundOffInstrument(instrument) {
+        const Module = this.module;
+        const polyGroup = this.polyEngines.get(instrument);
+
+        if (polyGroup) {
+            for (const engine of polyGroup.engines) Module._fivo_surge_all_sound_off(engine);
+            polyGroup.activeNotes.clear();
+        } else {
+            const engine = this.engines.get(instrument);
+            if (engine) Module._fivo_surge_all_sound_off(engine);
+        }
+
+        this.activeNotes.get(instrument)?.clear();
+        this.resetHoldState(instrument);
+        if (instrument === "E-Bass") this.resetEbassSustain();
     }
 
     processPolyGroup(group, leftOut, rightOut, frameCount) {
