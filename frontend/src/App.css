@@ -4710,3 +4710,234 @@ body {
     min-height: 142px;
   }
 }
+
+/* =====================================================================
+   AJUSTES DE LAYOUT — 09/09/2026
+   Bloque al final a proposito: gana la cascada sin editar reglas de
+   arriba, y se puede revertir borrandolo entero.
+   ===================================================================== */
+
+/* --- 1. La barra inferior nunca deja botones flotando afuera ---------
+   Se dimensionaba por el ancho de la rueda, no por su contenido: por
+   debajo de ~1100px de ventana el boton "full" quedaba fuera de la caja.
+   Ahora envuelve antes que desbordar y el gap se achica con la ventana. */
+.wheel-bottom-row {
+  flex-wrap: wrap;
+  gap: clamp(8px, 1.1vw, 16px);
+  row-gap: 10px;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+/* --- 2. Arpegiador: el on/off deja de competir con las perillas ------
+   Pasa a ser un interruptor chico al lado del titulo; TYPE y TEMPO
+   quedan en dos columnas iguales, mismo tamano y misma linea base. */
+.arp-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.arp-head .arp-title-lite {
+  margin-bottom: 0;
+}
+
+.arp-power-switch.arp-power-mini {
+  width: 34px;
+  height: 19px;
+  flex: 0 0 auto;
+}
+
+.arp-power-switch.arp-power-mini .arp-power-thumb {
+  width: 13px;
+  height: 13px;
+}
+
+.arp-power-switch.arp-power-mini.on .arp-power-thumb {
+  transform: translateX(15px);
+}
+
+.arpeggiator-control .arp-demo-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  justify-items: center;
+  gap: clamp(12px, 2.2vw, 28px);
+  width: 100%;
+}
+
+.arpeggiator-control .arp-demo-control {
+  align-items: center;
+  text-align: center;
+  width: 100%;
+}
+
+.arpeggiator-control .arp-knob {
+  width: 60px;
+  height: 60px;
+}
+
+/* --- 3. Portrait (mobile y tablet): la rueda manda -------------------
+   Antes los controles ocupaban la franja de arriba (~290px en un
+   telefono) y la rueda quedaba relegada y descentrada. Se invierte el
+   orden: la rueda toma toda la altura sobrante y queda centrada, y los
+   controles pasan a una franja compacta abajo. */
+@media (orientation: portrait) and (max-width: 1240px),
+       (pointer: coarse) and (orientation: portrait) {
+  .main-layout {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "center center"
+      "left   right";
+    row-gap: clamp(10px, 1.6vh, 18px);
+    align-items: stretch;
+  }
+
+  .center-panel {
+    grid-area: center;
+    justify-content: center;
+    align-self: center;
+  }
+
+  .tools-left-container { grid-area: left; }
+  .tools-right-container { grid-area: right; }
+
+  /* La franja de controles deja de estirarse: ocupa lo que necesita */
+  .arpeggiator-control,
+  .style-selector-apple,
+  .jazzy-control {
+    min-height: 104px;
+  }
+
+  .circle-wrapper {
+    width: min(94vw, calc(100dvh - 300px), 760px);
+    height: min(94vw, calc(100dvh - 300px), 760px);
+  }
+}
+
+/* --- 4. Telefonos: mas apretado todavia, para que la rueda gane ------ */
+@media (max-width: 640px) and (orientation: portrait) {
+  .main-layout {
+    grid-template-columns: 76px minmax(0, 1fr);
+    padding: clamp(8px, 2vw, 14px);
+  }
+
+  .arpeggiator-control,
+  .style-selector-apple,
+  .jazzy-control {
+    min-height: 94px !important;
+  }
+
+  .style-selector-apple {
+    padding: 10px 12px !important;
+  }
+
+  .style-list-apple {
+    gap: 6px 12px;
+  }
+
+  .effects-box {
+    padding: 10px 8px !important;
+  }
+
+  .vfader-track {
+    height: clamp(80px, 11vh, 112px) !important;
+  }
+
+  .arpeggiator-control .arp-knob {
+    width: 46px;
+    height: 46px;
+  }
+
+  .jazzy-control {
+    padding: 10px 8px !important;
+  }
+
+  .circle-wrapper {
+    width: min(96vw, calc(100dvh - 262px), 560px);
+    height: min(96vw, calc(100dvh - 262px), 560px);
+  }
+}
+
+/* --- 5. Correcciones medidas ---------------------------------------- */
+
+/* Perillas TYPE y TEMPO: son el control principal del arpegiador */
+.arpeggiator-control .knob-control {
+  width: 64px;
+  height: 64px;
+}
+
+/* El valor no puede cambiar de alto entre una perilla y otra ("Up" contra
+   "120"), porque desalinea la fila entera. */
+.arpeggiator-control .knob-value-label {
+  white-space: nowrap;
+  min-height: 16px;
+  line-height: 16px;
+}
+
+/* Ventanas angostas de escritorio: la barra entra en una sola fila hasta
+   ~950px. El wrap de arriba queda de red por si aun asi no entra. */
+@media (max-width: 1200px) {
+  .wheel-bottom-row {
+    gap: 8px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .wheel-bottom-row .octave-control {
+    padding: 6px 6px;
+    gap: 6px;
+  }
+}
+
+/* La rueda es un circulo: nunca se deja aplastar por el alto disponible */
+.circle-wrapper {
+  flex: 0 0 auto;
+  aspect-ratio: 1 / 1;
+  height: auto !important;
+}
+
+/* En telefonos las perillas acompanan el resto */
+@media (max-width: 640px) and (orientation: portrait) {
+  .arpeggiator-control .knob-control {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+/* --- 6. Cierre de los dos ultimos ajustes ---------------------------- */
+
+/* Hay reglas de arriba con !important que fijan gap 20px y padding 30px:
+   por eso la barra no entraba en una fila en ventanas angostas. */
+@media (max-width: 1200px) {
+  .center-panel .wheel-bottom-row {
+    gap: 8px !important;
+    padding: 12px 10px !important;
+    width: auto !important;
+    max-width: 100%;
+  }
+}
+
+/* En tablet la rueda se pasaba 10px por arriba del area visible. */
+@media (orientation: portrait) and (max-width: 1240px),
+       (pointer: coarse) and (orientation: portrait) {
+  .circle-wrapper {
+    width: min(92vw, calc(100dvh - 330px), 700px);
+  }
+}
+
+@media (max-width: 640px) and (orientation: portrait) {
+  .circle-wrapper {
+    width: min(96vw, calc(100dvh - 268px), 560px);
+  }
+}
+
+/* El titulo se estiraba al ancho del panel en tablet y empujaba el
+   interruptor lejos. Que ocupe solo lo que mide su texto. */
+.arp-head .arp-title-lite {
+  width: auto !important;
+  flex: 0 0 auto;
+  text-align: left;
+}

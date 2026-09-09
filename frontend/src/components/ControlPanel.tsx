@@ -444,22 +444,20 @@ export const Arpeggiator: React.FC<ArpeggiatorProps> = ({
 
         return (
             <div className="arpeggiator-control">
-                <span className="arp-title-lite">arpeggiator</span>
+                <div className="arp-head">
+                    <span className="arp-title-lite">arpeggiator</span>
+                    <button
+                        type="button"
+                        className={`arp-power-switch arp-power-mini ${isOn ? 'on' : ''}`}
+                        onClick={toggleOn}
+                        role="switch"
+                        aria-checked={isOn}
+                        aria-label={isOn ? 'Apagar arpegiador' : 'Encender arpegiador'}
+                    >
+                        <span className="arp-power-thumb" />
+                    </button>
+                </div>
                 <div className="arp-demo-row">
-                    <div className="arp-demo-control">
-                        <span className="arp-demo-label">On/Off</span>
-                        <button
-                            type="button"
-                            className={`arp-power-switch ${isOn ? 'on' : ''}`}
-                            onClick={toggleOn}
-                            role="switch"
-                            aria-checked={isOn}
-                            aria-label={isOn ? 'Apagar arpegiador' : 'Encender arpegiador'}
-                        >
-                            <span className="arp-power-thumb" />
-                        </button>
-                    </div>
-
                     <div className="arp-demo-control arp-type-control">
                         <RotaryKnob
                             value={selectedMode}
