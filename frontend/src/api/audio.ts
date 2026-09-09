@@ -28,6 +28,19 @@ function ensureNativeToneContext() {
     nativeToneContextReady = true;
 }
 
+// En iOS la Web Audio API sale por el canal de timbre: con la palanca de silencio puesta
+// no se escucha nada, sin ningun error. Pedir 'playback' la manda al canal de multimedia,
+// que es como suena cualquier reproductor. En el resto de los navegadores no existe y no pasa nada.
+function ensureIosAudioSession() {
+    const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+    if (!session) return;
+    try {
+        session.type = 'playback';
+    } catch (error) {
+        console.warn('No se pudo fijar audioSession', error);
+    }
+}
+
 class SurgeWasmHost {
     private node: AudioWorkletNode | null = null;
     private nodePromise: Promise<AudioWorkletNode> | null = null;
@@ -36,6 +49,12 @@ class SurgeWasmHost {
     private destinations = new Set<any>();
     private lastDebug: Record<string, unknown> | null = null;
     private debugResolvers: Array<(message: Record<string, unknown> | null) => void> = [];
+    onError: ((message: string) => void) | null = null;
+
+    private report(message: string) {
+        console.error('[Fivo audio]', message);
+        try { this.onError?.(message); } catch { /* el aviso no puede romper el audio */ }
+    }
 
     get isLoaded() {
         return this.ready;
@@ -48,7 +67,7 @@ class SurgeWasmHost {
     connect(destination: any) {
         this.destinations.add(destination);
         if (this.node) this.connectNode(this.node, destination);
-        void this.ensureNode();
+        this.ensureNode().catch(error => this.report(String(error?.message ?? error)));
     }
 
     send(message: Record<string, unknown>) {
@@ -58,7 +77,7 @@ class SurgeWasmHost {
         }
 
         this.messageQueue.push(message);
-        void this.ensureNode();
+        this.ensureNode().catch(error => this.report(String(error?.message ?? error)));
     }
 
     private async ensureNode(): Promise<AudioWorkletNode> {
@@ -107,7 +126,12 @@ class SurgeWasmHost {
         for (const message of this.messageQueue.splice(0)) node.port.postMessage(message);
 
         await new Promise<void>((resolve, reject) => {
-            const timeout = window.setTimeout(() => reject(new Error("Surge WASM init timed out")), 10000);
+            // 10 s alcanzaba en escritorio (arranca en ~0,5 s) pero no en un celular con mala
+            // senal: son 7,1 MB de glue para bajar, parsear y compilar antes del primer sonido.
+            const timeout = window.setTimeout(
+                () => reject(new Error("El motor de sonido tardo demasiado en arrancar (45 s)")),
+                45000,
+            );
             const handleMessage = (event: MessageEvent) => {
                 const message = event.data;
                 if (message?.type === "debug") {
@@ -122,7 +146,12 @@ class SurgeWasmHost {
                 }
                 if (message?.type === "error") {
                     window.clearTimeout(timeout);
-                    reject(new Error(message.error || "Surge WASM init failed"));
+                    const detail = message.error || "Surge WASM init failed";
+                    if (message.stack) console.error('[Fivo audio] stack del worklet:', message.stack);
+                    reject(new Error(String(detail)));
+                }
+                if (message?.type === "instrumentError") {
+                    this.report(`No se pudo cargar ${message.instrument}: ${message.error}`);
                 }
                 if (message?.type === "processError") {
                     console.warn("Surge WASM process error", message.error);
@@ -698,6 +727,7 @@ export class AudioEngine {
         if (this.initialized) return;
 
         ensureNativeToneContext();
+        ensureIosAudioSession();
         await Tone.start();
 
         // Limiter to prevent clipping
@@ -784,8 +814,12 @@ export class AudioEngine {
         console.log("Audio Engine Initialized with Tone.js");
     }
 
+    public onAudioError: ((message: string) => void) | null = null;
+
     public async unlock() {
+        surgeWasmHost.onError = (message) => this.onAudioError?.(message);
         await this.init();
+        ensureIosAudioSession();
         const rawContext = Tone.getContext().rawContext;
         if (typeof AudioContext !== 'undefined' && rawContext instanceof AudioContext && rawContext.state !== 'running') {
             await rawContext.resume();

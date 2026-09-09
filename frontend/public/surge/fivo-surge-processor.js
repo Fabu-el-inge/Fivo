@@ -1,5 +1,9 @@
 /* global AudioWorkletProcessor, registerProcessor, sampleRate, createFivoSurgeModule */
 
+// Voces por instrumento. E-Bass usa un motor por nota (envolvente y sustain propios):
+// este numero es sonido, no rendimiento. No tocar.
+const POLY_VOICES = { "E-Bass": 8 };
+
 class FivoSurgeProcessor extends AudioWorkletProcessor {
     constructor(options) {
         super();
@@ -53,10 +57,12 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
             this.leftPtr = Module._malloc(this.frames * 4);
             this.rightPtr = Module._malloc(this.frames * 4);
 
-            this.loadEngine("EP2", presets.EP2);
-            this.loadEngine("Messy", presets.Messy);
-            this.loadEngine("Canadians", presets.Canadians);
-            this.loadPolyEngine("E-Bass", presets["E-Bass"], 8);
+            // Los motores se crean al usarse, no al arrancar. Crear los once de entrada
+            // lleva el heap de 128 MB a 319 MB y hace todo el trabajo pesado antes del
+            // primer sonido; en iOS eso alcanza para que nunca se llegue a "ready".
+            // El sonido no cambia: mismos presets, mismas voces, mismo motor.
+            this.presets = presets;
+            this.ensureInstrument(this.currentInstrument);
 
             this.ready = true;
             this.port.postMessage({ type: "ready" });
@@ -65,7 +71,35 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
             for (const message of pending) this.handleMessage(message);
         } catch (error) {
             this.error = error instanceof Error ? error.message : String(error);
-            this.port.postMessage({ type: "error", error: this.error });
+            this.port.postMessage({
+                type: "error",
+                error: this.error,
+                stack: String((error && error.stack) || "").slice(0, 600),
+            });
+        }
+    }
+
+    ensureInstrument(instrument) {
+        if (this.engines.has(instrument) || this.polyEngines.has(instrument)) return true;
+
+        const presetBuffer = this.presets && this.presets[instrument];
+        if (!presetBuffer) return false;
+
+        try {
+            const voices = POLY_VOICES[instrument];
+            if (voices) this.loadPolyEngine(instrument, presetBuffer, voices);
+            else this.loadEngine(instrument, presetBuffer);
+            return true;
+        } catch (error) {
+            // Que falle un instrumento no puede dejar muda a toda la app.
+            const message = error instanceof Error ? error.message : String(error);
+            this.port.postMessage({
+                type: "instrumentError",
+                instrument,
+                error: message,
+                stack: String((error && error.stack) || "").slice(0, 600),
+            });
+            return false;
         }
     }
 
@@ -123,6 +157,7 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
 
         switch (message.type) {
             case "instrument":
+                this.ensureInstrument(instrument);
                 if (this.engines.has(instrument) || this.polyEngines.has(instrument)) {
                     if (instrument !== this.currentInstrument) {
                         this.instrumentTails.set(this.currentInstrument, this.instrumentTailSamples);
@@ -187,6 +222,7 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
     }
 
     noteOn(instrument, note, velocity) {
+        this.ensureInstrument(instrument);
         this.trackNoteOn(instrument, note);
         this.resetHoldState(instrument);
         if (instrument === "E-Bass") {

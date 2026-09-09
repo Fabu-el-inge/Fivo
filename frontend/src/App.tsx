@@ -121,11 +121,15 @@ function FivoWorkspace() {
 
   useEffect(() => {
     let unlocked = false;
+    // Si el motor de sonido falla, hay que verlo en la pantalla. Hasta ahora el fallo
+    // quedaba solo en la consola, asi que en el telefono la app se veia bien y no sonaba.
+    audioEngine.onAudioError = (message) => setErrorMsg(message);
     const unlockAudio = () => {
       if (unlocked) return;
       unlocked = true;
       void audioEngine.unlock().catch(error => {
         console.error('Audio unlock failed', error);
+        setErrorMsg(error?.message || 'No se pudo iniciar el sonido');
       });
     };
 
@@ -136,6 +140,7 @@ function FivoWorkspace() {
     window.addEventListener('keydown', unlockAudio, addOptions);
 
     return () => {
+      audioEngine.onAudioError = null;
       window.removeEventListener('pointerdown', unlockAudio, removeOptions);
       window.removeEventListener('touchstart', unlockAudio, removeOptions);
       window.removeEventListener('keydown', unlockAudio, removeOptions);
