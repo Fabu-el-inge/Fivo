@@ -48,8 +48,11 @@ type FullscreenDoc = Document & {
 };
 
 function isMobileAudioActivationTarget() {
-  if (typeof window === 'undefined') return false;
-  return window.matchMedia?.('(pointer: coarse)').matches || window.innerWidth <= 1024;
+  // El gate "Activar audio" tapaba la pantalla en mobile. Existia porque el
+  // AudioContext no se despertaba solo; eso ahora se arregla en la raiz (se crea
+  // uno nuevo dentro del gesto), asi que el audio entra con el primer toque y el
+  // gate no hace falta en ninguna plataforma.
+  return false;
 }
 
 function FivoWorkspace() {
@@ -1163,28 +1166,6 @@ function FivoWorkspace() {
     <div className="app-container">
       {/* Error Banner - Fixed top */}
       {errorMsg && <div className="error-banner">{errorMsg}</div>}
-
-      {audioActivationRequired && (
-        <div
-          className="mobile-audio-gate"
-          onPointerDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            className={`mobile-audio-button ${audioActivationState === 'loading' ? 'loading' : ''}`}
-            disabled={audioActivationState === 'loading'}
-            onPointerDown={handleMobileAudioActivation}
-            onTouchStart={handleMobileAudioActivation}
-            onClick={handleMobileAudioActivation}
-          >
-            {audioActivationState === 'loading' ? 'Activando...' : 'Activar audio'}
-          </button>
-          {audioActivationState === 'error' && (
-            <span className="mobile-audio-error">Toca otra vez</span>
-          )}
-        </div>
-      )}
 
       {/* Main Layout - Object Centric */}
       {/* Main Layout - Grid: Left | Center | Right */}
