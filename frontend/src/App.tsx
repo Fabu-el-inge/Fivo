@@ -140,30 +140,35 @@ function FivoWorkspace() {
   }, [diagOn]);
 
   useEffect(() => {
-    let unlocked = false;
+    // Reintentamos en cada toque hasta que el audio quede despierto. Antes esto era
+    // `once`: si el primer intento fallaba (en iOS pasa), no habia segundo y la app
+    // quedaba muda para siempre.
     // Si el motor de sonido falla, hay que verlo en la pantalla. Hasta ahora el fallo
     // quedaba solo en la consola, asi que en el telefono la app se veia bien y no sonaba.
     audioEngine.onAudioError = (message) => setErrorMsg(message);
     const unlockAudio = () => {
-      if (unlocked) return;
-      unlocked = true;
-      void audioEngine.unlock().catch(error => {
+      void audioEngine.unlock().then(() => {
+        if (audioEngine.isAudioRunning()) cleanup();
+      }).catch(error => {
         console.error('Audio unlock failed', error);
         setErrorMsg(error?.message || 'No se pudo iniciar el sonido');
       });
     };
 
-    const addOptions: AddEventListenerOptions = { capture: true, once: true };
+    const addOptions: AddEventListenerOptions = { capture: true };
     const removeOptions: EventListenerOptions = { capture: true };
+    const cleanup = () => {
+      window.removeEventListener('pointerdown', unlockAudio, removeOptions);
+      window.removeEventListener('touchstart', unlockAudio, removeOptions);
+      window.removeEventListener('keydown', unlockAudio, removeOptions);
+    };
     window.addEventListener('pointerdown', unlockAudio, addOptions);
     window.addEventListener('touchstart', unlockAudio, addOptions);
     window.addEventListener('keydown', unlockAudio, addOptions);
 
     return () => {
       audioEngine.onAudioError = null;
-      window.removeEventListener('pointerdown', unlockAudio, removeOptions);
-      window.removeEventListener('touchstart', unlockAudio, removeOptions);
-      window.removeEventListener('keydown', unlockAudio, removeOptions);
+      cleanup();
     };
   }, []);
 

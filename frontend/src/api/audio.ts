@@ -23,7 +23,13 @@ function ensureNativeToneContext() {
     if (!NativeAudioContext) return;
 
     const rawContext = Tone.getContext().rawContext as unknown;
-    if (typeof BaseAudioContext !== 'undefined' && rawContext instanceof BaseAudioContext) {
+    const isNative = typeof BaseAudioContext !== 'undefined' && rawContext instanceof BaseAudioContext;
+
+    // iOS no revive un AudioContext que nacio sin un gesto del usuario: queda
+    // 'suspended' para siempre y resume() no resuelve nunca. Tone crea el suyo al
+    // importarse, o sea antes de que nadie toque nada. Solo nos sirve si ya esta
+    // despierto; si no, lo reemplazamos por uno creado aca, dentro del gesto.
+    if (isNative && (rawContext as BaseAudioContext).state === 'running') {
         nativeToneContextReady = true;
         return;
     }
@@ -732,7 +738,14 @@ export class AudioEngine {
 
         ensureNativeToneContext();
         ensureIosAudioSession();
-        await Tone.start();
+        // Tone.start() puede no resolver nunca si el navegador se niega a despertar
+        // el contexto. Antes eso dejaba el arranque colgado (initInFlight para siempre)
+        // y no se armaba ni el grafo ni el motor. Seguimos igual: el sonido entra
+        // cuando el contexto pase a 'running'.
+        await Promise.race([
+            Tone.start().catch(() => undefined),
+            new Promise<void>(resolve => window.setTimeout(resolve, 3000)),
+        ]);
 
         // Limiter to prevent clipping
         this.limiter = new Tone.Limiter(-1).toDestination();
@@ -820,8 +833,24 @@ export class AudioEngine {
 
     public onAudioError: ((message: string) => void) | null = null;
 
+    public isAudioRunning(): boolean {
+        const raw = Tone.getContext().rawContext as unknown;
+        return !!(typeof BaseAudioContext !== 'undefined'
+            && raw instanceof BaseAudioContext
+            && raw.state === 'running');
+    }
+
     public async unlock() {
         ensureIosAudioSession();
+        ensureNativeToneContext();
+
+        // Despertar el contexto es lo primero y va sin await: si esperamos a que
+        // termine de armarse el grafo, iOS ya dio por vencido el permiso del toque.
+        const raw = Tone.getContext().rawContext as unknown;
+        if (typeof BaseAudioContext !== 'undefined' && raw instanceof BaseAudioContext && raw.state !== 'running') {
+            void (raw as AudioContext).resume().catch(() => undefined);
+        }
+
         surgeWasmHost.onError = (message) => this.onAudioError?.(message);
         await this.init();
         const rawContext = Tone.getContext().rawContext;
