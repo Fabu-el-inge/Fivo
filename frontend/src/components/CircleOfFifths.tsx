@@ -150,6 +150,11 @@ export const CircleOfFifths: React.FC<Props> = ({
     onKeyChange,
 }) => {
     const [isKeyOpen, setIsKeyOpen] = useState(false);
+    const callbacksRef = useRef({ onRootPress, onRootRelease, onRootGlide });
+
+    useEffect(() => {
+        callbacksRef.current = { onRootPress, onRootRelease, onRootGlide };
+    }, [onRootPress, onRootRelease, onRootGlide]);
 
     // Get fingers for a note (default 3)
     const getFingers = (note: string): number => fingersPerNote[note] ?? 3;
@@ -178,19 +183,41 @@ export const CircleOfFifths: React.FC<Props> = ({
     // Ref para adjuntar touchmove nativo no-pasivo (requerido en iOS Safari)
     const svgRef = useRef<SVGSVGElement>(null);
 
+    const getTouchTarget = (touch: Touch) => {
+        const element = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (!element) return null;
+        let noteGroup = element.closest('[data-note]');
+        if (!noteGroup && element.hasAttribute?.('data-note')) noteGroup = element;
+        if (!noteGroup) return null;
+        const note = noteGroup.getAttribute('data-note');
+        if (!note) return null;
+        return {
+            note,
+            isMinor: noteGroup.getAttribute('data-minor') === 'true',
+            touchId: 'touch-' + touch.identifier,
+        };
+    };
+
+    const handleNativeTouchStart = (e: TouchEvent) => {
+        e.preventDefault();
+        Array.from(e.changedTouches).forEach(touch => {
+            const target = getTouchTarget(touch);
+            if (target) callbacksRef.current.onRootPress(target.note, target.isMinor, target.touchId);
+        });
+    };
+
     const handleNativeTouchMove = (e: TouchEvent) => {
-        e.preventDefault(); // Bloquea scroll/zoom en iOS
-        if (e.touches.length === 0) return;
-        // Process each active finger independently
+        e.preventDefault();
         Array.from(e.touches).forEach(touch => {
-            const element = document.elementFromPoint(touch.clientX, touch.clientY);
-            if (!element) return;
-            let noteGroup = element.closest('[data-note]');
-            if (!noteGroup && element.hasAttribute?.('data-note')) noteGroup = element;
-            if (!noteGroup) return;
-            const note = noteGroup.getAttribute('data-note');
-            const isMinor = noteGroup.getAttribute('data-minor') === 'true';
-            if (note) onRootGlide(note, isMinor, 'touch-' + touch.identifier);
+            const target = getTouchTarget(touch);
+            if (target) callbacksRef.current.onRootGlide(target.note, target.isMinor, target.touchId);
+        });
+    };
+
+    const handleNativeTouchEnd = (e: TouchEvent) => {
+        e.preventDefault();
+        Array.from(e.changedTouches).forEach(touch => {
+            callbacksRef.current.onRootRelease('touch-' + touch.identifier);
         });
     };
 
@@ -198,8 +225,16 @@ export const CircleOfFifths: React.FC<Props> = ({
         const svg = svgRef.current;
         if (!svg) return;
         // { passive: false } es necesario para poder llamar preventDefault en iOS
+        svg.addEventListener('touchstart', handleNativeTouchStart, { passive: false });
         svg.addEventListener('touchmove', handleNativeTouchMove, { passive: false });
-        return () => svg.removeEventListener('touchmove', handleNativeTouchMove);
+        svg.addEventListener('touchend', handleNativeTouchEnd, { passive: false });
+        svg.addEventListener('touchcancel', handleNativeTouchEnd, { passive: false });
+        return () => {
+            svg.removeEventListener('touchstart', handleNativeTouchStart);
+            svg.removeEventListener('touchmove', handleNativeTouchMove);
+            svg.removeEventListener('touchend', handleNativeTouchEnd);
+            svg.removeEventListener('touchcancel', handleNativeTouchEnd);
+        };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -301,8 +336,6 @@ export const CircleOfFifths: React.FC<Props> = ({
                             onMouseDown={() => onRootPress(note, false, 'mouse')}
                             onMouseUp={() => onRootRelease('mouse')}
                             onMouseEnter={(e) => { if (e.buttons === 1 && !pressedRoots.has(note)) onRootGlide(note, false, 'mouse'); }}
-                            onTouchStart={(e) => { e.preventDefault(); onRootPress(note, false, 'touch-' + e.changedTouches[0].identifier); }}
-                            onTouchEnd={(e) => { e.preventDefault(); Array.from(e.changedTouches).forEach(t => onRootRelease('touch-' + t.identifier)); }}
                         >
                             {/* Layer 1: Intense Color (Behind) */}
                             <path
@@ -359,8 +392,6 @@ export const CircleOfFifths: React.FC<Props> = ({
                             onMouseDown={() => onRootPress(note, true, 'mouse')}
                             onMouseUp={() => onRootRelease('mouse')}
                             onMouseEnter={(e) => { if (e.buttons === 1 && !pressedRoots.has(note)) onRootGlide(note, true, 'mouse'); }}
-                            onTouchStart={(e) => { e.preventDefault(); onRootPress(note, true, 'touch-' + e.changedTouches[0].identifier); }}
-                            onTouchEnd={(e) => { e.preventDefault(); Array.from(e.changedTouches).forEach(t => onRootRelease('touch-' + t.identifier)); }}
                         >
                             {/* Layer 1: Intense Color (Behind) */}
                             <path

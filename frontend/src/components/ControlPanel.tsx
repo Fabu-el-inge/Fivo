@@ -621,16 +621,31 @@ interface OctaveControlProps {
 }
 
 export const OctaveControl: React.FC<OctaveControlProps> = ({ octave, onOctaveChange }) => {
+    const lastTouchAt = useRef(0);
+
+    const handleTouchStart = (e: React.TouchEvent<HTMLButtonElement>, delta: number) => {
+        e.preventDefault();
+        lastTouchAt.current = performance.now();
+        onOctaveChange(delta);
+    };
+
+    const handleClick = (delta: number) => {
+        if (performance.now() - lastTouchAt.current < 650) return;
+        onOctaveChange(delta);
+    };
+
     return (
         <div className="octave-control glass-panel compact">
             <button
-                onClick={() => onOctaveChange(-1)}
-                onTouchStart={(e) => { e.preventDefault(); onOctaveChange(-1); }}
+                type="button"
+                onClick={() => handleClick(-1)}
+                onTouchStart={(e) => handleTouchStart(e, -1)}
             >−</button>
             <span className="value-display">{octave}</span>
             <button
-                onClick={() => onOctaveChange(1)}
-                onTouchStart={(e) => { e.preventDefault(); onOctaveChange(1); }}
+                type="button"
+                onClick={() => handleClick(1)}
+                onTouchStart={(e) => handleTouchStart(e, 1)}
             >+</button>
         </div>
     );

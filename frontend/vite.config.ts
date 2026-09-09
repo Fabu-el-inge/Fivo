@@ -10,6 +10,12 @@ export default defineConfig({
     port: 5173,
     strictPort: false,
     host: true, // Permite acceso desde red local
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:3001',
+        changeOrigin: true,
+      },
+    },
   },
 
   // Optimizaciones de build

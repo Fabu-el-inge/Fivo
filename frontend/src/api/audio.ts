@@ -6,11 +6,66 @@ export type MetronomeBeatCallback = (beat: number, isAccent: boolean) => void;
 
 type SampleUrls = Record<string, string>;
 type SurgeInstrumentName = Extract<InstrumentName, 'EP2' | 'Messy' | 'Canadians' | 'E-Bass'>;
-const SURGE_ASSET_VERSION = "instrument-tail-20260801-1";
+const SURGE_ASSET_VERSION = "mobile-surge-fast-ios-20260909-2";
 const SURGE_ENGINE_GAIN = 0.78;
 const SURGE_OUTPUT_GAIN = 1.85;
+const SURGE_READY_TIMEOUT_MS = 45000;
+const MOBILE_SURGE_READY_TIMEOUT_MS = 15000;
+const MOBILE_AUDIO_START_TIMEOUT_MS = 700;
+
+const SURGE_PRESET_URLS: Record<SurgeInstrumentName, string> = {
+    EP2: "/surge/presets/ep2.fxp",
+    Messy: "/surge/presets/messy.fxp",
+    Canadians: "/surge/presets/canadians.fxp",
+    "E-Bass": "/surge/presets/ebass.fxp",
+};
 
 let nativeToneContextReady = false;
+
+function isMobileAudioOutput() {
+    if (typeof window === 'undefined') return false;
+    const ua = navigator.userAgent || '';
+    return /Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(ua) ||
+        (navigator.maxTouchPoints > 1 && /Macintosh/i.test(ua)) ||
+        (navigator.maxTouchPoints > 0 && window.matchMedia?.('(pointer: coarse)').matches);
+}
+
+function resolveAfterTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | void> {
+    return new Promise((resolve, reject) => {
+        const timeout = window.setTimeout(() => resolve(), timeoutMs);
+        promise
+            .then(value => {
+                window.clearTimeout(timeout);
+                resolve(value);
+            })
+            .catch(error => {
+                window.clearTimeout(timeout);
+                reject(error);
+            });
+    });
+}
+
+async function startAudioContext(useMobileFallback: boolean) {
+    if (!useMobileFallback) {
+        await Tone.start();
+        return;
+    }
+
+    await resumeRawContext(MOBILE_AUDIO_START_TIMEOUT_MS);
+}
+
+async function resumeRawContext(timeoutMs?: number) {
+    const rawContext = Tone.getContext().rawContext as AudioContext;
+    if (rawContext.state === 'running' || typeof rawContext.resume !== 'function') return;
+
+    const resumePromise = rawContext.resume();
+    if (timeoutMs === undefined) {
+        await resumePromise;
+        return;
+    }
+
+    await resolveAfterTimeout(resumePromise, timeoutMs);
+}
 
 function ensureNativeToneContext() {
     if (nativeToneContextReady || typeof window === 'undefined') return;
@@ -71,33 +126,41 @@ class SurgeWasmHost {
     private async createNode(): Promise<AudioWorkletNode> {
         const toneContext = Tone.getContext();
         const context = toneContext.rawContext as AudioContext;
+        const mobile = isMobileAudioOutput();
         if (!context.audioWorklet) {
             throw new Error("AudioWorklet is not available in this browser");
         }
 
-        const presetsPromise = Promise.all([
-            this.fetchPreset("/surge/presets/ep2.fxp"),
-            this.fetchPreset("/surge/presets/messy.fxp"),
-            this.fetchPreset("/surge/presets/canadians.fxp"),
-            this.fetchPreset("/surge/presets/ebass.fxp"),
+        const ep2PresetPromise = this.fetchPreset(SURGE_PRESET_URLS.EP2);
+        const desktopPresetsPromise = mobile ? null : Promise.all([
+            ep2PresetPromise,
+            this.fetchPreset(SURGE_PRESET_URLS.Messy),
+            this.fetchPreset(SURGE_PRESET_URLS.Canadians),
+            this.fetchPreset(SURGE_PRESET_URLS["E-Bass"]),
         ]);
 
         await context.audioWorklet.addModule(`/surge/fivo-surge-prelude.js?v=${SURGE_ASSET_VERSION}`);
         await context.audioWorklet.addModule(`/surge/fivo-surge-wasm.js?v=${SURGE_ASSET_VERSION}`);
         await context.audioWorklet.addModule(`/surge/fivo-surge-processor.js?v=${SURGE_ASSET_VERSION}`);
 
-        const [ep2, messy, canadians, ebass] = await presetsPromise;
+        const presets: Partial<Record<SurgeInstrumentName, ArrayBuffer>> = {};
+        if (desktopPresetsPromise) {
+            const [ep2, messy, canadians, ebass] = await desktopPresetsPromise;
+            presets.EP2 = ep2;
+            presets.Messy = messy;
+            presets.Canadians = canadians;
+            presets["E-Bass"] = ebass;
+        } else {
+            presets.EP2 = await ep2PresetPromise;
+        }
+
         const node = toneContext.createAudioWorkletNode("fivo-surge", {
             numberOfInputs: 0,
             numberOfOutputs: 1,
             outputChannelCount: [2],
             processorOptions: {
-                presets: {
-                    EP2: ep2,
-                    Messy: messy,
-                    Canadians: canadians,
-                    "E-Bass": ebass,
-                },
+                mobile,
+                presets,
             },
         });
 
@@ -107,7 +170,10 @@ class SurgeWasmHost {
         for (const message of this.messageQueue.splice(0)) node.port.postMessage(message);
 
         await new Promise<void>((resolve, reject) => {
-            const timeout = window.setTimeout(() => reject(new Error("Surge WASM init timed out")), 10000);
+            const timeout = window.setTimeout(
+                () => reject(new Error("Surge WASM init timed out")),
+                mobile ? MOBILE_SURGE_READY_TIMEOUT_MS : SURGE_READY_TIMEOUT_MS
+            );
             const handleMessage = (event: MessageEvent) => {
                 const message = event.data;
                 if (message?.type === "debug") {
@@ -118,6 +184,7 @@ class SurgeWasmHost {
                 if (message?.type === "ready") {
                     window.clearTimeout(timeout);
                     this.ready = true;
+                    console.log("Surge WASM ready");
                     resolve();
                 }
                 if (message?.type === "error") {
@@ -131,6 +198,8 @@ class SurgeWasmHost {
             node.port.addEventListener("message", handleMessage);
             node.port.start?.();
         });
+
+        if (mobile) this.preloadMobilePresets(node);
 
         return node;
     }
@@ -151,6 +220,22 @@ class SurgeWasmHost {
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Failed to load ${url}`);
         return response.arrayBuffer();
+    }
+
+    private preloadMobilePresets(node: AudioWorkletNode) {
+        (["Messy", "Canadians", "E-Bass"] as SurgeInstrumentName[]).forEach(instrument => {
+            void this.fetchPreset(SURGE_PRESET_URLS[instrument])
+                .then(preset => {
+                    try {
+                        node.port.postMessage({ type: "preset", instrument, preset }, [preset]);
+                    } catch {
+                        node.port.postMessage({ type: "preset", instrument, preset });
+                    }
+                })
+                .catch(error => {
+                    console.warn(`Could not preload ${instrument} Surge preset`, error);
+                });
+        });
     }
 
     private connectNode(node: AudioWorkletNode, destination: any) {
@@ -306,6 +391,213 @@ class SurgeWasmInstrument {
             .map(note => Tone.Frequency(note).toMidi())
             .map(note => this.instrument === 'E-Bass' ? note - 12 : note)
             .map(note => Math.max(0, Math.min(127, Math.round(note))));
+    }
+}
+
+class ToneFallbackInstrument {
+    private context: AudioContext;
+    private output: GainNode;
+    private voices = new Map<string, { oscillator: OscillatorNode; gain: GainNode }>();
+    private instrument: InstrumentName;
+    private oscillatorType: OscillatorType;
+    private attack: number;
+    private release: number;
+    private level: number;
+
+    constructor(instrument: InstrumentName) {
+        this.instrument = instrument;
+        this.context = Tone.getContext().rawContext as AudioContext;
+        const options = this.getOptions(instrument);
+        this.oscillatorType = options.oscillatorType;
+        this.attack = options.attack;
+        this.release = options.release;
+        this.level = options.level;
+        this.output = this.context.createGain();
+        this.output.gain.value = options.outputGain * (isMobileAudioOutput() ? 2.8 : 1);
+    }
+
+    get isLoaded(): boolean {
+        return true;
+    }
+
+    whenLoaded(): Promise<void> {
+        return Promise.resolve();
+    }
+
+    connect(destination: any) {
+        const target = this.unwrapAudioTarget(destination?.input ?? destination);
+        try {
+            this.output.connect((target ?? this.context.destination) as AudioNode);
+        } catch {
+            this.output.connect(this.context.destination);
+        }
+        return this;
+    }
+
+    set(options: { attack?: number; release?: number; volume?: number }) {
+        if (options.attack !== undefined) this.attack = options.attack;
+        if (options.release !== undefined) this.release = options.release;
+        if (options.volume !== undefined) this.output.gain.value = Math.pow(10, options.volume / 20);
+    }
+
+    setHoldMode(_enabled: boolean) {
+        // Tone.PolySynth handles held notes through triggerAttack/triggerRelease.
+    }
+
+    activate() {
+        // No preset switch needed for the fallback synth.
+    }
+
+    debug() {
+        return Promise.resolve({
+            fallback: true,
+            nativeFallback: true,
+            instrument: this.instrument,
+            contextState: this.context.state,
+            activeVoices: this.voices.size,
+        });
+    }
+
+    triggerAttack(notes: number | number[], time?: Tone.Unit.Time, velocity: number = 1) {
+        void this.context.resume?.();
+        const noteList = Array.isArray(notes) ? notes : [notes];
+        noteList.forEach(note => this.startVoice(this.toFrequency(note), time, velocity));
+    }
+
+    triggerRelease(notes: number | number[], time?: Tone.Unit.Time) {
+        const noteList = Array.isArray(notes) ? notes : [notes];
+        noteList.forEach(note => this.stopVoice(this.toFrequency(note), time));
+    }
+
+    triggerAttackRelease(notes: number | number[], duration: Tone.Unit.Time, time?: Tone.Unit.Time, velocity: number = 1) {
+        this.triggerAttack(notes, time, velocity);
+        const startTime = this.toTimeSeconds(time);
+        const durationSeconds = typeof duration === 'number' ? duration : Tone.Time(duration).toSeconds();
+        window.setTimeout(() => this.triggerRelease(notes), Math.max(1, (startTime + durationSeconds - this.context.currentTime) * 1000));
+    }
+
+    releaseAll(time?: Tone.Unit.Time) {
+        [...this.voices.keys()].forEach(key => this.stopVoiceByKey(key, time, true));
+    }
+
+    private getOptions(instrument: InstrumentName) {
+        switch (instrument) {
+            case 'EP2':
+                return {
+                    oscillatorType: 'triangle' as OscillatorType,
+                    attack: 0.006,
+                    release: 0.75,
+                    level: 0.22,
+                    outputGain: 1.0,
+                };
+            case 'Messy':
+                return {
+                    oscillatorType: 'sawtooth' as OscillatorType,
+                    attack: 0.012,
+                    release: 0.55,
+                    level: 0.16,
+                    outputGain: 0.9,
+                };
+            case 'Canadians':
+                return {
+                    oscillatorType: 'sine' as OscillatorType,
+                    attack: 0.025,
+                    release: 1.1,
+                    level: 0.24,
+                    outputGain: 1.0,
+                };
+            case 'E-Bass':
+                return {
+                    oscillatorType: 'square' as OscillatorType,
+                    attack: 0.004,
+                    release: 0.22,
+                    level: 0.18,
+                    outputGain: 0.9,
+                };
+        }
+    }
+
+    private startVoice(freq: number, time?: Tone.Unit.Time, velocity: number = 1) {
+        const key = this.voiceKey(freq);
+        this.stopVoiceByKey(key, undefined, true);
+
+        const startTime = this.toTimeSeconds(time);
+        const oscillator = this.context.createOscillator();
+        const gain = this.context.createGain();
+        oscillator.type = this.oscillatorType;
+        oscillator.frequency.setValueAtTime(freq, startTime);
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(this.level * Math.max(0.05, Math.min(1, velocity)), startTime + this.attack);
+        oscillator.connect(gain).connect(this.output);
+        oscillator.start(startTime);
+        this.voices.set(key, { oscillator, gain });
+    }
+
+    private stopVoice(freq: number, time?: Tone.Unit.Time) {
+        this.stopVoiceByKey(this.voiceKey(freq), time, false);
+    }
+
+    private stopVoiceByKey(key: string, time?: Tone.Unit.Time, hard = false) {
+        const voice = this.voices.get(key);
+        if (!voice) return;
+
+        this.voices.delete(key);
+        const stopTime = this.toTimeSeconds(time);
+        const release = hard ? 0.025 : Math.max(0.04, this.release);
+
+        try {
+            voice.gain.gain.cancelScheduledValues(stopTime);
+            voice.gain.gain.setValueAtTime(voice.gain.gain.value, stopTime);
+            voice.gain.gain.linearRampToValueAtTime(0, stopTime + release);
+            voice.oscillator.stop(stopTime + release + 0.02);
+            window.setTimeout(() => {
+                voice.oscillator.disconnect();
+                voice.gain.disconnect();
+            }, (release + 0.08) * 1000);
+        } catch {
+            // The voice may have already been stopped.
+        }
+    }
+
+    private toFrequency(note: number) {
+        return Tone.Frequency(note).toFrequency();
+    }
+
+    private toTimeSeconds(time?: Tone.Unit.Time) {
+        if (time === undefined) return this.context.currentTime;
+        const seconds = typeof time === 'number' ? time : Tone.Time(time).toSeconds();
+        return Math.max(this.context.currentTime, seconds);
+    }
+
+    private voiceKey(freq: number) {
+        return freq.toFixed(2);
+    }
+
+    private unwrapAudioTarget(target: any): AudioNode | AudioParam | null {
+        const seen = new Set<any>();
+        let current = target;
+
+        while (current && !seen.has(current)) {
+            seen.add(current);
+
+            if (typeof AudioNode !== "undefined" && current instanceof AudioNode) return current;
+            if (typeof AudioParam !== "undefined" && current instanceof AudioParam) return current;
+            if (current._nativeAudioNode) {
+                current = current._nativeAudioNode;
+                continue;
+            }
+            if (current._nativeAudioParam) {
+                current = current._nativeAudioParam;
+                continue;
+            }
+            if (current.input && current.input !== current) {
+                current = current.input;
+                continue;
+            }
+            return null;
+        }
+
+        return null;
     }
 }
 
@@ -644,8 +936,11 @@ export class AudioEngine {
     private surgeOutput: Tone.Gain | null = null;
     private surgeFilter: Tone.Filter | null = null;
     private surgeExpressionGain: Tone.Gain | null = null;
+    private usingFallbackInstruments = false;
     private initialized = false;
     private initPromise: Promise<void> | null = null;
+    private mobilePrimeNodes: { oscillator: OscillatorNode; gain: GainNode } | null = null;
+    private mobilePrimeStopTimeout: number | null = null;
 
     // Envelope Settings (0-100 knob values)
     private attackVal: number = 20;   // 0-100 → log 1ms..1500ms
@@ -698,7 +993,8 @@ export class AudioEngine {
         if (this.initialized) return;
 
         ensureNativeToneContext();
-        await Tone.start();
+        const useMobileFallback = isMobileAudioOutput();
+        await startAudioContext(useMobileFallback);
 
         // Limiter to prevent clipping
         this.limiter = new Tone.Limiter(-1).toDestination();
@@ -733,15 +1029,28 @@ export class AudioEngine {
             rolloff: -12,
         }).connect(this.expressionGain);
 
-        this.ep2Sampler = new SurgeWasmInstrument('EP2').connect(this.surgeOutput);
-        this.polySynth = this.ep2Sampler;
-        this.synth = this.ep2Sampler;
+        const rawContext = Tone.getContext().rawContext as AudioContext;
+        const canUseSurge = Boolean(
+            rawContext.audioWorklet &&
+            (typeof window === 'undefined' || window.isSecureContext)
+        );
+        if (canUseSurge) {
+            this.ep2Sampler = new SurgeWasmInstrument('EP2').connect(this.surgeOutput);
+            this.polySynth = this.ep2Sampler;
+            this.synth = this.ep2Sampler;
 
-        this.messySampler = new SurgeWasmInstrument('Messy').connect(this.surgeOutput);
+            this.messySampler = new SurgeWasmInstrument('Messy').connect(this.surgeOutput);
 
-        this.canadiansSampler = new SurgeWasmInstrument('Canadians').connect(this.surgeOutput);
+            this.canadiansSampler = new SurgeWasmInstrument('Canadians').connect(this.surgeOutput);
 
-        this.ebassSampler = new SurgeWasmInstrument('E-Bass').connect(this.surgeOutput);
+            this.ebassSampler = new SurgeWasmInstrument('E-Bass').connect(this.surgeOutput);
+        } else {
+            this.activateFallbackInstruments(useMobileFallback
+                ? 'Mobile-compatible WebAudio fallback'
+                : window.isSecureContext
+                    ? 'AudioWorklet is not available in this browser'
+                    : 'Surge AudioWorklet requires a secure context');
+        }
 
         this.applyHoldModeToSamplers();
 
@@ -784,12 +1093,119 @@ export class AudioEngine {
         console.log("Audio Engine Initialized with Tone.js");
     }
 
+    private activateFallbackInstruments(reason: unknown) {
+        if (this.usingFallbackInstruments) return;
+
+        console.warn('Using Tone.js fallback instruments', reason);
+        try {
+            this.releaseEveryInstrument(true);
+        } catch {
+            // The primary engine may have failed before it became releasable.
+        }
+
+        const destination = this.filter ?? this.limiter;
+        this.usingFallbackInstruments = true;
+        this.ep2Sampler = new ToneFallbackInstrument('EP2').connect(destination);
+        this.polySynth = this.ep2Sampler;
+        this.messySampler = new ToneFallbackInstrument('Messy').connect(destination);
+        this.canadiansSampler = new ToneFallbackInstrument('Canadians').connect(destination);
+        this.ebassSampler = new ToneFallbackInstrument('E-Bass').connect(destination);
+        this.synth = null;
+        this.applyHoldModeToSamplers();
+        this.setInstrument(this.currentInstrument);
+    }
+
     public async unlock() {
         await this.init();
-        const rawContext = Tone.getContext().rawContext;
-        if (typeof AudioContext !== 'undefined' && rawContext instanceof AudioContext && rawContext.state !== 'running') {
-            await rawContext.resume();
+        await resumeRawContext();
+    }
+
+    public async prepareForPlayback() {
+        try {
+            await this.unlock();
+            await this.ensureActiveLoaded();
+            await resumeRawContext();
+        } finally {
+            this.stopMobilePrime();
         }
+    }
+
+    public primeUserGesture() {
+        if (!isMobileAudioOutput()) return;
+
+        try {
+            ensureNativeToneContext();
+            const rawContext = Tone.getContext().rawContext as AudioContext;
+            const resumePromise = rawContext.state !== 'running' && typeof rawContext.resume === 'function'
+                ? rawContext.resume()
+                : null;
+            resumePromise?.catch(() => {});
+
+            if (
+                typeof rawContext.createOscillator !== 'function' ||
+                typeof rawContext.createGain !== 'function' ||
+                !rawContext.destination
+            ) {
+                return;
+            }
+
+            if (!this.mobilePrimeNodes) {
+                const oscillator = rawContext.createOscillator();
+                const gain = rawContext.createGain();
+                gain.gain.value = 0.00003;
+                oscillator.frequency.value = 440;
+                oscillator.connect(gain).connect(rawContext.destination);
+                oscillator.start(rawContext.currentTime);
+                this.mobilePrimeNodes = { oscillator, gain };
+            }
+
+            if (this.mobilePrimeStopTimeout !== null) {
+                window.clearTimeout(this.mobilePrimeStopTimeout);
+            }
+            this.mobilePrimeStopTimeout = window.setTimeout(() => {
+                this.stopMobilePrime();
+            }, 8000);
+        } catch {
+            // iOS can throw while suspended; the real engine init retries on the same gesture.
+        }
+    }
+
+    public preloadMobileAssets(signal?: AbortSignal) {
+        if (!isMobileAudioOutput()) return;
+
+        [
+            `/surge/fivo-surge-prelude.js?v=${SURGE_ASSET_VERSION}`,
+            `/surge/fivo-surge-wasm.js?v=${SURGE_ASSET_VERSION}`,
+            `/surge/fivo-surge-processor.js?v=${SURGE_ASSET_VERSION}`,
+            SURGE_PRESET_URLS.EP2,
+        ].forEach(url => {
+            fetch(url, {
+                cache: 'force-cache',
+                signal,
+            }).catch(() => {});
+        });
+    }
+
+    private stopMobilePrime() {
+        if (this.mobilePrimeStopTimeout !== null) {
+            window.clearTimeout(this.mobilePrimeStopTimeout);
+            this.mobilePrimeStopTimeout = null;
+        }
+
+        const nodes = this.mobilePrimeNodes;
+        this.mobilePrimeNodes = null;
+        if (!nodes) return;
+
+        try {
+            nodes.oscillator.stop();
+        } catch {
+            // The oscillator may already have been stopped by the browser.
+        }
+
+        window.setTimeout(() => {
+            nodes.oscillator.disconnect();
+            nodes.gain.disconnect();
+        }, 30);
     }
 
     // Attack: 0-100 → logarítmico 1ms..1500ms
@@ -804,7 +1220,7 @@ export class AudioEngine {
             activeFreqs: [...this.activeFreqs],
             synthInstrument: this.synth?.instrument,
             surgeLoaded: this.synth?.isLoaded,
-            contextState: rawContext instanceof AudioContext ? rawContext.state : 'unknown',
+            contextState: (rawContext as { state?: string })?.state ?? 'unknown',
             worklet: await this.synth?.debug?.(),
         };
     }
@@ -833,13 +1249,31 @@ export class AudioEngine {
         return 0.85 + (val / 100) * 0.15;
     }
 
+    private fallbackExpressionToHz(val: number): number {
+        return 500 * Math.pow(16000 / 500, val / 100);
+    }
+
+    private fallbackExpressionToGain(val: number): number {
+        return 0.35 + (val / 100) * 0.75;
+    }
+
     public setExpressionControls(val: number) {
         this.expressionVal = Math.max(0, Math.min(100, val));
         if (this.filter) {
-            this.filter.frequency.rampTo(this.expressionToHz(this.expressionVal), 0.05);
+            this.filter.frequency.rampTo(
+                this.usingFallbackInstruments
+                    ? this.fallbackExpressionToHz(this.expressionVal)
+                    : this.expressionToHz(this.expressionVal),
+                0.05
+            );
         }
         if (this.expressionGain) {
-            this.expressionGain.gain.rampTo(this.expressionToGain(this.expressionVal), 0.05);
+            this.expressionGain.gain.rampTo(
+                this.usingFallbackInstruments
+                    ? this.fallbackExpressionToGain(this.expressionVal)
+                    : this.expressionToGain(this.expressionVal),
+                0.05
+            );
         }
         if (this.surgeFilter) {
             this.surgeFilter.frequency.rampTo(this.expressionToHz(this.expressionVal), 0.05);
@@ -933,6 +1367,8 @@ export class AudioEngine {
         this.strumEndTime = 0;
         this.touchFreqs.clear();
         this.touchMidiNotes.clear();
+        this.releasedTouchIds.clear();
+        this.touchAttackStartedAt.clear();
     }
 
     private applyEnvelope(envelope: { attack: number; decay: number; sustain: number; release: number }) {
@@ -967,7 +1403,15 @@ export class AudioEngine {
     private async ensureActiveLoaded() {
         const sampler = this.getSamplerForInstrument(this.currentInstrument);
         if (sampler?.whenLoaded && !sampler.isLoaded) {
-            await sampler.whenLoaded();
+            try {
+                await sampler.whenLoaded();
+            } catch (error) {
+                this.activateFallbackInstruments(error);
+                const fallback = this.getSamplerForInstrument(this.currentInstrument);
+                if (fallback?.whenLoaded && !fallback.isLoaded) {
+                    await fallback.whenLoaded();
+                }
+            }
         }
     }
 
@@ -976,9 +1420,10 @@ export class AudioEngine {
             ? [midiNotes[0]]
             : midiNotes;
         const transpose = this.instrumentTransposeSemitones(this.currentInstrument);
-        return transpose === 0
+        const totalTranspose = transpose;
+        return totalTranspose === 0
             ? notes
-            : notes.map(note => Math.max(0, Math.min(127, note + transpose)));
+            : notes.map(note => Math.max(0, Math.min(127, note + totalTranspose)));
     }
 
     private instrumentTransposeSemitones(instrument: InstrumentName) {
@@ -1026,6 +1471,8 @@ export class AudioEngine {
     // Multi-touch: per-touch frequency tracking
     private touchFreqs: Map<string, number[]> = new Map();
     private touchMidiNotes: Map<string, number[]> = new Map();
+    private releasedTouchIds: Set<string> = new Set();
+    private touchAttackStartedAt: Map<string, number> = new Map();
     // Multi-touch: per-touch strum timeout IDs (para poder cancelarlos en release)
     private touchStrumTimeouts: Map<string, number[]> = new Map();
 
@@ -1094,6 +1541,11 @@ export class AudioEngine {
     // Multi-touch: attack notes for a specific touch without stopping other touches
     public async attackNotesForTouch(midiNotes: number[], touchId: string) {
         const token = this.attackCancelToken;
+        const isTouch = touchId.startsWith('touch-');
+        if (isTouch) {
+            this.releasedTouchIds.delete(touchId);
+            this.touchAttackStartedAt.set(touchId, performance.now());
+        }
         await this.init();
         await this.ensureActiveLoaded();
         if (this.attackCancelToken !== token) return;
@@ -1120,6 +1572,16 @@ export class AudioEngine {
         const toAttack = newFreqs.filter(f => !alreadySounding.has(f.toFixed(2)));
 
         this.applyEnvelope(this.getEnvelopeSettings());
+        if (isTouch && this.releasedTouchIds.has(touchId)) {
+            this.releasedTouchIds.delete(touchId);
+            this.touchFreqs.delete(touchId);
+            this.touchMidiNotes.delete(touchId);
+            this.touchAttackStartedAt.delete(touchId);
+            this.syncActiveMidiFromTouches();
+            if (toAttack.length > 0) this.synth.triggerAttackRelease(toAttack, 0.16);
+            return;
+        }
+
         if (toAttack.length > 0) this.synth.triggerAttack(toAttack);
     }
 
@@ -1127,6 +1589,11 @@ export class AudioEngine {
     // totalMs = duración total del strum. Curva cuadrática: acelera hacia las notas finales.
     public async attackNotesStrumForTouch(midiNotes: number[], totalMs: number = 80, touchId: string) {
         const token = this.attackCancelToken;
+        const isTouch = touchId.startsWith('touch-');
+        if (isTouch) {
+            this.releasedTouchIds.delete(touchId);
+            this.touchAttackStartedAt.set(touchId, performance.now());
+        }
         await this.init();
         await this.ensureActiveLoaded();
         if (this.attackCancelToken !== token) return;
@@ -1152,6 +1619,16 @@ export class AudioEngine {
         }
 
         this.applyEnvelope(this.getEnvelopeSettings());
+        if (isTouch && this.releasedTouchIds.has(touchId)) {
+            this.releasedTouchIds.delete(touchId);
+            this.touchFreqs.delete(touchId);
+            this.touchMidiNotes.delete(touchId);
+            this.touchAttackStartedAt.delete(touchId);
+            this.syncActiveMidiFromTouches();
+            if (newFreqs.length > 0) this.synth.triggerAttackRelease(newFreqs, 0.16);
+            return;
+        }
+
         const N = newFreqs.length;
         newFreqs.forEach((freq, index) => {
             // Curva cuadrática ease-in: slow start → fast end
@@ -1173,7 +1650,11 @@ export class AudioEngine {
     // Multi-touch: release notes for a specific touch
     public releaseNotesForTouch(touchId: string) {
         if (this.holdMode) return;
-        if (!this.synth) return;
+        const isTouch = touchId.startsWith('touch-');
+        if (!this.synth) {
+            if (isTouch) this.releasedTouchIds.add(touchId);
+            return;
+        }
 
         // Cancelar strum timeouts pendientes de este touch (fix de notas trabadas)
         const pending = this.touchStrumTimeouts.get(touchId);
@@ -1181,19 +1662,37 @@ export class AudioEngine {
 
         const freqs = this.touchFreqs.get(touchId);
         if (!freqs || freqs.length === 0) {
+            if (isTouch) this.releasedTouchIds.add(touchId);
             this.touchMidiNotes.delete(touchId);
             this.syncActiveMidiFromTouches();
             return;
         }
-        this.touchFreqs.delete(touchId);
-        this.touchMidiNotes.delete(touchId);
-        this.syncActiveMidiFromTouches();
 
-        // Only release freqs not still held by another touch
-        const allOtherFreqs = new Set<string>();
-        this.touchFreqs.forEach(f => f.forEach(freq => allOtherFreqs.add(freq.toFixed(2))));
-        const toRelease = freqs.filter(f => !allOtherFreqs.has(f.toFixed(2)));
-        if (toRelease.length > 0) this.synth.triggerRelease(toRelease);
+        const releaseStartedAt = this.touchAttackStartedAt.get(touchId);
+        const minTouchMs = isTouch ? 140 : 0;
+        const elapsedMs = releaseStartedAt === undefined ? minTouchMs : performance.now() - releaseStartedAt;
+        const release = () => {
+            if (releaseStartedAt !== undefined && this.touchAttackStartedAt.get(touchId) !== releaseStartedAt) return;
+
+            this.touchFreqs.delete(touchId);
+            this.touchMidiNotes.delete(touchId);
+            this.touchAttackStartedAt.delete(touchId);
+            this.syncActiveMidiFromTouches();
+
+            // Only release freqs not still held by another touch
+            const allOtherFreqs = new Set<string>();
+            this.touchFreqs.forEach(f => f.forEach(freq => allOtherFreqs.add(freq.toFixed(2))));
+            const toRelease = freqs.filter(f => !allOtherFreqs.has(f.toFixed(2)));
+            if (toRelease.length > 0) this.synth.triggerRelease(toRelease);
+        };
+
+        const waitMs = Math.max(0, minTouchMs - elapsedMs);
+        if (waitMs > 0) {
+            window.setTimeout(release, waitMs);
+            return;
+        }
+
+        release();
     }
 
     // Hold mode: Release (stop sound)
@@ -1450,6 +1949,9 @@ declare global {
     }
 }
 
-if (import.meta.env.DEV && typeof window !== 'undefined') {
-    window.__fivoAudioEngine = audioEngine;
+if (typeof window !== 'undefined') {
+    const audioDebugEnabled = new URLSearchParams(window.location.search).has('audioDebug');
+    if (import.meta.env.DEV || audioDebugEnabled) {
+        window.__fivoAudioEngine = audioEngine;
+    }
 }

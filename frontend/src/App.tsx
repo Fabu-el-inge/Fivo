@@ -38,6 +38,20 @@ const getMinorRoot = (minorNote: string): string => {
   return minorNote.replace('m', '');
 };
 
+type FullscreenRoot = HTMLElement & {
+  webkitRequestFullscreen?: () => Promise<void> | void;
+};
+
+type FullscreenDoc = Document & {
+  webkitFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => Promise<void> | void;
+};
+
+function isMobileAudioActivationTarget() {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia?.('(pointer: coarse)').matches || window.innerWidth <= 1024;
+}
+
 function FivoWorkspace() {
   const [currentKey, setCurrentKey] = useState('C');
   const [pressedRoot, setPressedRoot] = useState<string | null>(null);
@@ -108,6 +122,9 @@ function FivoWorkspace() {
   const currentPressedRef = useRef<string | null>(null); // Track current pressed note (avoid state timing issues)
   const strumInversionRef = useRef<Record<string, number>>({}); // Inversion cycle per note for strum
   const keyboardHeldKeys = useRef<Set<string>>(new Set());
+  const [audioActivationRequired, setAudioActivationRequired] = useState(() => isMobileAudioActivationTarget());
+  const [audioActivationState, setAudioActivationState] = useState<'idle' | 'loading' | 'error'>('idle');
+  const audioActivationStartedRef = useRef(false);
 
   // Hold State - keeps chord/arp playing after release
   const [isHold, setIsHold] = useState(false);
@@ -124,6 +141,7 @@ function FivoWorkspace() {
     const unlockAudio = () => {
       if (unlocked) return;
       unlocked = true;
+      audioEngine.primeUserGesture();
       void audioEngine.unlock().catch(error => {
         console.error('Audio unlock failed', error);
       });
@@ -140,6 +158,56 @@ function FivoWorkspace() {
       window.removeEventListener('touchstart', unlockAudio, removeOptions);
       window.removeEventListener('keydown', unlockAudio, removeOptions);
     };
+  }, []);
+
+  useEffect(() => {
+    const updateAudioGate = () => {
+      if (!audioActivationStartedRef.current) {
+        setAudioActivationRequired(isMobileAudioActivationTarget());
+      }
+    };
+
+    updateAudioGate();
+    window.addEventListener('resize', updateAudioGate);
+    window.addEventListener('orientationchange', updateAudioGate);
+
+    return () => {
+      window.removeEventListener('resize', updateAudioGate);
+      window.removeEventListener('orientationchange', updateAudioGate);
+    };
+  }, []);
+
+  const handleMobileAudioActivation = useCallback((event: { preventDefault: () => void; stopPropagation: () => void }) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (audioActivationStartedRef.current) return;
+
+    audioActivationStartedRef.current = true;
+    setAudioActivationState('loading');
+    audioEngine.primeUserGesture();
+
+    void audioEngine.prepareForPlayback()
+      .then(() => {
+        setAudioActivationRequired(false);
+        setAudioActivationState('idle');
+      })
+      .catch(error => {
+        console.error('Mobile audio activation failed', error);
+        audioActivationStartedRef.current = false;
+        setAudioActivationState('error');
+      });
+  }, []);
+
+  useEffect(() => {
+    const shouldPreloadSurge =
+      window.matchMedia?.('(pointer: coarse)').matches ||
+      window.innerWidth <= 1024;
+    if (!shouldPreloadSurge) return;
+
+    const controller = new AbortController();
+    audioEngine.preloadMobileAssets(controller.signal);
+
+    return () => controller.abort();
   }, []);
 
   const toggleHold = useCallback(() => {
@@ -390,6 +458,46 @@ function FivoWorkspace() {
   const [chordData, setChordData] = useState<FivoResponse | null>(null);
   const [contextData, setContextData] = useState<FivoContextResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [fullscreenAvailable, setFullscreenAvailable] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const doc = document as FullscreenDoc;
+    const root = document.documentElement as FullscreenRoot;
+
+    setFullscreenAvailable(Boolean(root.requestFullscreen || root.webkitRequestFullscreen));
+
+    const syncFullscreen = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement || doc.webkitFullscreenElement));
+    };
+
+    syncFullscreen();
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    document.addEventListener('webkitfullscreenchange', syncFullscreen);
+    return () => {
+      document.removeEventListener('fullscreenchange', syncFullscreen);
+      document.removeEventListener('webkitfullscreenchange', syncFullscreen);
+    };
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    const doc = document as FullscreenDoc;
+    const root = document.documentElement as FullscreenRoot;
+    const active = Boolean(document.fullscreenElement || doc.webkitFullscreenElement);
+
+    try {
+      if (active) {
+        const exit = document.exitFullscreen?.bind(document) ?? doc.webkitExitFullscreen?.bind(doc);
+        await exit?.();
+        return;
+      }
+
+      const enter = root.requestFullscreen?.bind(root) ?? root.webkitRequestFullscreen?.bind(root);
+      await enter?.();
+    } catch (error) {
+      console.error('Fullscreen toggle failed', error);
+    }
+  }, []);
 
   const updateContext = useCallback(async (key: string, styleParam: FivoStyle) => {
     try {
@@ -634,6 +742,10 @@ function FivoWorkspace() {
 
   // User presses on a chord - START sound (síncrono: notas calculadas localmente)
   const handleRootPress = (note: string, isMinor: boolean, touchId: string = 'mouse') => {
+    audioEngine.primeUserGesture();
+    void audioEngine.unlock().catch(error => {
+      console.error('Audio unlock failed', error);
+    });
     lastPlayedRootRef.current = { note, isMinor };
     const apiRoot = isMinor ? getMinorRoot(note) : note;
 
@@ -1052,6 +1164,28 @@ function FivoWorkspace() {
       {/* Error Banner - Fixed top */}
       {errorMsg && <div className="error-banner">{errorMsg}</div>}
 
+      {audioActivationRequired && (
+        <div
+          className="mobile-audio-gate"
+          onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            className={`mobile-audio-button ${audioActivationState === 'loading' ? 'loading' : ''}`}
+            disabled={audioActivationState === 'loading'}
+            onPointerDown={handleMobileAudioActivation}
+            onTouchStart={handleMobileAudioActivation}
+            onClick={handleMobileAudioActivation}
+          >
+            {audioActivationState === 'loading' ? 'Activando...' : 'Activar audio'}
+          </button>
+          {audioActivationState === 'error' && (
+            <span className="mobile-audio-error">Toca otra vez</span>
+          )}
+        </div>
+      )}
+
       {/* Main Layout - Object Centric */}
       {/* Main Layout - Grid: Left | Center | Right */}
       <div className="main-layout">
@@ -1127,6 +1261,17 @@ function FivoWorkspace() {
             >
               hold
             </button>
+            {fullscreenAvailable && (
+              <button
+                type="button"
+                className={`hold-btn fullscreen-toggle ${isFullscreen ? 'active' : ''}`}
+                aria-pressed={isFullscreen}
+                aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+                onClick={toggleFullscreen}
+              >
+                {isFullscreen ? 'exit' : 'full'}
+              </button>
+            )}
           </div>
         </div>
 

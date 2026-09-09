@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const { execFile } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
@@ -34,6 +35,11 @@ app.use('/api/', limiter);
 const isWindows = process.platform === 'win32';
 const CLI_PATH = path.resolve(__dirname, '../build/bin/fivo_demo' + (isWindows ? '.exe' : '')).replace(/\\/g, '/');
 const LIB_PATH = path.resolve(__dirname, '../build/bin').replace(/\\/g, '/');
+const WINDOWS_DLL_PATHS = [
+    LIB_PATH.replace(/\//g, '\\'),
+    'C:\\msys64\\mingw64\\bin',
+    'C:\\mingw64\\bin'
+].filter(p => !isWindows || fs.existsSync(p));
 
 // Environment variables for execFile (needed for shared libraries)
 const execEnv = {
@@ -42,7 +48,7 @@ const execEnv = {
     LD_LIBRARY_PATH: LIB_PATH,   // Linux (for Docker/Railway)
     // Windows: agregar directorio de DLL al PATH
     PATH: isWindows
-        ? `${LIB_PATH.replace(/\//g, '\\')};${process.env.PATH}`
+        ? `${WINDOWS_DLL_PATHS.join(';')};${process.env.PATH || ''}`
         : process.env.PATH
 };
 

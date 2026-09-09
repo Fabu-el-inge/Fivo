@@ -86,6 +86,64 @@ body {
   justify-content: center;
 }
 
+.mobile-audio-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: rgba(8, 8, 10, 0.62);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.mobile-audio-button {
+  min-width: 190px;
+  min-height: 64px;
+  border: 1px solid rgba(255, 122, 60, 0.72);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(34, 34, 39, 0.96), rgba(12, 12, 15, 0.96));
+  color: var(--text-primary);
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.62),
+    0 0 22px rgba(255, 122, 60, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.mobile-audio-button:active {
+  transform: translateY(1px);
+  border-color: var(--accent-active);
+}
+
+.mobile-audio-button.loading {
+  opacity: 0.82;
+  cursor: wait;
+}
+
+.mobile-audio-error {
+  color: #ff8a6c;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media (min-width: 1241px) and (pointer: fine) {
+  .mobile-audio-gate {
+    display: none;
+  }
+}
+
 /* ===== TEMPORARY ROLE LOGIN ===== */
 .login-screen {
   width: 100vw;
@@ -4026,4 +4084,629 @@ body {
 }
 .wheel-bottom-row .octave-control {
   margin-left: auto;
+}
+
+.fullscreen-toggle {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+/* =====================================================================
+   Tablet and mobile instrument layout
+   Desktop MK1 styles above remain the source of truth.
+   ===================================================================== */
+
+@media (max-width: 1240px), (pointer: coarse) and (max-height: 1050px) {
+  html,
+  body,
+  #root {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    overscroll-behavior: none;
+    touch-action: none;
+  }
+
+  .app-container {
+    height: 100dvh;
+    padding: clamp(8px, 1.6vmin, 16px);
+  }
+
+  .main-layout {
+    width: 100%;
+    height: 100%;
+    grid-template-columns: minmax(82px, 0.55fr) minmax(0, 1fr) minmax(184px, 0.78fr);
+    column-gap: clamp(8px, 1.4vmin, 18px);
+    padding: clamp(12px, 2vmin, 22px);
+    border-radius: 24px;
+  }
+
+  .main-layout::before {
+    border-radius: 24px;
+  }
+
+  .tools-left-container,
+  .tools-right-container {
+    min-width: 0;
+    padding: 0;
+  }
+
+  .tools-left-container {
+    align-items: center;
+  }
+
+  .tools-right-container {
+    align-items: stretch;
+    gap: clamp(10px, 1.4vmin, 14px);
+  }
+
+  .circle-wrapper {
+    width: min(62vmin, 55vw);
+    height: min(62vmin, 55vw);
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .effects-box {
+    min-height: 0;
+    padding: 18px 16px !important;
+    gap: 14px !important;
+    border-radius: 18px;
+  }
+
+  .vfader-wrap {
+    gap: 12px !important;
+  }
+
+  .vfader-track {
+    height: min(260px, 36vh) !important;
+  }
+
+  .arpeggiator-control,
+  .style-selector-apple,
+  .jazzy-control,
+  .wheel-bottom-row {
+    border-radius: 18px;
+  }
+
+  .arpeggiator-control {
+    width: min(250px, 100%);
+    margin-bottom: 0;
+    padding: 14px !important;
+  }
+
+  .arp-demo-row {
+    grid-template-columns: 48px 82px 58px;
+    gap: 8px;
+  }
+
+  .style-selector-apple {
+    min-width: 0;
+    min-height: 0;
+    padding: 18px 18px !important;
+    gap: 14px !important;
+  }
+
+  .style-list-apple {
+    gap: 10px;
+  }
+
+  .style-item-apple {
+    font-size: 17px !important;
+    line-height: 1.1;
+  }
+
+  .jazzy-control {
+    min-width: 0;
+    padding: 15px 18px !important;
+    justify-content: center;
+  }
+
+  .wheel-bottom-row {
+    width: min(580px, 96%);
+    min-height: 70px;
+    gap: 14px !important;
+    padding: 12px 18px !important;
+    margin: 16px auto 0 !important;
+  }
+
+  .hold-btn {
+    min-height: 42px;
+    padding: 8px 13px !important;
+    touch-action: manipulation;
+  }
+
+  .fullscreen-toggle {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .octave-control {
+    gap: 12px;
+    padding: 6px 8px;
+  }
+
+  .octave-control button,
+  .key-trigger {
+    width: 44px;
+    height: 44px;
+    touch-action: manipulation;
+  }
+
+  .app-header {
+    right: 18px;
+    bottom: 12px;
+  }
+
+  .app-header h1 {
+    font-size: 20px;
+  }
+
+  .app-header::after {
+    display: none;
+  }
+
+  .bottom-left-corner {
+    left: 18px;
+    bottom: 14px;
+  }
+}
+
+@media (orientation: portrait) and (max-width: 1240px), (pointer: coarse) and (orientation: portrait) {
+  .main-layout {
+    grid-template-columns: 94px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      "left right"
+      "center center";
+    row-gap: clamp(10px, 1.6vh, 18px);
+    align-items: stretch;
+  }
+
+  .tools-left-container {
+    grid-area: left;
+    height: auto;
+    justify-content: stretch;
+    align-items: stretch;
+    overflow: visible;
+  }
+
+  .tools-right-container {
+    grid-area: right;
+    height: auto;
+    display: grid;
+    grid-template-columns: minmax(236px, 0.95fr) minmax(190px, 1fr);
+    gap: clamp(8px, 1.2vmin, 12px);
+    align-items: stretch;
+    overflow: visible;
+  }
+
+  .center-panel {
+    grid-area: center;
+    min-height: 0;
+    justify-content: center;
+    gap: clamp(8px, 1.5vh, 14px);
+  }
+
+  .effects-box {
+    height: 100%;
+    padding: 14px 12px !important;
+  }
+
+  .vfader-track {
+    height: clamp(120px, 16vh, 170px) !important;
+  }
+
+  .arpeggiator-control {
+    width: 100%;
+    min-height: 132px;
+  }
+
+  .rec-instrument-row {
+    display: grid;
+    grid-template-columns: minmax(132px, 1fr) minmax(120px, auto);
+    gap: clamp(8px, 1.2vmin, 12px) !important;
+  }
+
+  .style-selector-apple {
+    min-height: 132px;
+    padding: 14px 16px !important;
+  }
+
+  .style-list-apple {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    justify-items: center;
+    gap: 12px 16px;
+  }
+
+  .jazzy-control {
+    min-height: 132px;
+    flex-direction: column;
+    gap: 8px !important;
+    padding: 14px 12px !important;
+  }
+
+  .circle-wrapper {
+    width: min(90vw, calc(100dvh - 290px), 720px);
+    height: min(90vw, calc(100dvh - 290px), 720px);
+  }
+
+  .wheel-bottom-row {
+    width: min(620px, 94vw);
+    margin-top: clamp(8px, 1.5vh, 16px) !important;
+  }
+
+  .circle-key-options {
+    top: 50%;
+    left: 50%;
+    width: min(560px, calc(100vw - 32px));
+    max-height: min(360px, calc(100dvh - 220px));
+    transform: translate(-50%, -50%);
+    position: fixed;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 820px) and (pointer: coarse),
+       (orientation: landscape) and (max-width: 1240px) {
+  .main-layout {
+    grid-template-columns: minmax(72px, 0.5fr) minmax(0, 1fr) minmax(178px, 0.74fr);
+    padding: clamp(10px, 1.8vmin, 20px);
+  }
+
+  .circle-wrapper {
+    width: min(68vh, 52vw);
+    height: min(68vh, 52vw);
+  }
+
+  .center-panel {
+    gap: 8px;
+  }
+
+  .effects-box {
+    padding: 14px 12px !important;
+  }
+
+  .vfader-track {
+    height: min(236px, 42vh) !important;
+  }
+
+  .arpeggiator-control {
+    padding: 12px !important;
+  }
+
+  .style-selector-apple {
+    padding: 15px 16px !important;
+  }
+
+  .style-list-apple {
+    gap: 8px;
+  }
+
+  .style-item-apple {
+    font-size: 16px !important;
+  }
+
+  .jazzy-control {
+    padding: 12px 14px !important;
+  }
+
+  .wheel-bottom-row {
+    width: min(540px, 96%);
+    min-height: 62px;
+    margin-top: 10px !important;
+    padding: 10px 14px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-container {
+    padding: 0;
+  }
+
+  .main-layout {
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    padding: 10px;
+    grid-template-columns: 70px minmax(0, 1fr);
+    row-gap: 8px;
+  }
+
+  .main-layout::before {
+    border-radius: 0;
+  }
+
+  .tools-right-container {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rec-instrument-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .effects-box,
+  .arpeggiator-control,
+  .style-selector-apple,
+  .jazzy-control,
+  .wheel-bottom-row {
+    border-radius: 14px;
+  }
+
+  .effects-box {
+    padding: 10px 8px !important;
+  }
+
+  .vfader-label,
+  .vfader-value {
+    font-size: 9px !important;
+  }
+
+  .vfader-track {
+    width: 16px !important;
+    height: 112px !important;
+  }
+
+  .arpeggiator-control {
+    min-height: 112px;
+    padding: 12px 14px !important;
+    justify-content: center;
+    gap: 12px !important;
+  }
+
+  .arp-title-lite,
+  .style-selector-apple > label,
+  .arp-demo-label {
+    font-size: 9px !important;
+    letter-spacing: 0.12em !important;
+  }
+
+  .arp-demo-row {
+    width: 100%;
+    grid-template-columns: minmax(48px, 0.8fr) minmax(76px, 1fr) minmax(58px, 0.85fr);
+    justify-content: stretch;
+    gap: 12px;
+  }
+
+  .arp-demo-control {
+    gap: 7px;
+  }
+
+  .arp-power-switch {
+    width: 38px;
+    height: 20px;
+  }
+
+  .arp-power-thumb {
+    width: 16px;
+    height: 16px;
+  }
+
+  .arp-power-switch.on .arp-power-thumb {
+    transform: translateX(18px);
+  }
+
+  .arp-demo-control .knob-control {
+    width: 38px;
+    height: 38px;
+  }
+
+  .arp-demo-control .knob-indicator {
+    height: 10px;
+  }
+
+  .arp-type-control .knob-wrapper {
+    width: 86px;
+  }
+
+  .arp-demo-control .knob-value-label {
+    font-size: 0.6rem;
+    min-height: 14px;
+  }
+
+  .style-selector-apple {
+    min-height: 112px;
+    padding: 10px !important;
+  }
+
+  .style-item-apple {
+    font-size: 14px !important;
+  }
+
+  .jazzy-control {
+    min-height: 112px;
+    padding: 10px !important;
+  }
+
+  .jazzy-label,
+  .jazzy-state {
+    font-size: 9px !important;
+  }
+
+  .circle-wrapper {
+    width: min(94vw, calc(100dvh - 278px));
+    height: min(94vw, calc(100dvh - 278px));
+  }
+
+  .wheel-bottom-row {
+    width: min(96vw, 520px);
+    min-height: 0;
+    flex-wrap: wrap;
+    justify-content: center !important;
+    gap: 8px !important;
+    padding: 10px !important;
+  }
+
+  .key-selector-custom > label {
+    display: none;
+  }
+
+  .wheel-bottom-row .octave-control {
+    margin-left: 0;
+  }
+
+  .hold-btn {
+    min-height: 38px;
+    padding: 7px 10px !important;
+    font-size: 0.62rem;
+  }
+
+  .fullscreen-toggle {
+    min-width: 44px;
+  }
+
+  .octave-control button,
+  .key-trigger {
+    width: 38px;
+    height: 38px;
+  }
+
+  .current-key,
+  .octave-control .value-display {
+    font-size: 1rem;
+  }
+
+  .app-header,
+  .bottom-left-corner {
+    display: none;
+  }
+}
+
+/* Arpeggiator card fit for touch layouts only. */
+@media (max-width: 1240px), (pointer: coarse) {
+  .arpeggiator-control {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    align-items: stretch;
+    justify-items: stretch;
+    padding: clamp(16px, 2.2vmin, 24px) clamp(18px, 2.6vmin, 28px) !important;
+    gap: clamp(12px, 1.8vmin, 18px) !important;
+  }
+
+  .arpeggiator-control .arp-title-lite {
+    width: 100%;
+    margin: 0;
+    text-align: center;
+  }
+
+  .arpeggiator-control .arp-demo-row {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: center;
+    justify-items: center;
+    gap: clamp(10px, 1.8vmin, 20px);
+  }
+
+  .arpeggiator-control .arp-demo-control {
+    width: 100%;
+    min-width: 0;
+    min-height: 76px;
+    display: grid;
+    grid-template-rows: 16px 46px 18px;
+    align-items: center;
+    justify-items: center;
+    gap: 6px;
+  }
+
+  .arpeggiator-control .arp-demo-label,
+  .arpeggiator-control .knob-wrapper > label {
+    height: 16px;
+    line-height: 16px;
+    margin: 0;
+    text-align: center;
+  }
+
+  .arpeggiator-control .knob-wrapper {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-rows: 16px 46px 18px;
+    align-items: center;
+    justify-items: center;
+    gap: 6px;
+  }
+
+  .arpeggiator-control .knob-control {
+    width: 46px !important;
+    height: 46px !important;
+  }
+
+  .arpeggiator-control .knob-indicator {
+    height: 12px;
+  }
+
+  .arpeggiator-control .knob-value-label {
+    min-height: 18px;
+    line-height: 18px;
+    text-align: center;
+  }
+
+  .arpeggiator-control .arp-power-switch {
+    width: 46px;
+    height: 24px;
+  }
+
+  .arpeggiator-control .arp-power-thumb {
+    width: 20px;
+    height: 20px;
+  }
+
+  .arpeggiator-control .arp-power-switch.on .arp-power-thumb {
+    transform: translateX(22px);
+  }
+}
+
+@media (max-width: 640px) {
+  .arpeggiator-control {
+    min-height: 128px;
+  }
+
+  .arpeggiator-control .arp-demo-control,
+  .arpeggiator-control .knob-wrapper {
+    grid-template-rows: 15px 42px 17px;
+    min-height: 72px;
+  }
+
+  .arpeggiator-control .knob-control {
+    width: 42px !important;
+    height: 42px !important;
+  }
+}
+
+/* Fix mobile/tablet arpeggiator label alignment after card-fit overrides. */
+@media (max-width: 1240px), (pointer: coarse) {
+  .arpeggiator-control {
+    grid-template-rows: auto auto;
+    align-content: center;
+  }
+
+  .arpeggiator-control .arp-demo-control {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 82px;
+  }
+
+  .arpeggiator-control .knob-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .arpeggiator-control {
+    min-height: 142px;
+  }
 }

@@ -7,8 +7,12 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
         this.ready = false;
         this.error = null;
         this.currentInstrument = "EP2";
+        this.requestedInstrument = "EP2";
         this.engines = new Map();
         this.polyEngines = new Map();
+        this.presets = {};
+        this.mobile = false;
+        this.engineGain = 0.35;
         this.pendingMessages = [];
         this.leftPtr = 0;
         this.rightPtr = 0;
@@ -34,11 +38,13 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
         this.ebassTailLevel = 0.032;
 
         this.port.onmessage = (event) => this.handleMessage(event.data);
+        this.mobile = options?.processorOptions?.mobile === true;
         this.init(options?.processorOptions?.presets ?? {});
     }
 
     async init(presets) {
         try {
+            this.presets = presets;
             if (typeof createFivoSurgeModule !== "function") {
                 throw new Error("Surge WASM module was not loaded");
             }
@@ -54,9 +60,11 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
             this.rightPtr = Module._malloc(this.frames * 4);
 
             this.loadEngine("EP2", presets.EP2);
-            this.loadEngine("Messy", presets.Messy);
-            this.loadEngine("Canadians", presets.Canadians);
-            this.loadPolyEngine("E-Bass", presets["E-Bass"], 8);
+            if (!this.mobile) {
+                this.loadEngine("Messy", presets.Messy);
+                this.loadEngine("Canadians", presets.Canadians);
+                this.loadPolyEngine("E-Bass", presets["E-Bass"], 8);
+            }
 
             this.ready = true;
             this.port.postMessage({ type: "ready" });
@@ -108,7 +116,37 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
             throw new Error(`Failed to load ${instrument} preset: ${loaded}`);
         }
 
+        Module._fivo_surge_set_gain(engine, this.engineGain);
         return engine;
+    }
+
+    voiceCountFor(instrument) {
+        return this.mobile && instrument === "E-Bass" ? 3 : 8;
+    }
+
+    ensureInstrumentLoaded(instrument) {
+        if (this.engines.has(instrument) || this.polyEngines.has(instrument)) return true;
+
+        try {
+            if (instrument === "E-Bass") {
+                this.loadPolyEngine("E-Bass", this.presets["E-Bass"], this.voiceCountFor(instrument));
+            } else {
+                this.loadEngine(instrument, this.presets[instrument]);
+            }
+            return true;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            this.port.postMessage({ type: "processError", error: message });
+            return false;
+        }
+    }
+
+    activateInstrument(instrument) {
+        if (instrument !== this.currentInstrument) {
+            this.instrumentTails.set(this.currentInstrument, this.instrumentTailSamples);
+            this.instrumentTails.delete(instrument);
+        }
+        this.currentInstrument = instrument;
     }
 
     handleMessage(message) {
@@ -123,12 +161,18 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
 
         switch (message.type) {
             case "instrument":
-                if (this.engines.has(instrument) || this.polyEngines.has(instrument)) {
-                    if (instrument !== this.currentInstrument) {
-                        this.instrumentTails.set(this.currentInstrument, this.instrumentTailSamples);
-                        this.instrumentTails.delete(instrument);
+                this.requestedInstrument = instrument;
+                if (this.ensureInstrumentLoaded(instrument)) {
+                    this.activateInstrument(instrument);
+                }
+                break;
+
+            case "preset":
+                if (typeof message.instrument === "string" && message.preset) {
+                    this.presets[message.instrument] = message.preset;
+                    if (this.ensureInstrumentLoaded(message.instrument) && this.requestedInstrument === message.instrument) {
+                        this.activateInstrument(message.instrument);
                     }
-                    this.currentInstrument = instrument;
                 }
                 break;
 
@@ -162,11 +206,12 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
                 break;
 
             case "gain":
+                this.engineGain = Number(message.value) || 0.35;
                 for (const engine of this.engines.values()) {
-                    Module._fivo_surge_set_gain(engine, Number(message.value) || 0.35);
+                    Module._fivo_surge_set_gain(engine, this.engineGain);
                 }
                 for (const group of this.polyEngines.values()) {
-                    for (const engine of group.engines) Module._fivo_surge_set_gain(engine, Number(message.value) || 0.35);
+                    for (const engine of group.engines) Module._fivo_surge_set_gain(engine, this.engineGain);
                 }
                 break;
 
@@ -187,6 +232,7 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
     }
 
     noteOn(instrument, note, velocity) {
+        if (!this.ensureInstrumentLoaded(instrument)) return;
         this.trackNoteOn(instrument, note);
         this.resetHoldState(instrument);
         if (instrument === "E-Bass") {
@@ -204,6 +250,7 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
     }
 
     noteOff(instrument, note, velocity) {
+        if (!this.ensureInstrumentLoaded(instrument)) return;
         this.trackNoteOff(instrument, note);
 
         const polyGroup = this.polyEngines.get(instrument);
@@ -406,7 +453,7 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
     }
 
     engineFor(instrument) {
-        return this.engines.get(instrument) || this.engines.get(this.currentInstrument);
+        return this.engines.get(instrument);
     }
 
     velocity(value, fallback) {
