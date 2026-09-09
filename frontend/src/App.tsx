@@ -123,6 +123,7 @@ function FivoWorkspace() {
   // del audio desde el telefono, sin cable ni consola. No afecta al uso normal.
   const diagOn = typeof window !== 'undefined' && window.location.search.includes('diag');
   const [diag, setDiag] = useState<Record<string, unknown> | null>(null);
+  const [diagAbierto, setDiagAbierto] = useState(false);
   useEffect(() => {
     if (!diagOn) return;
     let alive = true;
@@ -1082,8 +1083,24 @@ function FivoWorkspace() {
       {/* Error Banner - Fixed top */}
       {errorMsg && <div className="error-banner">{errorMsg}</div>}
 
-      {diagOn && (
+      {diagOn && !diagAbierto && (
+        <button
+          onClick={() => setDiagAbierto(true)}
+          style={{
+            position: 'fixed', bottom: 8, right: 8, zIndex: 2000,
+            padding: '5px 10px', borderRadius: 999, border: '1px solid #2f6b4a',
+            background: 'rgba(0,0,0,.7)', color: '#7CFFB2',
+            font: '11px ui-monospace, Menlo, monospace', cursor: 'pointer',
+          }}
+        >
+          diag
+        </button>
+      )}
+
+      {diagOn && diagAbierto && (
         <pre
+          onClick={() => setDiagAbierto(false)}
+          title="Tocar para cerrar"
           style={{
             position: 'fixed', top: 0, left: 0, right: 0, maxHeight: '52vh',
             overflow: 'auto', zIndex: 2000, margin: 0, padding: '10px 12px',
