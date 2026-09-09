@@ -15,6 +15,10 @@ let nativeToneContextReady = false;
 function ensureNativeToneContext() {
     if (nativeToneContextReady || typeof window === 'undefined') return;
 
+    // Antes de crear nada: el tipo de sesion hay que fijarlo antes de que exista
+    // el AudioContext, si no iOS ya lo asigno al canal de timbre y no cambia.
+    ensureIosAudioSession();
+
     const NativeAudioContext = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!NativeAudioContext) return;
 
@@ -817,9 +821,9 @@ export class AudioEngine {
     public onAudioError: ((message: string) => void) | null = null;
 
     public async unlock() {
+        ensureIosAudioSession();
         surgeWasmHost.onError = (message) => this.onAudioError?.(message);
         await this.init();
-        ensureIosAudioSession();
         const rawContext = Tone.getContext().rawContext;
         if (typeof AudioContext !== 'undefined' && rawContext instanceof AudioContext && rawContext.state !== 'running') {
             await rawContext.resume();

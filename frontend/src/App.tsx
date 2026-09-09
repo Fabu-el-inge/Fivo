@@ -119,6 +119,26 @@ function FivoWorkspace() {
     setIsHold(hold);
   }, []);
 
+  // Panel de diagnostico, solo con ?diag=1 en la URL. Permite leer el estado real
+  // del audio desde el telefono, sin cable ni consola. No afecta al uso normal.
+  const diagOn = typeof window !== 'undefined' && window.location.search.includes('diag');
+  const [diag, setDiag] = useState<Record<string, unknown> | null>(null);
+  useEffect(() => {
+    if (!diagOn) return;
+    let alive = true;
+    const tick = async () => {
+      try {
+        const s = await audioEngine.debugState();
+        if (alive) setDiag(s as unknown as Record<string, unknown>);
+      } catch (e) {
+        if (alive) setDiag({ fallo: (e as Error)?.message ?? String(e) });
+      }
+    };
+    void tick();
+    const id = window.setInterval(() => { void tick(); }, 1500);
+    return () => { alive = false; window.clearInterval(id); };
+  }, [diagOn]);
+
   useEffect(() => {
     let unlocked = false;
     // Si el motor de sonido falla, hay que verlo en la pantalla. Hasta ahora el fallo
@@ -1056,6 +1076,32 @@ function FivoWorkspace() {
     <div className="app-container">
       {/* Error Banner - Fixed top */}
       {errorMsg && <div className="error-banner">{errorMsg}</div>}
+
+      {diagOn && (
+        <pre
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, maxHeight: '52vh',
+            overflow: 'auto', zIndex: 2000, margin: 0, padding: '10px 12px',
+            background: 'rgba(0,0,0,.88)', color: '#7CFFB2',
+            font: '11px/1.45 ui-monospace, Menlo, monospace',
+            whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+          }}
+        >
+          {JSON.stringify(
+            {
+              audioSessionSoportado:
+                typeof navigator !== 'undefined' &&
+                !!(navigator as Navigator & { audioSession?: unknown }).audioSession,
+              audioSessionTipo:
+                (navigator as Navigator & { audioSession?: { type?: string } }).audioSession?.type ?? null,
+              errorEnPantalla: errorMsg || null,
+              ...(diag ?? { estado: 'tocá la pantalla para arrancar el audio' }),
+            },
+            null,
+            1,
+          )}
+        </pre>
+      )}
 
       {/* Main Layout - Object Centric */}
       {/* Main Layout - Grid: Left | Center | Right */}
