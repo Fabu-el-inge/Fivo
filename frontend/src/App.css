@@ -6440,3 +6440,140 @@ body,
     width: max(260px, min(94%, calc(100dvh - 250px - env(safe-area-inset-bottom, 0px)), 585px)) !important;
   }
 }
+
+/* =====================================================================
+   TABLET APAISADO — ajustes finos
+   ===================================================================== */
+@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+
+  /* --- 1. Por que "sin pantalla completa se ve como antes" ------------
+     dvh es el alto DINAMICO: con la barra de Safari a la vista vale
+     menos, y encima cambia mientras se scrollea. La rueda se calculaba
+     con dvh, asi que fuera de pantalla completa nacia chica y el layout
+     parecia el de antes. svh es el alto CHICO Y ESTABLE (el que queda con
+     las barras visibles): la rueda sale del mismo tamano en los dos
+     estados y no salta. */
+  .circle-wrapper {
+    width: max(260px, min(94%, calc(100svh - 200px - env(safe-area-inset-bottom, 0px)), 585px)) !important;
+    margin-block: auto !important;
+  }
+
+  /* --- 2. Todo lo de abajo en la misma linea -------------------------
+     Las columnas se centraban cada una por su cuenta, por eso la barra
+     quedaba mas arriba que la tarjeta de Jazzy. Ahora las tres ocupan el
+     alto completo y lo de abajo se apoya en el mismo borde. */
+  .main-layout { align-items: stretch !important; }
+
+  .center-panel {
+    display: flex !important;
+    flex-direction: column;
+    height: 100%;
+    justify-content: flex-end;
+    gap: 0;
+  }
+
+  .tools-right-container {
+    display: flex !important;
+    flex-direction: column;
+    justify-content: flex-end;
+    height: 100%;
+    gap: 12px !important;
+  }
+
+  .rec-instrument-row {
+    display: flex !important;
+    flex-direction: column;
+    gap: 12px !important;
+  }
+
+  .tools-left-container {
+    display: flex !important;
+    align-items: center;
+    height: 100%;
+  }
+
+  /* --- 3. Barra aun mas chica ----------------------------------------- */
+  .main-layout .center-panel .wheel-bottom-row,
+  .main-layout .wheel-bottom-row {
+    min-height: 60px !important;
+    max-width: 470px !important;
+    padding: 0 16px !important;
+    border-radius: 15px !important;
+    margin-top: 14px !important;
+    margin-bottom: 0 !important;
+  }
+
+  .wheel-bottom-row .octave-control { gap: 10px !important; }
+  .wheel-bottom-row .octave-control button { width: 32px; height: 32px; font-size: 16px; }
+  .wheel-bottom-row .octave-control > span,
+  .wheel-bottom-row .octave-value { font-size: 19px; min-width: 22px; }
+
+  .wheel-bottom-row .hold-btn {
+    min-width: 64px;
+    height: 32px;
+    font-size: 11px;
+    margin-left: 7px;
+  }
+
+  /* --- 4. Expresion: contenedor mas angosto, caña igual --------------- */
+  .main-layout { grid-template-columns: 112px minmax(0, 1fr) 268px !important; }
+
+  .effects-box {
+    width: 88px !important;
+    padding: 12px 6px !important;
+  }
+
+  /* La caña conserva su grosor; lo que cede es el panel. */
+  .effects-box .vfader-track { width: 16px !important; }
+  .vfader-thumb { width: 40px !important; height: 20px !important; }
+
+  /* --- 5. Titulos consistentes: los tres al mismo tamano -------------- */
+  .effects-box .vfader-label,
+  .arpeggiator-control .arp-title-lite,
+  .instrument-panel .panel-head label {
+    font-size: 8px !important;
+    letter-spacing: .18em !important;
+  }
+}
+
+@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+  /* Al alinear todo al fondo, la fila de abajo se pegaba al borde y se
+     montaba sobre la marca FIVO. Se reserva ese espacio. */
+  .main-layout {
+    padding-bottom: 56px !important;
+    padding-top: 18px !important;
+  }
+
+  /* La barra encogio y su contenido ya entra como texto muy por debajo del
+     umbral general de 440px, que estaba calibrado para botones de 88px.
+     Aca los botones son de 64, asi que el texto entra desde 330. */
+  @container (min-width: 330px) {
+    .wheel-bottom-row .hold-btn .btn-label { display: inline !important; }
+    .wheel-bottom-row .hold-btn .btn-icon { display: none !important; }
+
+    .wheel-bottom-row .hold-btn {
+      min-width: 64px !important;
+      width: auto !important;
+      padding: 0 12px !important;
+    }
+  }
+}
+
+@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+  /* La marca es absoluta abajo a la derecha y ahi le pasa por encima la
+     tarjeta de Jazzy. Con la columna derecha alineada al fondo, el hueco
+     libre quedo arriba: la marca se muda ahi. */
+  .app-header {
+    top: 20px !important;
+    bottom: auto !important;
+    right: 26px !important;
+    left: auto !important;
+    text-align: right;
+    align-items: flex-end !important;
+    flex-direction: column;
+    z-index: 1;
+  }
+
+  .app-header h1 { font-size: 20px; letter-spacing: .26em; }
+  .app-header::after { font-size: 8px; letter-spacing: .18em; }
+}
