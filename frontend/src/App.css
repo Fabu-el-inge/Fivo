@@ -6577,3 +6577,72 @@ body,
   .app-header h1 { font-size: 20px; letter-spacing: .26em; }
   .app-header::after { font-size: 8px; letter-spacing: .18em; }
 }
+
+@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+  /* Las tarjetas median 496px fijos y la columna entre 660 y 950 segun el
+     aparato, asi que todo el sobrante se acumulaba arriba: 264px en un
+     iPad Air 3 y 454px en un Pro 12.9. Se veia distinto en cada tablet
+     por eso, no por la tablet. Ahora crecen para llenar la columna y la
+     fila de abajo sigue alineada. */
+  /* flex-end: si las tarjetas tocan su techo y aun sobra alto, ese
+     sobrante cae ARRIBA y el borde de abajo sigue alineado con la barra. */
+  .tools-right-container {
+    justify-content: flex-end !important;
+  }
+
+  .tools-right-container > .arpeggiator-control {
+    flex: 1 1 0 !important;
+    min-height: 150px;
+    justify-content: center;
+  }
+
+  .tools-right-container > .rec-instrument-row {
+    flex: 1.35 1 0 !important;
+    min-height: 0;
+  }
+
+  .rec-instrument-row > .style-selector-apple {
+    flex: 1 1 auto !important;
+    min-height: 150px;
+  }
+
+  .rec-instrument-row > .jazzy-control {
+    flex: 0 0 auto !important;
+  }
+
+  /* Con mas alto, las filas de instrumentos se reparten el espacio en vez
+     de amontonarse arriba. */
+  .instrument-panel .style-list-apple { justify-content: space-between; }
+}
+
+@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+  /* El arpegiador estirado a 420px quedaba con demasiado aire adentro: dos
+     perillas flotando en una tarjeta enorme. Se le pone techo y el
+     sobrante lo absorbe la lista de instrumentos, que sí lo aprovecha. */
+  .tools-right-container > .arpeggiator-control {
+    flex: 1 1 0 !important;
+    min-height: 200px;
+    max-height: 340px;
+  }
+
+  .tools-right-container > .rec-instrument-row {
+    flex: 1.2 1 0 !important;
+    min-height: 220px;
+    max-height: 520px;
+  }
+
+  .rec-instrument-row > .style-selector-apple {
+    max-height: 460px;
+  }
+
+  /* Con la columna derecha llegando hasta arriba, la marca ya no entra
+     ahi: se va abajo a la izquierda, que es el unico rincon libre. */
+  .app-header {
+    top: auto !important;
+    bottom: 16px !important;
+    left: 22px !important;
+    right: auto !important;
+    text-align: left;
+    align-items: flex-start !important;
+  }
+}
