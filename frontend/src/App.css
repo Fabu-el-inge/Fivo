@@ -6384,3 +6384,59 @@ body,
     min-width: 240px;
   }
 }
+
+/* =====================================================================
+   TABLET APAISADO — proporciones propias
+   Comparte la composicion de columnas con escritorio, pero las medidas de
+   escritorio ahi quedan enormes. `pointer: coarse` distingue exactamente
+   el caso: tactil, ancho y alto suficientes.
+   ===================================================================== */
+@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+  /* Columna izquierda mas angosta: el texto EXPRESSION era lo que forzaba
+     el ancho del panel. */
+  .main-layout {
+    grid-template-columns: 156px minmax(0, 1fr) 268px !important;
+  }
+
+  .effects-box {
+    width: 132px !important;
+    padding: 14px 12px !important;
+  }
+
+  .effects-box .vfader-label {
+    font-size: 9px;
+    letter-spacing: .16em;
+  }
+
+  .effects-box .vfader-value { font-size: 14px !important; }
+  .effects-box .vfader-track { height: min(340px, 44vh) !important; width: 16px !important; }
+  .vfader-thumb { width: 40px !important; height: 20px !important; }
+  .vfader-thumb::after { width: 20px; height: 3px; }
+
+  /* Barra inferior mas discreta: era la altura de escritorio (104px) la
+     que le comia el alto a la rueda. */
+  .main-layout .center-panel .wheel-bottom-row,
+  .main-layout .wheel-bottom-row {
+    min-height: 72px !important;
+    max-width: 500px !important;
+    padding: 0 20px !important;
+    border-radius: 18px !important;
+  }
+
+  .wheel-bottom-row .octave-control { gap: 12px !important; }
+  .wheel-bottom-row .octave-control button { width: 36px; height: 36px; font-size: 18px; }
+  .wheel-bottom-row .octave-control > span,
+  .wheel-bottom-row .octave-value { font-size: 22px; min-width: 26px; }
+
+  .wheel-bottom-row .hold-btn {
+    min-width: 72px;
+    height: 36px;
+    font-size: 12px;
+    margin-left: 8px;
+  }
+
+  /* Todo ese alto liberado va a la rueda. */
+  .circle-wrapper {
+    width: max(260px, min(94%, calc(100dvh - 250px - env(safe-area-inset-bottom, 0px)), 585px)) !important;
+  }
+}
