@@ -1208,22 +1208,18 @@ function FivoWorkspace() {
 
           {/* Bottom row: Key + Acordes + Octave */}
           <div className="wheel-bottom-row">
-            <KeySelector
-              currentKey={currentKey}
-              majorNotes={MAJOR_NOTES}
-              minorNotes={MINOR_NOTES}
-              onKeyChange={handleKeyChange}
-            />
-            <button
-              className={`hold-btn ${chordMode ? 'active' : ''}`}
-              onClick={() => setChordMode(prev => !prev)}
-            >
-              acordes
-            </button>
             <OctaveControl
               octave={octave}
               onOctaveChange={handleOctaveChange}
             />
+            <button
+              type="button"
+              className={`hold-btn ${chordMode ? 'active' : ''}`}
+              aria-pressed={chordMode}
+              onClick={() => setChordMode(prev => !prev)}
+            >
+              acordes
+            </button>
             <button
               type="button"
               className={`hold-btn ${isHold ? 'active' : ''}`}

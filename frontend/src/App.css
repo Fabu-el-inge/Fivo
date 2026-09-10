@@ -4941,3 +4941,992 @@ body {
   flex: 0 0 auto;
   text-align: left;
 }
+
+/* =====================================================================
+   REDISEÑO FIVO — 10/09/2026
+   Replica de "FIVO Instrument.dc.html" (desktop) y "FIVO Mobile.dc.html".
+   El circulo de quintas NO se toca: queda el nuestro tal cual.
+   Valores tomados literalmente de los estilos inline de la referencia.
+   ===================================================================== */
+
+:root {
+  --fv-bg: #0c0c0e;
+  --fv-panel-top: #1c1c20;
+  --fv-panel-bot: #141417;
+  --fv-panel-border: rgba(0, 0, 0, .45);
+  --fv-panel-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .05),
+    inset 0 -2px 10px rgba(0, 0, 0, .55),
+    0 14px 34px rgba(0, 0, 0, .42);
+  --fv-accent: #ff7a3c;
+  --fv-label: #7e7e88;
+  --fv-label-2: #84848e;
+  --fv-value: #e8e8ec;
+  --fv-mono: 'DM Mono', ui-monospace, Menlo, monospace;
+  --fv-sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body,
+.app-container {
+  font-family: var(--fv-sans);
+}
+
+/* --- Chasis de panel, comun a todos los modulos --------------------- */
+.effects-box,
+.arpeggiator-control,
+.style-selector-apple,
+.jazzy-control,
+.wheel-bottom-row {
+  background: linear-gradient(180deg, var(--fv-panel-top), var(--fv-panel-bot)) !important;
+  border: 1px solid var(--fv-panel-border) !important;
+  box-shadow: var(--fv-panel-shadow) !important;
+  border-radius: 24px !important;
+  backdrop-filter: none !important;
+}
+
+.jazzy-control { border-radius: 18px !important; }
+
+/* --- Encabezado de panel + regla ------------------------------------ */
+.style-selector-apple > label,
+.arp-title-lite,
+.effects-box .vfader-label,
+.panel-head label {
+  font-family: var(--fv-sans);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+  color: var(--fv-label);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, .5);
+  margin: 0;
+}
+
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 4px;
+  width: 100%;
+}
+
+.panel-index {
+  font-family: var(--fv-mono);
+  font-size: 9px;
+  letter-spacing: .18em;
+  color: #6d6d76;
+}
+
+.panel-index-total { color: #4a4a52; }
+
+.panel-rule {
+  height: 1px;
+  width: 100%;
+  margin-top: 12px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .01));
+  flex: none;
+}
+
+/* --- ARPEGGIATOR ----------------------------------------------------- */
+.arpeggiator-control {
+  padding: 18px 22px !important;
+  gap: 0 !important;
+  align-items: stretch !important;
+}
+
+.arp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  width: 100%;
+}
+
+.arp-head .arp-title-lite { margin-right: auto; }
+
+.arp-state-text {
+  font-family: var(--fv-mono);
+  font-size: 9px;
+  letter-spacing: .18em;
+  color: var(--fv-label);
+}
+
+.arp-power-switch.arp-power-mini {
+  width: 36px;
+  height: 19px;
+  border-radius: 10px;
+  background: var(--fv-bg);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .75);
+  padding: 3px;
+  border: none;
+  transition: background .25s;
+}
+
+.arp-power-switch.arp-power-mini.on { background: var(--fv-accent); }
+
+.arp-power-switch.arp-power-mini .arp-power-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #f5f5f7, #cfcfd4);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, .5);
+  transform: translateX(0);
+  transition: transform .25s;
+}
+
+.arp-power-switch.arp-power-mini.on .arp-power-thumb { transform: translateX(17px); }
+
+.arpeggiator-control .arp-demo-row {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-top: 0;
+}
+
+.arpeggiator-control .arp-demo-control {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+
+/* separador vertical entre TYPE y TEMPO */
+.arpeggiator-control .arp-demo-control + .arp-demo-control::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, .07), transparent);
+}
+
+.arpeggiator-control .arp-demo-control + .arp-demo-control { position: relative; }
+
+.arpeggiator-control .knob-wrapper > label {
+  font-family: var(--fv-sans);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--fv-label-2);
+}
+
+.arpeggiator-control .knob-control {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 30%, #3a3a40, #141416 66%);
+  box-shadow:
+    0 9px 20px rgba(0, 0, 0, .62),
+    inset 0 2px 3px rgba(255, 255, 255, .07),
+    inset 0 -4px 9px rgba(0, 0, 0, .62);
+  border: none;
+}
+
+.arpeggiator-control .knob-indicator {
+  width: 3px;
+  height: 17px;
+  border-radius: 2px;
+  background: var(--fv-accent);
+  box-shadow: 0 0 8px rgba(255, 122, 60, .65);
+  top: 8px;
+}
+
+.arpeggiator-control .knob-value-label {
+  font-family: var(--fv-mono);
+  font-size: 15px;
+  color: var(--fv-value);
+  letter-spacing: 0;
+}
+
+/* --- INSTRUMENT ------------------------------------------------------ */
+.style-selector-apple.instrument-panel {
+  padding: 20px 22px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.instrument-panel .style-list-apple {
+  flex: 1;
+  display: flex !important;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 11px;
+  grid-template-columns: none !important;
+  width: 100%;
+}
+
+.instrument-panel .style-item-apple {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 0 12px 0 0;
+  border-radius: 10px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  text-align: left;
+  transition: background .22s;
+  min-height: 34px;
+}
+
+.instrument-panel .slot-rail {
+  width: 2px;
+  align-self: stretch;
+  margin: 7px 0;
+  border-radius: 2px;
+  background: transparent;
+  transition: background .22s;
+  flex: none;
+}
+
+.instrument-panel .slot-name {
+  font-family: var(--fv-sans);
+  font-weight: 400;
+  font-size: 19px;
+  letter-spacing: 0;
+  color: #8b8b94;
+  transition: color .22s;
+}
+
+.instrument-panel .slot-dot {
+  margin-left: auto;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--fv-accent);
+  box-shadow: 0 0 9px rgba(255, 122, 60, .8);
+  opacity: 0;
+  transition: opacity .22s;
+  flex: none;
+}
+
+.instrument-panel .style-item-apple.active {
+  background: linear-gradient(90deg, rgba(255, 122, 60, .13), rgba(255, 122, 60, .02) 58%, rgba(0, 0, 0, 0));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05);
+}
+
+.instrument-panel .style-item-apple.active .slot-rail {
+  background: var(--fv-accent);
+  box-shadow: 0 0 10px rgba(255, 122, 60, .7);
+}
+
+.instrument-panel .style-item-apple.active .slot-name {
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.instrument-panel .style-item-apple.active .slot-dot { opacity: 1; }
+
+/* --- JAZZY ----------------------------------------------------------- */
+.jazzy-control {
+  min-height: 56px !important;
+  padding: 0 26px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+
+.jazzy-label {
+  font-family: var(--fv-sans);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #9a9aa2;
+}
+
+.jazzy-state {
+  font-family: var(--fv-mono);
+  font-size: 12px;
+  letter-spacing: .1em;
+  color: var(--fv-label);
+}
+
+.jazzy-switch {
+  width: 50px;
+  height: 26px;
+  border-radius: 13px;
+  background: var(--fv-bg);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .75);
+  padding: 3px;
+  border: none;
+  transition: background .25s;
+}
+
+.jazzy-switch.on { background: var(--fv-accent); }
+
+.jazzy-switch-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #f5f5f7, #cfcfd4);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, .5);
+  transform: translateX(0);
+  transition: transform .25s;
+}
+
+.jazzy-switch.on .jazzy-switch-thumb { transform: translateX(24px); }
+
+/* --- EXPRESSION ------------------------------------------------------ */
+.effects-box {
+  padding: 18px 18px 20px !important;
+  border-radius: 22px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.effects-box .vfader-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+}
+
+.vfader-track {
+  width: 20px !important;
+  border-radius: 11px !important;
+  background: linear-gradient(180deg, #0a0a0c, #101013) !important;
+  box-shadow:
+    inset 0 2px 7px rgba(0, 0, 0, .85),
+    inset 0 -1px 3px rgba(0, 0, 0, .7),
+    inset 0 0 0 1px rgba(255, 255, 255, .03),
+    0 1px 0 rgba(255, 255, 255, .035) !important;
+  border: none !important;
+  cursor: ns-resize;
+  position: relative;
+}
+
+.vfader-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 11px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #ffc184 0%, #ff9247 20%, #f4741f 62%, #cf5210 100%) !important;
+  box-shadow: 0 0 18px rgba(255, 138, 60, .35);
+}
+
+/* brillo lateral y filo caliente arriba del relleno */
+.vfader-fill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(255, 255, 255, .36) 0%, rgba(255, 255, 255, .05) 42%, rgba(0, 0, 0, .06) 62%, rgba(0, 0, 0, .26) 100%);
+}
+
+.vfader-fill::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: rgba(255, 238, 216, .9);
+}
+
+.vfader-thumb {
+  width: 52px !important;
+  height: 26px !important;
+  left: 50% !important;
+  transform: translate(-50%, 50%) !important;
+  border-radius: 7px !important;
+  background: linear-gradient(180deg, #43434a 0%, #2a2a2f 46%, #141417 100%) !important;
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, .62),
+    inset 0 1px 0 rgba(255, 255, 255, .16),
+    inset 0 -2px 5px rgba(0, 0, 0, .65) !important;
+  border: none !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vfader-thumb::after {
+  content: '';
+  width: 26px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #ff9550, #ff7028);
+  box-shadow: 0 0 10px rgba(255, 138, 60, .8);
+}
+
+.vfader-value {
+  font-family: var(--fv-mono) !important;
+  font-size: 17px !important;
+  color: var(--fv-value) !important;
+  letter-spacing: 0 !important;
+}
+
+/* --- BARRA INFERIOR --------------------------------------------------- */
+.wheel-bottom-row {
+  min-height: 104px !important;
+  padding: 0 36px !important;
+  gap: 0 !important;
+  justify-content: flex-start !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+}
+
+.wheel-bottom-row .octave-control {
+  display: flex;
+  align-items: center;
+  gap: 16px !important;
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.wheel-bottom-row .octave-control button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 32%, #33333a, #141416 70%);
+  box-shadow: 0 5px 11px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .06);
+  border: none;
+  font-family: var(--fv-sans);
+  font-weight: 600;
+  font-size: 21px;
+  color: #d8d8de;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wheel-bottom-row .octave-control > span,
+.wheel-bottom-row .octave-value {
+  font-family: var(--fv-mono);
+  font-weight: 500;
+  font-size: 28px;
+  color: #fff;
+  min-width: 32px;
+  text-align: center;
+}
+
+/* el separador ocupa el hueco central, como en la referencia */
+.wheel-bottom-row .octave-control::after {
+  content: '';
+  flex: 1;
+}
+
+.wheel-bottom-row .hold-btn {
+  min-width: 88px;
+  height: 44px;
+  border-radius: 12px;
+  font-family: var(--fv-sans);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: .04em;
+  text-transform: none;
+  border: none;
+  background: linear-gradient(180deg, #26262a, #191a1d);
+  color: #c7c7cf;
+  box-shadow:
+    0 5px 12px rgba(0, 0, 0, .45),
+    inset 0 1px 0 rgba(255, 255, 255, .08),
+    inset 0 -2px 6px rgba(0, 0, 0, .4);
+  transition: color .2s, background .2s;
+  margin-left: 12px;
+}
+
+.wheel-bottom-row .hold-btn:first-of-type { margin-left: auto; }
+
+.wheel-bottom-row .hold-btn.active {
+  background: linear-gradient(180deg, #ffa55a, #ef6a22);
+  color: #23120a;
+  box-shadow:
+    0 5px 12px rgba(0, 0, 0, .45),
+    0 0 20px rgba(239, 106, 34, .35),
+    inset 0 1px 0 rgba(255, 255, 255, .28);
+}
+
+/* --- MARCA Y ESTADO --------------------------------------------------- */
+.app-header h1 {
+  font-family: var(--fv-sans);
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: .28em;
+  color: #3f3f46;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.app-header::after {
+  content: 'HARMONIC INSTRUMENT · MK1';
+  display: block;
+  font-family: var(--fv-mono);
+  font-size: 9px;
+  letter-spacing: .2em;
+  color: #4a4a52;
+  margin-top: 2px;
+}
+
+.bottom-left-corner,
+.bottom-left-corner * {
+  font-family: var(--fv-mono);
+  font-size: 11px;
+  letter-spacing: .14em;
+  color: #5e5e66;
+  text-transform: uppercase;
+}
+
+/* --- Correcciones contra la referencia -------------------------------- */
+
+/* El diseño viejo dejaba un subrayado naranja bajo el instrumento activo.
+   En la referencia el estado se marca con el riel izquierdo y el punto. */
+.instrument-panel .style-item-apple::after,
+.instrument-panel .style-item-apple.active::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* Jazzy: en la referencia el orden es etiqueta … estado, interruptor */
+.jazzy-control .jazzy-label { margin-right: auto; order: 0; }
+.jazzy-control .jazzy-state { order: 1; }
+.jazzy-control .jazzy-switch { order: 2; }
+
+/* Separador vertical entre TYPE y TEMPO */
+.arpeggiator-control .arp-demo-row { position: relative; }
+
+.arpeggiator-control .arp-demo-control + .arp-demo-control::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  z-index: 1;
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, .07), transparent);
+}
+
+/* EXPRESSION: en la referencia el modulo es alto y angosto, con el titulo
+   arriba a la izquierda y la caña de 400px. */
+.tools-left,
+.tools-left.glass-panel {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+}
+
+.effects-box {
+  height: 100%;
+  justify-content: flex-start;
+}
+
+.effects-box .vfader-label,
+.effects-box > label {
+  align-self: flex-start;
+  text-align: left;
+}
+
+.effects-box .vfader-track {
+  height: min(400px, 52vh) !important;
+}
+
+/* La caja de efectos arranca con el titulo, despues la regla, y el fader
+   ocupa el resto centrado. */
+.effects-box .tools-left-buttons {
+  width: 100%;
+  flex: none;
+}
+
+/* --- EXPRESSION: proporciones de la referencia ------------------------ */
+.tools-left-container .tools-left,
+.tools-left-container .effects-box {
+  height: auto;
+  align-self: center;
+}
+
+.effects-box {
+  width: 168px;
+  min-height: min(598px, 68vh);
+  align-self: center;
+}
+
+.effects-box .vfader-wrap {
+  align-items: center;
+  width: 100%;
+}
+
+.effects-box .vfader-label {
+  align-self: flex-start;
+  width: 100%;
+}
+
+.vfader-unit {
+  font-size: 10px;
+  letter-spacing: .12em;
+  color: var(--fv-label);
+}
+
+/* =====================================================================
+   MOBILE / TABLET — replica de "FIVO Mobile.dc.html"
+   Las medidas del bloque de escritorio de arriba solo aplican en pantallas
+   anchas; aca se reescriben por completo.
+   ===================================================================== */
+@media (max-width: 1023px), (pointer: coarse) and (max-width: 1240px) {
+  /* deshacer las medidas de escritorio */
+  .effects-box {
+    width: auto;
+    min-height: 0;
+    height: auto;
+    padding: 10px 12px !important;
+    border-radius: 16px !important;
+  }
+
+  .effects-box .vfader-track { height: clamp(70px, 9vh, 96px) !important; }
+  .effects-box .vfader-wrap { gap: 8px; }
+  .effects-box .vfader-label { font-size: 8px; letter-spacing: .2em; }
+  .effects-box .vfader-value { font-size: 12px !important; }
+  .effects-box .panel-rule { display: none; }
+  .vfader-thumb { width: 30px !important; height: 15px !important; }
+  .vfader-thumb::after { width: 15px; height: 2px; }
+
+  /* --- orden: circulo arriba, controles abajo en tres franjas --------- */
+  .main-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) auto auto !important;
+    grid-template-areas:
+      "center"
+      "right"
+      "left" !important;
+    row-gap: 8px !important;
+    padding: 14px 16px 16px !important;
+  }
+
+  .center-panel { grid-area: center; }
+  .tools-right-container { grid-area: right; }
+  .tools-left-container { grid-area: left; }
+
+  .tools-right-container {
+    display: flex !important;
+    flex-direction: column;
+    gap: 8px !important;
+    width: 100%;
+    grid-template-columns: none !important;
+  }
+
+  .tools-left-container {
+    display: flex !important;
+    width: 100%;
+  }
+
+  .rec-instrument-row {
+    display: contents !important;
+  }
+
+  /* --- ARP: una franja horizontal ------------------------------------ */
+  .arpeggiator-control {
+    width: 100%;
+    min-height: 64px !important;
+    border-radius: 16px !important;
+    padding: 0 12px !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 0 !important;
+  }
+
+  .arpeggiator-control .arp-head {
+    width: auto;
+    flex: none;
+    gap: 7px;
+    padding-right: 12px;
+  }
+
+  .arpeggiator-control .arp-title-lite {
+    font-size: 11px;
+    letter-spacing: .18em;
+    margin-right: 0;
+  }
+
+  .arpeggiator-control .arp-state-text { display: none; }
+  .arpeggiator-control > .panel-rule { display: none; }
+
+  .arpeggiator-control .arp-demo-row {
+    flex: 1;
+    display: flex !important;
+    flex-direction: row;
+    align-items: center;
+    gap: 0;
+    grid-template-columns: none !important;
+  }
+
+  .arpeggiator-control .arp-demo-control {
+    flex: 1;
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+  }
+
+  .arpeggiator-control .knob-wrapper {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 9px;
+  }
+
+  .arpeggiator-control .knob-control { width: 34px !important; height: 34px !important; }
+  .arpeggiator-control .knob-indicator { width: 2px; height: 9px; top: 4px; }
+
+  .arpeggiator-control .knob-wrapper > label {
+    font-size: 7px;
+    letter-spacing: .26em;
+    color: #63636d;
+    order: 2;
+  }
+
+  .arpeggiator-control .knob-value-label {
+    font-size: 12px;
+    order: 3;
+  }
+
+  /* --- INSTRUMENT: segmentado ---------------------------------------- */
+  .style-selector-apple.instrument-panel {
+    width: 100%;
+    min-height: 44px !important;
+    border-radius: 14px !important;
+    padding: 0 8px !important;
+    flex-direction: row !important;
+    align-items: center !important;
+  }
+
+  .instrument-panel .panel-head,
+  .instrument-panel > .panel-rule { display: none !important; }
+
+  .instrument-panel .style-list-apple {
+    flex-direction: row !important;
+    gap: 6px;
+    margin-top: 0;
+    width: 100%;
+  }
+
+  .instrument-panel .style-item-apple {
+    flex: 1;
+    min-height: 32px;
+    height: 32px;
+    border-radius: 9px;
+    justify-content: center;
+    gap: 0;
+    padding: 0;
+    background: linear-gradient(180deg, #232327, #191a1d);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05);
+  }
+
+  .instrument-panel .slot-rail,
+  .instrument-panel .slot-dot { display: none; }
+
+  .instrument-panel .slot-name { font-size: 12px; color: #8b8b94; }
+
+  .instrument-panel .style-item-apple.active {
+    background: linear-gradient(180deg, #2a2a2f, #1d1d21);
+    box-shadow: inset 0 0 0 1px rgba(255, 122, 60, .55), inset 0 1px 0 rgba(255, 255, 255, .07);
+  }
+
+  .instrument-panel .style-item-apple.active .slot-name { color: var(--fv-accent); font-weight: 700; }
+
+  /* --- CHORDS + MODES ------------------------------------------------- */
+  .wheel-bottom-row {
+    min-height: 52px !important;
+    border-radius: 16px !important;
+    padding: 0 12px !important;
+    gap: 6px !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .wheel-bottom-row .octave-control { gap: 6px !important; }
+  .wheel-bottom-row .octave-control::after { content: none; }
+
+  .wheel-bottom-row .octave-control button {
+    width: 34px;
+    height: 34px;
+    font-size: 17px;
+  }
+
+  .wheel-bottom-row .octave-control > span,
+  .wheel-bottom-row .octave-value { font-size: 20px; min-width: 24px; }
+
+  .wheel-bottom-row .hold-btn {
+    flex: 1;
+    min-width: 0;
+    height: 34px;
+    border-radius: 9px;
+    font-size: 12px;
+    margin-left: 0;
+  }
+
+  .wheel-bottom-row .hold-btn:first-of-type { margin-left: 6px; }
+
+  /* --- barra superior: marca a la izquierda --------------------------- */
+  .app-header {
+    position: fixed !important;
+    top: 14px;
+    left: 18px;
+    right: 18px;
+    bottom: auto !important;
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-start;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  .app-header h1 { font-size: 14px; letter-spacing: .32em; color: #46464e; }
+
+  .app-header::after {
+    content: 'MK1';
+    margin-top: 0;
+    margin-left: 7px;
+    font-size: 7px;
+    letter-spacing: .18em;
+    color: #3b3b42;
+  }
+
+  .bottom-left-corner {
+    position: fixed !important;
+    top: 14px;
+    right: 18px;
+    left: auto !important;
+    bottom: auto !important;
+    text-align: right;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  .bottom-left-corner,
+  .bottom-left-corner * { font-size: 9px; letter-spacing: .14em; color: #5e5e66; }
+
+  .circle-wrapper {
+    width: min(94vw, calc(100dvh - 300px), 420px);
+  }
+}
+
+/* --- Correcciones mobile ---------------------------------------------- */
+@media (max-width: 1023px), (pointer: coarse) and (max-width: 1240px) {
+  /* el panel era display:grid heredado, por eso ignoraba flex-direction */
+  .arpeggiator-control {
+    display: flex !important;
+  }
+
+  /* Orden de la referencia: circulo, ARP, INSTRUMENT, y abajo acordes +
+     jazzy en la misma fila. Con display:contents los paneles pasan a ser
+     hijos directos de la grilla y se pueden ubicar uno por uno. */
+  .main-layout {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-rows: minmax(0, 1fr) auto auto auto auto !important;
+    grid-template-areas:
+      "circle circle"
+      "arp    arp"
+      "inst   inst"
+      "modes  jazzy"
+      "exp    exp" !important;
+    column-gap: 8px !important;
+  }
+
+  .center-panel,
+  .tools-right-container,
+  .tools-left-container,
+  .tools-left { display: contents !important; }
+
+  .circle-wrapper { grid-area: circle; justify-self: center; align-self: center; }
+  .arpeggiator-control { grid-area: arp; }
+  .style-selector-apple.instrument-panel { grid-area: inst; }
+  .wheel-bottom-row { grid-area: modes; }
+  .jazzy-control { grid-area: jazzy; }
+  .effects-box { grid-area: exp; }
+
+  /* jazzy pasa a ser una pastilla al lado de la barra de acordes */
+  .jazzy-control {
+    min-height: 52px !important;
+    border-radius: 16px !important;
+    padding: 0 14px !important;
+    gap: 9px !important;
+  }
+
+  .jazzy-control .jazzy-label { font-size: 12px; margin-right: 0; }
+  .jazzy-control .jazzy-state { display: none; }
+  .jazzy-control .jazzy-switch { width: 40px; height: 22px; }
+  .jazzy-control .jazzy-switch-thumb { width: 16px; height: 16px; }
+  .jazzy-control .jazzy-switch.on .jazzy-switch-thumb { transform: translateX(18px); }
+
+  /* expression: franja baja y ancha al pie */
+  .effects-box {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 12px;
+    min-height: 52px !important;
+  }
+
+  .effects-box .vfader-label { width: auto; align-self: center; }
+
+  .effects-box .vfader-wrap {
+    flex: 1;
+    flex-direction: row !important;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .effects-box .vfader-track { height: 34px !important; width: 14px !important; }
+  .effects-box .vfader-value { font-size: 13px !important; }
+}
+
+/* --- Pulido final mobile ---------------------------------------------- */
+@media (max-width: 1023px), (pointer: coarse) and (max-width: 1240px) {
+  /* la referencia usa "ARP" corto, no la palabra entera */
+  .arpeggiator-control .arp-title-lite {
+    font-size: 0;
+    letter-spacing: 0;
+  }
+
+  .arpeggiator-control .arp-title-lite::after {
+    content: 'ARP';
+    font-family: var(--fv-sans);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: .18em;
+    color: var(--fv-label);
+  }
+
+  .arp-power-switch.arp-power-mini { width: 30px; height: 16px; }
+  .arp-power-switch.arp-power-mini .arp-power-thumb { width: 10px; height: 10px; }
+  .arp-power-switch.arp-power-mini.on .arp-power-thumb { transform: translateX(14px); }
+
+  /* el pulgar del fader se salia de la caña acortada */
+  .effects-box .vfader-track { height: 30px !important; width: 12px !important; }
+  .vfader-thumb { width: 22px !important; height: 11px !important; }
+  .vfader-thumb::after { width: 11px; height: 2px; }
+  .effects-box { min-height: 46px !important; }
+  .effects-box .vfader-label { font-size: 9px; letter-spacing: .18em; }
+}
+
+/* La etiqueta larga no entra en la franja mobile: se muestra una u otra.
+   (font-size:0 no sirve, WebKit reescala el texto en telefonos.) */
+.arp-title-short { display: none; }
+
+@media (max-width: 1023px), (pointer: coarse) and (max-width: 1240px) {
+  .arpeggiator-control .arp-title-lite { font-size: 11px; letter-spacing: .18em; }
+  .arpeggiator-control .arp-title-lite::after { content: none; }
+  .arp-title-long { display: none; }
+  .arp-title-short { display: inline; }
+
+  /* la caña queda usable, no un hilo */
+  .effects-box { min-height: 54px !important; padding: 8px 14px !important; }
+  .effects-box .vfader-track { height: 36px !important; width: 16px !important; }
+  .vfader-thumb { width: 26px !important; height: 12px !important; }
+}

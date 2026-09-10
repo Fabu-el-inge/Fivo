@@ -218,6 +218,7 @@ const VerticalFader: React.FC<VerticalFaderProps> = ({ value, onChange, label, h
     return (
         <div className="vfader-wrap" onWheel={handleWheel}>
             <span className="vfader-label">{label}</span>
+            <div className="panel-rule" />
             <div
                 className="vfader-track"
                 ref={trackRef}
@@ -231,7 +232,10 @@ const VerticalFader: React.FC<VerticalFaderProps> = ({ value, onChange, label, h
                 <div className="vfader-fill" style={{ height: `${value}%` }} />
                 <div className="vfader-thumb" style={{ bottom: `${value}%` }} />
             </div>
-            <span className="vfader-value">{value}%</span>
+            <span className="vfader-value">
+                {value}
+                <span className="vfader-unit">&nbsp;%</span>
+            </span>
         </div>
     );
 };
@@ -380,9 +384,18 @@ interface InstrumentSelectorProps {
 export const InstrumentSelector: React.FC<InstrumentSelectorProps> = ({ instrument, onInstrumentChange }) => {
     const instruments: InstrumentName[] = ['EP2', 'Messy', 'Canadians', 'E-Bass'];
 
+    const index = Math.max(0, instruments.indexOf(instrument)) + 1;
+
     return (
-        <div className="style-selector-apple">
-            <label>Instrument</label>
+        <div className="style-selector-apple instrument-panel">
+            <div className="panel-head">
+                <label>Instrument</label>
+                <span className="panel-index">
+                    {String(index).padStart(2, '0')}
+                    <span className="panel-index-total">&nbsp;/&nbsp;04</span>
+                </span>
+            </div>
+            <div className="panel-rule" />
             <div className="style-list-apple">
                 {instruments.map((i) => (
                     <button
@@ -390,7 +403,9 @@ export const InstrumentSelector: React.FC<InstrumentSelectorProps> = ({ instrume
                         className={`style-item-apple ${instrument === i ? 'active' : ''}`}
                         onClick={() => onInstrumentChange(i)}
                     >
-                        {i}
+                        <span className="slot-rail" aria-hidden="true" />
+                        <span className="slot-name">{i}</span>
+                        <span className="slot-dot" aria-hidden="true" />
                     </button>
                 ))}
             </div>
@@ -445,7 +460,11 @@ export const Arpeggiator: React.FC<ArpeggiatorProps> = ({
         return (
             <div className="arpeggiator-control">
                 <div className="arp-head">
-                    <span className="arp-title-lite">arpeggiator</span>
+                    <span className="arp-title-lite">
+                        <span className="arp-title-long">arpeggiator</span>
+                        <span className="arp-title-short">arp</span>
+                    </span>
+                    <span className="arp-state-text">{isOn ? 'ON' : 'OFF'}</span>
                     <button
                         type="button"
                         className={`arp-power-switch arp-power-mini ${isOn ? 'on' : ''}`}
@@ -457,6 +476,7 @@ export const Arpeggiator: React.FC<ArpeggiatorProps> = ({
                         <span className="arp-power-thumb" />
                     </button>
                 </div>
+                <div className="panel-rule" />
                 <div className="arp-demo-row">
                     <div className="arp-demo-control arp-type-control">
                         <RotaryKnob
