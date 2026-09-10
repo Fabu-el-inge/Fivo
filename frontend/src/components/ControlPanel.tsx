@@ -180,10 +180,17 @@ const VerticalFader: React.FC<VerticalFaderProps> = ({ value, onChange, label, h
     const trackRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
 
-    const handleMove = (clientY: number) => {
+    // La caña es vertical en escritorio y horizontal en la franja de mobile.
+    // En vez de un prop, se toma el eje del propio elemento: el lado mas largo
+    // manda. Asi el arrastre siempre sigue a la forma que se ve en pantalla.
+    const handleMove = (clientX: number, clientY: number) => {
         const rect = trackRef.current?.getBoundingClientRect();
         if (!rect) return;
-        const pct = 1 - Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+        const horizontal = rect.width > rect.height;
+        const raw = horizontal
+            ? (clientX - rect.left) / rect.width
+            : 1 - (clientY - rect.top) / rect.height;
+        const pct = Math.max(0, Math.min(1, raw));
         onChange(Math.round(pct * 100));
     };
 
@@ -191,13 +198,13 @@ const VerticalFader: React.FC<VerticalFaderProps> = ({ value, onChange, label, h
         e.preventDefault();
         setIsDragging(true);
         e.currentTarget.setPointerCapture(e.pointerId);
-        handleMove(e.clientY);
+        handleMove(e.clientX, e.clientY);
     };
 
     const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
         if (!isDragging) return;
         e.preventDefault();
-        handleMove(e.clientY);
+        handleMove(e.clientX, e.clientY);
     };
 
     const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -229,8 +236,8 @@ const VerticalFader: React.FC<VerticalFaderProps> = ({ value, onChange, label, h
                 onPointerCancel={handlePointerUp}
                 onLostPointerCapture={() => setIsDragging(false)}
             >
-                <div className="vfader-fill" style={{ height: `${value}%` }} />
-                <div className="vfader-thumb" style={{ bottom: `${value}%` }} />
+                <div className="vfader-fill" style={{ '--v': `${value}%` } as React.CSSProperties} />
+                <div className="vfader-thumb" style={{ '--v': `${value}%` } as React.CSSProperties} />
             </div>
             <span className="vfader-value">
                 {value}

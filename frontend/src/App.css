@@ -5930,3 +5930,60 @@ body,
   .effects-box .vfader-track { height: 36px !important; width: 16px !important; }
   .vfader-thumb { width: 26px !important; height: 12px !important; }
 }
+
+/* --- La caña de expresion: vertical arriba, horizontal en mobile -------
+   El valor llega como --v; aca se decide si pinta alto o ancho. */
+.vfader-fill { height: var(--v, 50%); }
+.vfader-thumb { bottom: var(--v, 50%); }
+
+@media (max-width: 1023px), (pointer: coarse) and (max-width: 1240px) {
+  .effects-box .vfader-track {
+    width: 100% !important;
+    height: 16px !important;
+    min-width: 120px;
+    border-radius: 9px !important;
+    cursor: ew-resize;
+    touch-action: none;
+  }
+
+  .effects-box .vfader-wrap { width: 100%; }
+
+  .vfader-fill {
+    height: 100% !important;
+    width: var(--v, 50%);
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: auto;
+    border-radius: 9px;
+  }
+
+  /* el filo caliente pasa del borde superior al derecho */
+  .vfader-fill::after {
+    top: 0;
+    bottom: 0;
+    left: auto;
+    right: 0;
+    width: 2px;
+    height: auto;
+  }
+
+  .vfader-fill::before {
+    background: linear-gradient(180deg, rgba(255, 255, 255, .36) 0%, rgba(255, 255, 255, .05) 42%, rgba(0, 0, 0, .06) 62%, rgba(0, 0, 0, .26) 100%);
+  }
+
+  .vfader-thumb {
+    bottom: auto !important;
+    top: 50% !important;
+    left: var(--v, 50%) !important;
+    width: 14px !important;
+    height: 26px !important;
+    transform: translate(-50%, -50%) !important;
+    border-radius: 5px !important;
+  }
+
+  .vfader-thumb::after {
+    width: 3px;
+    height: 13px;
+  }
+}
