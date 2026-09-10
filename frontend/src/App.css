@@ -6342,3 +6342,45 @@ body,
   justify-content: center;
   text-align: center;
 }
+
+/* =====================================================================
+   PISO DEL CIRCULO + ANCHOS DE LAS COLUMNAS
+   ===================================================================== */
+
+/* El circulo se achicaba sin limite para que todo entrara, con lo cual el
+   scroll no aparecia NUNCA: la pagina siempre media exactamente una
+   ventana. Si el margen que quedaba era menor que la barra del navegador
+   mas el indicador de inicio, el borde se comia el boton y no habia nada
+   que scrollear. Con un piso, cuando la ventana es demasiado baja el
+   contenido pasa a ser mas alto que la pantalla y el scroll aparece de
+   verdad. Ademas se reserva el safe-area de abajo. */
+@media (min-width: 900px) and (min-height: 600px) {
+  .main-layout {
+    /* Columnas mas angostas: las tres tarjetas de la derecha comparten el
+       ancho del arpegiador (250px) en vez de estirarse a 300, y eso le
+       devuelve espacio a la rueda. */
+    grid-template-columns: 200px minmax(0, 1fr) 268px !important;
+  }
+
+  .circle-wrapper {
+    width: max(260px, min(94%, calc(100dvh - 300px - env(safe-area-inset-bottom, 0px)), 585px)) !important;
+  }
+
+  .tools-right-container .arpeggiator-control,
+  .tools-right-container .style-selector-apple,
+  .tools-right-container .jazzy-control,
+  .rec-instrument-row .style-selector-apple,
+  .rec-instrument-row .jazzy-control {
+    width: 250px !important;
+    max-width: 100% !important;
+    margin-inline: auto !important;
+  }
+}
+
+/* En vertical el mismo piso, para que nunca quede algo inalcanzable. */
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
+  .circle-wrapper {
+    min-width: 240px;
+  }
+}
