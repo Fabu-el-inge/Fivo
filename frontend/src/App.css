@@ -6332,3 +6332,13 @@ body,
     max-width: 540px !important;
   }
 }
+
+/* Los botones de la barra eran display:block, asi que el icono quedaba
+   pegado al borde izquierdo. El de pantalla completa se veia bien porque
+   su clase ya traia flex + center; ahora van todos igual. */
+.wheel-bottom-row .hold-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
