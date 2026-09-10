@@ -5580,7 +5580,8 @@ body,
    Las medidas del bloque de escritorio de arriba solo aplican en pantallas
    anchas; aca se reescriben por completo.
    ===================================================================== */
-@media (max-width: 1023px), (pointer: coarse) and (max-width: 1240px) {
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
   /* deshacer las medidas de escritorio */
   .effects-box {
     width: auto;
@@ -5818,7 +5819,8 @@ body,
 }
 
 /* --- Correcciones mobile ---------------------------------------------- */
-@media (max-width: 1023px), (pointer: coarse) and (max-width: 1240px) {
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
   /* el panel era display:grid heredado, por eso ignoraba flex-direction */
   .arpeggiator-control {
     display: flex !important;
@@ -5887,7 +5889,8 @@ body,
 }
 
 /* --- Pulido final mobile ---------------------------------------------- */
-@media (max-width: 1023px), (pointer: coarse) and (max-width: 1240px) {
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
   /* la referencia usa "ARP" corto, no la palabra entera */
   .arpeggiator-control .arp-title-lite {
     font-size: 0;
@@ -5919,7 +5922,8 @@ body,
    (font-size:0 no sirve, WebKit reescala el texto en telefonos.) */
 .arp-title-short { display: none; }
 
-@media (max-width: 1023px), (pointer: coarse) and (max-width: 1240px) {
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
   .arpeggiator-control .arp-title-lite { font-size: 11px; letter-spacing: .18em; }
   .arpeggiator-control .arp-title-lite::after { content: none; }
   .arp-title-long { display: none; }
@@ -5936,7 +5940,8 @@ body,
 .vfader-fill { height: var(--v, 50%); }
 .vfader-thumb { bottom: var(--v, 50%); }
 
-@media (max-width: 1023px), (pointer: coarse) and (max-width: 1240px) {
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
   .effects-box .vfader-track {
     width: 100% !important;
     height: 16px !important;
@@ -5989,7 +5994,8 @@ body,
 }
 
 /* --- Expresion primero, y la caña ocupa el ancho disponible ------------ */
-@media (max-width: 1023px), (pointer: coarse) and (max-width: 1240px) {
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
   .main-layout {
     grid-template-areas:
       "circle circle"
@@ -6017,8 +6023,7 @@ body,
 }
 
 /* En tablet hay mas aire: caña mas gruesa y tipografia un punto mayor */
-@media (min-width: 600px) and (max-width: 1023px),
-       (pointer: coarse) and (min-width: 600px) and (max-width: 1240px) {
+@media (orientation: portrait) and (min-width: 600px) and (max-width: 1240px) {
   .effects-box { min-height: 64px !important; padding: 10px 20px !important; }
   .effects-box .vfader-track { height: 22px !important; border-radius: 12px !important; }
   .vfader-thumb { width: 18px !important; height: 34px !important; }
@@ -6030,7 +6035,8 @@ body,
 /* La caña quedaba en 0: al ser un div vacio, flex-basis:auto le da ancho de
    contenido. Con base 0 y grow reparte todo el hueco libre, y el min-width
    evita que pueda colapsar de nuevo. */
-@media (max-width: 1023px), (pointer: coarse) and (max-width: 1240px) {
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
   .effects-box .vfader-wrap {
     display: flex !important;
     align-items: center;
@@ -6046,7 +6052,8 @@ body,
 
 /* El hijo directo del panel es .level-fader-wrap y venia con flex:0 1 auto,
    asi que se quedaba al ancho de su contenido y la caña nunca crecia. */
-@media (max-width: 1023px), (pointer: coarse) and (max-width: 1240px) {
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
   .effects-box .level-fader-wrap {
     flex: 1 1 auto !important;
     width: 100% !important;
@@ -6058,15 +6065,15 @@ body,
 
 /* El tope de 420px del bloque mobile achicaba el circulo en tablet, que
    tiene ancho de sobra. Y la barra de acordes tiene que llenar su columna. */
-@media (max-width: 1023px), (pointer: coarse) and (max-width: 1240px) {
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
   .wheel-bottom-row {
     width: 100% !important;
     justify-self: stretch;
   }
 }
 
-@media (min-width: 600px) and (max-width: 1023px),
-       (pointer: coarse) and (min-width: 600px) and (max-width: 1240px) {
+@media (orientation: portrait) and (min-width: 600px) and (max-width: 1240px) {
   .circle-wrapper {
     width: min(88vw, calc(100dvh - 430px), 700px) !important;
   }
@@ -6074,7 +6081,8 @@ body,
 
 /* `.center-panel .wheel-bottom-row { width:auto }` de mas arriba ganaba por
    especificidad, y los margenes auto la dejaban centrada a media columna. */
-@media (max-width: 1023px), (pointer: coarse) and (max-width: 1240px) {
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
   .center-panel .wheel-bottom-row,
   .main-layout .wheel-bottom-row {
     width: 100% !important;
@@ -6110,8 +6118,7 @@ body,
 /* --- Perillas en tablet ------------------------------------------------
    El bloque mobile las dejaba en 34px; en tablet sobra espacio y quedaban
    diminutas. */
-@media (min-width: 600px) and (max-width: 1023px),
-       (pointer: coarse) and (min-width: 600px) and (max-width: 1240px) {
+@media (orientation: portrait) and (min-width: 600px) and (max-width: 1240px) {
   .arpeggiator-control { min-height: 92px !important; padding: 0 20px !important; }
 
   .arpeggiator-control .knob-control {
@@ -6134,8 +6141,7 @@ body,
 
 /* En tablet los botones se estiraban a 252px cada uno porque heredaban el
    flex:1 del bloque mobile. Van compactos, como en la referencia. */
-@media (min-width: 600px) and (max-width: 1023px),
-       (pointer: coarse) and (min-width: 600px) and (max-width: 1240px) {
+@media (orientation: portrait) and (min-width: 600px) and (max-width: 1240px) {
   .wheel-bottom-row .hold-btn {
     flex: 0 0 auto;
     min-width: 104px;
@@ -6145,4 +6151,52 @@ body,
   }
 
   .wheel-bottom-row .octave-control::after { content: ''; flex: 1; }
+}
+
+/* --- La barra inferior no puede quedar mas angosta que su contenido ----
+   Se dimensiona por la columna del circulo, no por lo que lleva adentro:
+   por debajo de ~1200px de ventana el boton "full" quedaba fuera de la
+   caja. Con min-width:max-content la columna crece lo necesario, y entre
+   1024 y 1300 se aprietan paddings y gaps para que ese minimo sea chico. */
+@media (min-width: 900px) and (min-height: 600px) {
+  .wheel-bottom-row,
+  .center-panel .wheel-bottom-row {
+    min-width: max-content;
+  }
+}
+
+@media (min-width: 900px) and (min-height: 600px) and (max-width: 1320px) {
+  .wheel-bottom-row,
+  .center-panel .wheel-bottom-row {
+    padding: 0 20px !important;
+  }
+
+  .wheel-bottom-row .octave-control { gap: 10px !important; }
+  .wheel-bottom-row .octave-control button { width: 40px; height: 40px; font-size: 19px; }
+  .wheel-bottom-row .octave-control > span,
+  .wheel-bottom-row .octave-value { font-size: 24px; min-width: 26px; }
+
+  .wheel-bottom-row .hold-btn {
+    min-width: 76px;
+    height: 40px;
+    margin-left: 8px;
+    font-size: 13px;
+  }
+}
+
+/* El circulo se dimensionaba por vw y alto de ventana, sin contar lo que
+   ocupan las columnas laterales (168px la de expresion, 250px la derecha).
+   Por debajo de ~1200px se metia debajo de los paneles de la derecha.
+   Ahora el ancho disponible del centro es parte del calculo. */
+@media (min-width: 900px) and (min-height: 600px) {
+  /* Columnas laterales fijas: asi el ancho del centro es un dato, no una
+     estimacion. El circulo se acota contra su propia columna y no puede
+     meterse debajo de los paneles, sea cual sea el ancho de ventana. */
+  .main-layout {
+    grid-template-columns: 220px minmax(0, 1fr) 300px !important;
+  }
+
+  .circle-wrapper {
+    width: min(94%, calc(100dvh - 260px), 585px) !important;
+  }
 }
