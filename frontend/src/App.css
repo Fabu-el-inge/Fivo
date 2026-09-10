@@ -6083,3 +6083,66 @@ body,
     margin-right: 0 !important;
   }
 }
+
+/* --- Iconos en la barra inferior --------------------------------------
+   En telefono las palabras no entran en los botones. Se cambian por
+   iconos; en tablet y escritorio siguen las palabras, que ahi si entran. */
+.btn-icon {
+  display: none;
+  width: 17px;
+  height: 17px;
+  fill: currentColor;
+  flex: none;
+}
+
+@media (max-width: 599px) {
+  .wheel-bottom-row .hold-btn .btn-label { display: none; }
+  .wheel-bottom-row .hold-btn .btn-icon { display: block; }
+
+  .wheel-bottom-row .hold-btn {
+    flex: 0 0 auto;
+    min-width: 40px;
+    width: 40px;
+    padding: 0;
+  }
+}
+
+/* --- Perillas en tablet ------------------------------------------------
+   El bloque mobile las dejaba en 34px; en tablet sobra espacio y quedaban
+   diminutas. */
+@media (min-width: 600px) and (max-width: 1023px),
+       (pointer: coarse) and (min-width: 600px) and (max-width: 1240px) {
+  .arpeggiator-control { min-height: 92px !important; padding: 0 20px !important; }
+
+  .arpeggiator-control .knob-control {
+    width: 56px !important;
+    height: 56px !important;
+  }
+
+  .arpeggiator-control .knob-indicator {
+    width: 3px;
+    height: 14px;
+    top: 6px;
+  }
+
+  .arpeggiator-control .knob-wrapper > label { font-size: 9px; letter-spacing: .22em; }
+  .arpeggiator-control .knob-value-label { font-size: 15px; }
+  .arpeggiator-control .arp-demo-control { gap: 14px; }
+  .arpeggiator-control .knob-wrapper { gap: 14px; }
+  .arpeggiator-control .arp-title-lite { font-size: 12px; }
+}
+
+/* En tablet los botones se estiraban a 252px cada uno porque heredaban el
+   flex:1 del bloque mobile. Van compactos, como en la referencia. */
+@media (min-width: 600px) and (max-width: 1023px),
+       (pointer: coarse) and (min-width: 600px) and (max-width: 1240px) {
+  .wheel-bottom-row .hold-btn {
+    flex: 0 0 auto;
+    min-width: 104px;
+    height: 40px;
+    padding: 0 22px;
+    font-size: 13px;
+  }
+
+  .wheel-bottom-row .octave-control::after { content: ''; flex: 1; }
+}
