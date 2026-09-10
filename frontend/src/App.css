@@ -5987,3 +5987,99 @@ body,
     height: 13px;
   }
 }
+
+/* --- Expresion primero, y la caña ocupa el ancho disponible ------------ */
+@media (max-width: 1023px), (pointer: coarse) and (max-width: 1240px) {
+  .main-layout {
+    grid-template-areas:
+      "circle circle"
+      "exp    exp"
+      "arp    arp"
+      "inst   inst"
+      "modes  jazzy" !important;
+  }
+
+  /* la caña se come todo el hueco entre la etiqueta y el valor, en vez de
+     quedar como una linea corta en el medio */
+  .effects-box .vfader-wrap {
+    justify-content: stretch;
+    gap: 14px;
+  }
+
+  .effects-box .vfader-label,
+  .effects-box .vfader-value { flex: none; }
+
+  .effects-box .vfader-track {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0;
+  }
+}
+
+/* En tablet hay mas aire: caña mas gruesa y tipografia un punto mayor */
+@media (min-width: 600px) and (max-width: 1023px),
+       (pointer: coarse) and (min-width: 600px) and (max-width: 1240px) {
+  .effects-box { min-height: 64px !important; padding: 10px 20px !important; }
+  .effects-box .vfader-track { height: 22px !important; border-radius: 12px !important; }
+  .vfader-thumb { width: 18px !important; height: 34px !important; }
+  .vfader-thumb::after { width: 3px; height: 17px; }
+  .effects-box .vfader-label { font-size: 11px; letter-spacing: .24em; }
+  .effects-box .vfader-value { font-size: 16px !important; }
+}
+
+/* La caña quedaba en 0: al ser un div vacio, flex-basis:auto le da ancho de
+   contenido. Con base 0 y grow reparte todo el hueco libre, y el min-width
+   evita que pueda colapsar de nuevo. */
+@media (max-width: 1023px), (pointer: coarse) and (max-width: 1240px) {
+  .effects-box .vfader-wrap {
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .effects-box .vfader-track {
+    flex: 1 1 0% !important;
+    width: auto !important;
+    min-width: 80px !important;
+  }
+}
+
+/* El hijo directo del panel es .level-fader-wrap y venia con flex:0 1 auto,
+   asi que se quedaba al ancho de su contenido y la caña nunca crecia. */
+@media (max-width: 1023px), (pointer: coarse) and (max-width: 1240px) {
+  .effects-box .level-fader-wrap {
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    min-width: 0;
+  }
+
+  .effects-box .vfader-wrap { width: 100%; }
+}
+
+/* El tope de 420px del bloque mobile achicaba el circulo en tablet, que
+   tiene ancho de sobra. Y la barra de acordes tiene que llenar su columna. */
+@media (max-width: 1023px), (pointer: coarse) and (max-width: 1240px) {
+  .wheel-bottom-row {
+    width: 100% !important;
+    justify-self: stretch;
+  }
+}
+
+@media (min-width: 600px) and (max-width: 1023px),
+       (pointer: coarse) and (min-width: 600px) and (max-width: 1240px) {
+  .circle-wrapper {
+    width: min(88vw, calc(100dvh - 430px), 700px) !important;
+  }
+}
+
+/* `.center-panel .wheel-bottom-row { width:auto }` de mas arriba ganaba por
+   especificidad, y los margenes auto la dejaban centrada a media columna. */
+@media (max-width: 1023px), (pointer: coarse) and (max-width: 1240px) {
+  .center-panel .wheel-bottom-row,
+  .main-layout .wheel-bottom-row {
+    width: 100% !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+}
