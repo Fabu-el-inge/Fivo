@@ -6200,3 +6200,135 @@ body,
     width: min(94%, calc(100dvh - 260px), 585px) !important;
   }
 }
+
+/* =====================================================================
+   BASE RESPONSIVE — 10/09/2026
+   El layout estaba armado como un cartel de tamano fijo: exactamente una
+   pantalla de alto, recortado y sin scroll (overflow:hidden en html/body,
+   en .app-container y en .main-layout). Eso funciona solo si todo entra
+   justo; en cuanto el alto real difiere del supuesto —barra del navegador
+   visible, telefono acostado, notch— algo queda fuera del marco y no hay
+   forma de llegar. De ahi salia toda la familia de bugs por dispositivo.
+
+   Aca se quita ese supuesto. El diseno no cambia: mientras entre, se ve
+   igual que hasta ahora, centrado. Solo cuando NO entra aparece scroll.
+   ===================================================================== */
+
+html,
+body,
+#root {
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: none;
+}
+
+.app-container {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  min-height: 100dvh;
+  overflow: visible;
+  box-sizing: border-box;
+
+  /* El notch: sin esto el navegador reserva la franja y nadie la pinta,
+     que es de donde salian las barras blancas al costado en apaisado. */
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.main-layout {
+  /* 100vw incluye la barra de scroll: con scroll visible desbordaba a lo
+     ancho. Y 100vh es el alto CON LA BARRA DEL NAVEGADOR OCULTA, por eso
+     se cortaba abajo; dvh es el alto real de este momento. */
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  min-height: 100dvh;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+/* =====================================================================
+   LOS CONTROLES RESPONDEN A SU PROPIA TARJETA
+   Hasta ahora los botones se adaptaban al ancho del DISPOSITIVO, con lo
+   cual cada aparato nuevo era un caso nuevo y se salian de su caja. Con
+   container queries cada modulo mide SU caja: si la barra se angosta, sus
+   botones se vuelven iconos, sin importar en que pantalla este.
+   ===================================================================== */
+
+.wheel-bottom-row,
+.style-selector-apple,
+.arpeggiator-control,
+.effects-box {
+  container-type: inline-size;
+}
+
+/* Nada puede desbordar su contenedor flex por no poder encogerse. */
+.wheel-bottom-row > *,
+.style-selector-apple > *,
+.arpeggiator-control > *,
+.effects-box > * {
+  min-width: 0;
+}
+
+/* max-content hacia crecer la barra a la fuerza; ahora se adapta el
+   contenido, que es lo correcto, y ademas es incompatible con
+   container-type: inline-size. */
+.wheel-bottom-row,
+.center-panel .wheel-bottom-row {
+  min-width: 0 !important;
+}
+
+/* --- Barra de modos: texto → iconos cuando su caja aprieta ------------ */
+@container (max-width: 440px) {
+  .wheel-bottom-row .hold-btn .btn-label { display: none; }
+  .wheel-bottom-row .hold-btn .btn-icon { display: block; }
+
+  .wheel-bottom-row .hold-btn {
+    min-width: 42px !important;
+    width: 42px;
+    flex: 0 0 auto;
+    padding: 0 !important;
+    margin-left: 8px;
+  }
+}
+
+@container (max-width: 300px) {
+  .wheel-bottom-row { padding: 0 10px !important; gap: 6px !important; }
+  .wheel-bottom-row .octave-control { gap: 6px !important; }
+  .wheel-bottom-row .octave-control button { width: 34px; height: 34px; font-size: 17px; }
+  .wheel-bottom-row .octave-control > span,
+  .wheel-bottom-row .octave-value { font-size: 20px; min-width: 22px; }
+  .wheel-bottom-row .hold-btn { min-width: 36px !important; width: 36px; height: 36px; margin-left: 6px; }
+  .btn-icon { width: 15px; height: 15px; }
+}
+
+/* Las container queries quedan SOLO en la barra de modos, que es donde
+   estaba el problema real. Probe ponerlas tambien en instrumentos,
+   arpegiador y expresion, y fue un error: esos paneles son angostos por
+   diseno en escritorio (250px y 168px), asi que se disparaban solos y
+   borraban etiquetas que tenian que estar. */
+
+/* container-type: inline-size prohibe medirse por el contenido. Sin un
+   ancho que venga del padre, la barra colapsaba a 42px y los botones
+   quedaban todos afuera. El ancho lo da el contenedor, como corresponde. */
+.wheel-bottom-row,
+.center-panel .wheel-bottom-row {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* La barra tiene que seguir el ancho de la rueda, no el de la columna.
+   Sin tope quedaba en 838px contra un circulo de 585. El valor es el que
+   ya tenia el diseno antes de este cambio. */
+@media (min-width: 900px) and (min-height: 600px) {
+  .main-layout .center-panel .wheel-bottom-row,
+  .main-layout .wheel-bottom-row {
+    max-width: 540px !important;
+  }
+}
