@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:visual": "node scripts/visual-diff.mjs",
-    "check:colors": "node scripts/gen-context-table.mjs"
+    "check:colors": "node scripts/gen-context-table.mjs",
+    "test:audio-trace": "node scripts/audio-trace.mjs"
   },
   "dependencies": {
     "react": "^19.2.0",
