@@ -1,5 +1,8 @@
 /* global AudioWorkletProcessor, registerProcessor, sampleRate, createFivoSurgeModule */
 
+// Voces por instrumento. Es sonido, no rendimiento: no varia por plataforma.
+const POLY_VOICES = { "E-Bass": 8 };
+
 class FivoSurgeProcessor extends AudioWorkletProcessor {
     constructor(options) {
         super();
@@ -121,7 +124,10 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
     }
 
     voiceCountFor(instrument) {
-        return this.mobile && instrument === "E-Bass" ? 3 : 8;
+        // E-Bass usa un motor por nota, con envolvente y sustain propios: este numero
+        // es sonido, no rendimiento. Bajarlo en mobile hacia que un acorde de 4 notas
+        // sonara distinto que en escritorio. Se mantiene en 8 en todas las plataformas.
+        return POLY_VOICES[instrument] ?? 8;
     }
 
     ensureInstrumentLoaded(instrument) {

@@ -4710,3 +4710,1939 @@ body {
     min-height: 142px;
   }
 }
+
+/* =====================================================================
+   AJUSTES DE LAYOUT — 09/09/2026
+   Bloque al final a proposito: gana la cascada sin editar reglas de
+   arriba, y se puede revertir borrandolo entero.
+   ===================================================================== */
+
+/* --- 1. La barra inferior nunca deja botones flotando afuera ---------
+   Se dimensionaba por el ancho de la rueda, no por su contenido: por
+   debajo de ~1100px de ventana el boton "full" quedaba fuera de la caja.
+   Ahora envuelve antes que desbordar y el gap se achica con la ventana. */
+.wheel-bottom-row {
+  flex-wrap: wrap;
+  gap: clamp(8px, 1.1vw, 16px);
+  row-gap: 10px;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+/* --- 2. Arpegiador: el on/off deja de competir con las perillas ------
+   Pasa a ser un interruptor chico al lado del titulo; TYPE y TEMPO
+   quedan en dos columnas iguales, mismo tamano y misma linea base. */
+.arp-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.arp-head .arp-title-lite {
+  margin-bottom: 0;
+}
+
+.arp-power-switch.arp-power-mini {
+  width: 34px;
+  height: 19px;
+  flex: 0 0 auto;
+}
+
+.arp-power-switch.arp-power-mini .arp-power-thumb {
+  width: 13px;
+  height: 13px;
+}
+
+.arp-power-switch.arp-power-mini.on .arp-power-thumb {
+  transform: translateX(15px);
+}
+
+.arpeggiator-control .arp-demo-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  justify-items: center;
+  gap: clamp(12px, 2.2vw, 28px);
+  width: 100%;
+}
+
+.arpeggiator-control .arp-demo-control {
+  align-items: center;
+  text-align: center;
+  width: 100%;
+}
+
+.arpeggiator-control .arp-knob {
+  width: 60px;
+  height: 60px;
+}
+
+/* --- 3. Portrait (mobile y tablet): la rueda manda -------------------
+   Antes los controles ocupaban la franja de arriba (~290px en un
+   telefono) y la rueda quedaba relegada y descentrada. Se invierte el
+   orden: la rueda toma toda la altura sobrante y queda centrada, y los
+   controles pasan a una franja compacta abajo. */
+@media (orientation: portrait) and (max-width: 1240px),
+       (pointer: coarse) and (orientation: portrait) {
+  .main-layout {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "center center"
+      "left   right";
+    row-gap: clamp(10px, 1.6vh, 18px);
+    align-items: stretch;
+  }
+
+  .center-panel {
+    grid-area: center;
+    justify-content: center;
+    align-self: center;
+  }
+
+  .tools-left-container { grid-area: left; }
+  .tools-right-container { grid-area: right; }
+
+  /* La franja de controles deja de estirarse: ocupa lo que necesita */
+  .arpeggiator-control,
+  .style-selector-apple,
+  .jazzy-control {
+    min-height: 104px;
+  }
+
+  .circle-wrapper {
+    width: min(94vw, calc(100dvh - 300px), 760px);
+    height: min(94vw, calc(100dvh - 300px), 760px);
+  }
+}
+
+/* --- 4. Telefonos: mas apretado todavia, para que la rueda gane ------ */
+@media (max-width: 640px) and (orientation: portrait) {
+  .main-layout {
+    grid-template-columns: 76px minmax(0, 1fr);
+    padding: clamp(8px, 2vw, 14px);
+  }
+
+  .arpeggiator-control,
+  .style-selector-apple,
+  .jazzy-control {
+    min-height: 94px !important;
+  }
+
+  .style-selector-apple {
+    padding: 10px 12px !important;
+  }
+
+  .style-list-apple {
+    gap: 6px 12px;
+  }
+
+  .effects-box {
+    padding: 10px 8px !important;
+  }
+
+  .vfader-track {
+    height: clamp(80px, 11vh, 112px) !important;
+  }
+
+  .arpeggiator-control .arp-knob {
+    width: 46px;
+    height: 46px;
+  }
+
+  .jazzy-control {
+    padding: 10px 8px !important;
+  }
+
+  .circle-wrapper {
+    width: min(96vw, calc(100dvh - 262px), 560px);
+    height: min(96vw, calc(100dvh - 262px), 560px);
+  }
+}
+
+/* --- 5. Correcciones medidas ---------------------------------------- */
+
+/* Perillas TYPE y TEMPO: son el control principal del arpegiador */
+.arpeggiator-control .knob-control {
+  width: 64px;
+  height: 64px;
+}
+
+/* El valor no puede cambiar de alto entre una perilla y otra ("Up" contra
+   "120"), porque desalinea la fila entera. */
+.arpeggiator-control .knob-value-label {
+  white-space: nowrap;
+  min-height: 16px;
+  line-height: 16px;
+}
+
+/* Ventanas angostas de escritorio: la barra entra en una sola fila hasta
+   ~950px. El wrap de arriba queda de red por si aun asi no entra. */
+@media (max-width: 1200px) {
+  .wheel-bottom-row {
+    gap: 8px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .wheel-bottom-row .octave-control {
+    padding: 6px 6px;
+    gap: 6px;
+  }
+}
+
+/* La rueda es un circulo: nunca se deja aplastar por el alto disponible */
+.circle-wrapper {
+  flex: 0 0 auto;
+  aspect-ratio: 1 / 1;
+  height: auto !important;
+}
+
+/* En telefonos las perillas acompanan el resto */
+@media (max-width: 640px) and (orientation: portrait) {
+  .arpeggiator-control .knob-control {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+/* --- 6. Cierre de los dos ultimos ajustes ---------------------------- */
+
+/* Hay reglas de arriba con !important que fijan gap 20px y padding 30px:
+   por eso la barra no entraba en una fila en ventanas angostas. */
+@media (max-width: 1200px) {
+  .center-panel .wheel-bottom-row {
+    gap: 8px !important;
+    padding: 12px 10px !important;
+    width: auto !important;
+    max-width: 100%;
+  }
+}
+
+/* En tablet la rueda se pasaba 10px por arriba del area visible. */
+@media (orientation: portrait) and (max-width: 1240px),
+       (pointer: coarse) and (orientation: portrait) {
+  .circle-wrapper {
+    width: min(92vw, calc(100dvh - 330px), 700px);
+  }
+}
+
+@media (max-width: 640px) and (orientation: portrait) {
+  .circle-wrapper {
+    width: min(96vw, calc(100dvh - 268px), 560px);
+  }
+}
+
+/* El titulo se estiraba al ancho del panel en tablet y empujaba el
+   interruptor lejos. Que ocupe solo lo que mide su texto. */
+.arp-head .arp-title-lite {
+  width: auto !important;
+  flex: 0 0 auto;
+  text-align: left;
+}
+
+/* =====================================================================
+   REDISEÑO FIVO — 10/09/2026
+   Replica de "FIVO Instrument.dc.html" (desktop) y "FIVO Mobile.dc.html".
+   El circulo de quintas NO se toca: queda el nuestro tal cual.
+   Valores tomados literalmente de los estilos inline de la referencia.
+   ===================================================================== */
+
+:root {
+  --fv-bg: #0c0c0e;
+  --fv-panel-top: #1c1c20;
+  --fv-panel-bot: #141417;
+  --fv-panel-border: rgba(0, 0, 0, .45);
+  --fv-panel-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .05),
+    inset 0 -2px 10px rgba(0, 0, 0, .55),
+    0 14px 34px rgba(0, 0, 0, .42);
+  --fv-accent: #ff7a3c;
+  --fv-label: #7e7e88;
+  --fv-label-2: #84848e;
+  --fv-value: #e8e8ec;
+  --fv-mono: 'DM Mono', ui-monospace, Menlo, monospace;
+  --fv-sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body,
+.app-container {
+  font-family: var(--fv-sans);
+}
+
+/* --- Chasis de panel, comun a todos los modulos --------------------- */
+.effects-box,
+.arpeggiator-control,
+.style-selector-apple,
+.jazzy-control,
+.wheel-bottom-row {
+  background: linear-gradient(180deg, var(--fv-panel-top), var(--fv-panel-bot)) !important;
+  border: 1px solid var(--fv-panel-border) !important;
+  box-shadow: var(--fv-panel-shadow) !important;
+  border-radius: 24px !important;
+  backdrop-filter: none !important;
+}
+
+.jazzy-control { border-radius: 18px !important; }
+
+/* --- Encabezado de panel + regla ------------------------------------ */
+.style-selector-apple > label,
+.arp-title-lite,
+.effects-box .vfader-label,
+.panel-head label {
+  font-family: var(--fv-sans);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+  color: var(--fv-label);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, .5);
+  margin: 0;
+}
+
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 4px;
+  width: 100%;
+}
+
+.panel-index {
+  font-family: var(--fv-mono);
+  font-size: 9px;
+  letter-spacing: .18em;
+  color: #6d6d76;
+}
+
+.panel-index-total { color: #4a4a52; }
+
+.panel-rule {
+  height: 1px;
+  width: 100%;
+  margin-top: 12px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .01));
+  flex: none;
+}
+
+/* --- ARPEGGIATOR ----------------------------------------------------- */
+.arpeggiator-control {
+  padding: 18px 22px !important;
+  gap: 0 !important;
+  align-items: stretch !important;
+}
+
+.arp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  width: 100%;
+}
+
+.arp-head .arp-title-lite { margin-right: auto; }
+
+.arp-state-text {
+  font-family: var(--fv-mono);
+  font-size: 9px;
+  letter-spacing: .18em;
+  color: var(--fv-label);
+}
+
+.arp-power-switch.arp-power-mini {
+  width: 36px;
+  height: 19px;
+  border-radius: 10px;
+  background: var(--fv-bg);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .75);
+  padding: 3px;
+  border: none;
+  transition: background .25s;
+}
+
+.arp-power-switch.arp-power-mini.on { background: var(--fv-accent); }
+
+.arp-power-switch.arp-power-mini .arp-power-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #f5f5f7, #cfcfd4);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, .5);
+  transform: translateX(0);
+  transition: transform .25s;
+}
+
+.arp-power-switch.arp-power-mini.on .arp-power-thumb { transform: translateX(17px); }
+
+.arpeggiator-control .arp-demo-row {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-top: 0;
+}
+
+.arpeggiator-control .arp-demo-control {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+
+/* separador vertical entre TYPE y TEMPO */
+.arpeggiator-control .arp-demo-control + .arp-demo-control::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, .07), transparent);
+}
+
+.arpeggiator-control .arp-demo-control + .arp-demo-control { position: relative; }
+
+.arpeggiator-control .knob-wrapper > label {
+  font-family: var(--fv-sans);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--fv-label-2);
+}
+
+.arpeggiator-control .knob-control {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 30%, #3a3a40, #141416 66%);
+  box-shadow:
+    0 9px 20px rgba(0, 0, 0, .62),
+    inset 0 2px 3px rgba(255, 255, 255, .07),
+    inset 0 -4px 9px rgba(0, 0, 0, .62);
+  border: none;
+}
+
+.arpeggiator-control .knob-indicator {
+  width: 3px;
+  height: 17px;
+  border-radius: 2px;
+  background: var(--fv-accent);
+  box-shadow: 0 0 8px rgba(255, 122, 60, .65);
+  top: 8px;
+}
+
+.arpeggiator-control .knob-value-label {
+  font-family: var(--fv-mono);
+  font-size: 15px;
+  color: var(--fv-value);
+  letter-spacing: 0;
+}
+
+/* --- INSTRUMENT ------------------------------------------------------ */
+.style-selector-apple.instrument-panel {
+  padding: 20px 22px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.instrument-panel .style-list-apple {
+  flex: 1;
+  display: flex !important;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 11px;
+  grid-template-columns: none !important;
+  width: 100%;
+}
+
+.instrument-panel .style-item-apple {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 0 12px 0 0;
+  border-radius: 10px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  text-align: left;
+  transition: background .22s;
+  min-height: 34px;
+}
+
+.instrument-panel .slot-rail {
+  width: 2px;
+  align-self: stretch;
+  margin: 7px 0;
+  border-radius: 2px;
+  background: transparent;
+  transition: background .22s;
+  flex: none;
+}
+
+.instrument-panel .slot-name {
+  font-family: var(--fv-sans);
+  font-weight: 400;
+  font-size: 19px;
+  letter-spacing: 0;
+  color: #8b8b94;
+  transition: color .22s;
+}
+
+.instrument-panel .slot-dot {
+  margin-left: auto;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--fv-accent);
+  box-shadow: 0 0 9px rgba(255, 122, 60, .8);
+  opacity: 0;
+  transition: opacity .22s;
+  flex: none;
+}
+
+.instrument-panel .style-item-apple.active {
+  background: linear-gradient(90deg, rgba(255, 122, 60, .13), rgba(255, 122, 60, .02) 58%, rgba(0, 0, 0, 0));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05);
+}
+
+.instrument-panel .style-item-apple.active .slot-rail {
+  background: var(--fv-accent);
+  box-shadow: 0 0 10px rgba(255, 122, 60, .7);
+}
+
+.instrument-panel .style-item-apple.active .slot-name {
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.instrument-panel .style-item-apple.active .slot-dot { opacity: 1; }
+
+/* --- JAZZY ----------------------------------------------------------- */
+.jazzy-control {
+  min-height: 56px !important;
+  padding: 0 26px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+
+.jazzy-label {
+  font-family: var(--fv-sans);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #9a9aa2;
+}
+
+.jazzy-state {
+  font-family: var(--fv-mono);
+  font-size: 12px;
+  letter-spacing: .1em;
+  color: var(--fv-label);
+}
+
+.jazzy-switch {
+  width: 50px;
+  height: 26px;
+  border-radius: 13px;
+  background: var(--fv-bg);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .75);
+  padding: 3px;
+  border: none;
+  transition: background .25s;
+}
+
+.jazzy-switch.on { background: var(--fv-accent); }
+
+.jazzy-switch-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #f5f5f7, #cfcfd4);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, .5);
+  transform: translateX(0);
+  transition: transform .25s;
+}
+
+.jazzy-switch.on .jazzy-switch-thumb { transform: translateX(24px); }
+
+/* --- EXPRESSION ------------------------------------------------------ */
+.effects-box {
+  padding: 18px 18px 20px !important;
+  border-radius: 22px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.effects-box .vfader-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+}
+
+.vfader-track {
+  width: 20px !important;
+  border-radius: 11px !important;
+  background: linear-gradient(180deg, #0a0a0c, #101013) !important;
+  box-shadow:
+    inset 0 2px 7px rgba(0, 0, 0, .85),
+    inset 0 -1px 3px rgba(0, 0, 0, .7),
+    inset 0 0 0 1px rgba(255, 255, 255, .03),
+    0 1px 0 rgba(255, 255, 255, .035) !important;
+  border: none !important;
+  cursor: ns-resize;
+  position: relative;
+}
+
+.vfader-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 11px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #ffc184 0%, #ff9247 20%, #f4741f 62%, #cf5210 100%) !important;
+  box-shadow: 0 0 18px rgba(255, 138, 60, .35);
+}
+
+/* brillo lateral y filo caliente arriba del relleno */
+.vfader-fill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(255, 255, 255, .36) 0%, rgba(255, 255, 255, .05) 42%, rgba(0, 0, 0, .06) 62%, rgba(0, 0, 0, .26) 100%);
+}
+
+.vfader-fill::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: rgba(255, 238, 216, .9);
+}
+
+.vfader-thumb {
+  width: 52px !important;
+  height: 26px !important;
+  left: 50% !important;
+  transform: translate(-50%, 50%) !important;
+  border-radius: 7px !important;
+  background: linear-gradient(180deg, #43434a 0%, #2a2a2f 46%, #141417 100%) !important;
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, .62),
+    inset 0 1px 0 rgba(255, 255, 255, .16),
+    inset 0 -2px 5px rgba(0, 0, 0, .65) !important;
+  border: none !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vfader-thumb::after {
+  content: '';
+  width: 26px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #ff9550, #ff7028);
+  box-shadow: 0 0 10px rgba(255, 138, 60, .8);
+}
+
+.vfader-value {
+  font-family: var(--fv-mono) !important;
+  font-size: 17px !important;
+  color: var(--fv-value) !important;
+  letter-spacing: 0 !important;
+}
+
+/* --- BARRA INFERIOR --------------------------------------------------- */
+.wheel-bottom-row {
+  min-height: 104px !important;
+  padding: 0 36px !important;
+  gap: 0 !important;
+  justify-content: flex-start !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+}
+
+.wheel-bottom-row .octave-control {
+  display: flex;
+  align-items: center;
+  gap: 16px !important;
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.wheel-bottom-row .octave-control button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 32%, #33333a, #141416 70%);
+  box-shadow: 0 5px 11px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .06);
+  border: none;
+  font-family: var(--fv-sans);
+  font-weight: 600;
+  font-size: 21px;
+  color: #d8d8de;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wheel-bottom-row .octave-control > span,
+.wheel-bottom-row .octave-value {
+  font-family: var(--fv-mono);
+  font-weight: 500;
+  font-size: 28px;
+  color: #fff;
+  min-width: 32px;
+  text-align: center;
+}
+
+/* el separador ocupa el hueco central, como en la referencia */
+.wheel-bottom-row .octave-control::after {
+  content: '';
+  flex: 1;
+}
+
+.wheel-bottom-row .hold-btn {
+  min-width: 88px;
+  height: 44px;
+  border-radius: 12px;
+  font-family: var(--fv-sans);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: .04em;
+  text-transform: none;
+  border: none;
+  background: linear-gradient(180deg, #26262a, #191a1d);
+  color: #c7c7cf;
+  box-shadow:
+    0 5px 12px rgba(0, 0, 0, .45),
+    inset 0 1px 0 rgba(255, 255, 255, .08),
+    inset 0 -2px 6px rgba(0, 0, 0, .4);
+  transition: color .2s, background .2s;
+  margin-left: 12px;
+}
+
+.wheel-bottom-row .hold-btn:first-of-type { margin-left: auto; }
+
+.wheel-bottom-row .hold-btn.active {
+  background: linear-gradient(180deg, #ffa55a, #ef6a22);
+  color: #23120a;
+  box-shadow:
+    0 5px 12px rgba(0, 0, 0, .45),
+    0 0 20px rgba(239, 106, 34, .35),
+    inset 0 1px 0 rgba(255, 255, 255, .28);
+}
+
+/* --- MARCA Y ESTADO --------------------------------------------------- */
+.app-header h1 {
+  font-family: var(--fv-sans);
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: .28em;
+  color: #3f3f46;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.app-header::after {
+  content: 'HARMONIC INSTRUMENT · MK1';
+  display: block;
+  font-family: var(--fv-mono);
+  font-size: 9px;
+  letter-spacing: .2em;
+  color: #4a4a52;
+  margin-top: 2px;
+}
+
+.bottom-left-corner,
+.bottom-left-corner * {
+  font-family: var(--fv-mono);
+  font-size: 11px;
+  letter-spacing: .14em;
+  color: #5e5e66;
+  text-transform: uppercase;
+}
+
+/* --- Correcciones contra la referencia -------------------------------- */
+
+/* El diseño viejo dejaba un subrayado naranja bajo el instrumento activo.
+   En la referencia el estado se marca con el riel izquierdo y el punto. */
+.instrument-panel .style-item-apple::after,
+.instrument-panel .style-item-apple.active::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* Jazzy: en la referencia el orden es etiqueta … estado, interruptor */
+.jazzy-control .jazzy-label { margin-right: auto; order: 0; }
+.jazzy-control .jazzy-state { order: 1; }
+.jazzy-control .jazzy-switch { order: 2; }
+
+/* Separador vertical entre TYPE y TEMPO */
+.arpeggiator-control .arp-demo-row { position: relative; }
+
+.arpeggiator-control .arp-demo-control + .arp-demo-control::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  z-index: 1;
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, .07), transparent);
+}
+
+/* EXPRESSION: en la referencia el modulo es alto y angosto, con el titulo
+   arriba a la izquierda y la caña de 400px. */
+.tools-left,
+.tools-left.glass-panel {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+}
+
+.effects-box {
+  height: 100%;
+  justify-content: flex-start;
+}
+
+.effects-box .vfader-label,
+.effects-box > label {
+  align-self: flex-start;
+  text-align: left;
+}
+
+.effects-box .vfader-track {
+  height: min(400px, 52vh) !important;
+}
+
+/* La caja de efectos arranca con el titulo, despues la regla, y el fader
+   ocupa el resto centrado. */
+.effects-box .tools-left-buttons {
+  width: 100%;
+  flex: none;
+}
+
+/* --- EXPRESSION: proporciones de la referencia ------------------------ */
+.tools-left-container .tools-left,
+.tools-left-container .effects-box {
+  height: auto;
+  align-self: center;
+}
+
+.effects-box {
+  width: 168px;
+  min-height: min(598px, 68vh);
+  align-self: center;
+}
+
+.effects-box .vfader-wrap {
+  align-items: center;
+  width: 100%;
+}
+
+.effects-box .vfader-label {
+  align-self: flex-start;
+  width: 100%;
+}
+
+.vfader-unit {
+  font-size: 10px;
+  letter-spacing: .12em;
+  color: var(--fv-label);
+}
+
+/* =====================================================================
+   MOBILE / TABLET — replica de "FIVO Mobile.dc.html"
+   Las medidas del bloque de escritorio de arriba solo aplican en pantallas
+   anchas; aca se reescriben por completo.
+   ===================================================================== */
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
+  /* deshacer las medidas de escritorio */
+  .effects-box {
+    width: auto;
+    min-height: 0;
+    height: auto;
+    padding: 10px 12px !important;
+    border-radius: 16px !important;
+  }
+
+  .effects-box .vfader-track { height: clamp(70px, 9vh, 96px) !important; }
+  .effects-box .vfader-wrap { gap: 8px; }
+  .effects-box .vfader-label { font-size: 8px; letter-spacing: .2em; }
+  .effects-box .vfader-value { font-size: 12px !important; }
+  .effects-box .panel-rule { display: none; }
+  .vfader-thumb { width: 30px !important; height: 15px !important; }
+  .vfader-thumb::after { width: 15px; height: 2px; }
+
+  /* --- orden: circulo arriba, controles abajo en tres franjas --------- */
+  .main-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) auto auto !important;
+    grid-template-areas:
+      "center"
+      "right"
+      "left" !important;
+    row-gap: 8px !important;
+    padding: 14px 16px 16px !important;
+  }
+
+  .center-panel { grid-area: center; }
+  .tools-right-container { grid-area: right; }
+  .tools-left-container { grid-area: left; }
+
+  .tools-right-container {
+    display: flex !important;
+    flex-direction: column;
+    gap: 8px !important;
+    width: 100%;
+    grid-template-columns: none !important;
+  }
+
+  .tools-left-container {
+    display: flex !important;
+    width: 100%;
+  }
+
+  .rec-instrument-row {
+    display: contents !important;
+  }
+
+  /* --- ARP: una franja horizontal ------------------------------------ */
+  .arpeggiator-control {
+    width: 100%;
+    min-height: 64px !important;
+    border-radius: 16px !important;
+    padding: 0 12px !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 0 !important;
+  }
+
+  .arpeggiator-control .arp-head {
+    width: auto;
+    flex: none;
+    gap: 7px;
+    padding-right: 12px;
+  }
+
+  .arpeggiator-control .arp-title-lite {
+    font-size: 11px;
+    letter-spacing: .18em;
+    margin-right: 0;
+  }
+
+  .arpeggiator-control .arp-state-text { display: none; }
+  .arpeggiator-control > .panel-rule { display: none; }
+
+  .arpeggiator-control .arp-demo-row {
+    flex: 1;
+    display: flex !important;
+    flex-direction: row;
+    align-items: center;
+    gap: 0;
+    grid-template-columns: none !important;
+  }
+
+  .arpeggiator-control .arp-demo-control {
+    flex: 1;
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+  }
+
+  .arpeggiator-control .knob-wrapper {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 9px;
+  }
+
+  .arpeggiator-control .knob-control { width: 34px !important; height: 34px !important; }
+  .arpeggiator-control .knob-indicator { width: 2px; height: 9px; top: 4px; }
+
+  .arpeggiator-control .knob-wrapper > label {
+    font-size: 7px;
+    letter-spacing: .26em;
+    color: #63636d;
+    order: 2;
+  }
+
+  .arpeggiator-control .knob-value-label {
+    font-size: 12px;
+    order: 3;
+  }
+
+  /* --- INSTRUMENT: segmentado ---------------------------------------- */
+  .style-selector-apple.instrument-panel {
+    width: 100%;
+    min-height: 44px !important;
+    border-radius: 14px !important;
+    padding: 0 8px !important;
+    flex-direction: row !important;
+    align-items: center !important;
+  }
+
+  .instrument-panel .panel-head,
+  .instrument-panel > .panel-rule { display: none !important; }
+
+  .instrument-panel .style-list-apple {
+    flex-direction: row !important;
+    gap: 6px;
+    margin-top: 0;
+    width: 100%;
+  }
+
+  .instrument-panel .style-item-apple {
+    flex: 1;
+    min-height: 32px;
+    height: 32px;
+    border-radius: 9px;
+    justify-content: center;
+    gap: 0;
+    padding: 0;
+    background: linear-gradient(180deg, #232327, #191a1d);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05);
+  }
+
+  .instrument-panel .slot-rail,
+  .instrument-panel .slot-dot { display: none; }
+
+  .instrument-panel .slot-name { font-size: 12px; color: #8b8b94; }
+
+  .instrument-panel .style-item-apple.active {
+    background: linear-gradient(180deg, #2a2a2f, #1d1d21);
+    box-shadow: inset 0 0 0 1px rgba(255, 122, 60, .55), inset 0 1px 0 rgba(255, 255, 255, .07);
+  }
+
+  .instrument-panel .style-item-apple.active .slot-name { color: var(--fv-accent); font-weight: 700; }
+
+  /* --- CHORDS + MODES ------------------------------------------------- */
+  .wheel-bottom-row {
+    min-height: 52px !important;
+    border-radius: 16px !important;
+    padding: 0 12px !important;
+    gap: 6px !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .wheel-bottom-row .octave-control { gap: 6px !important; }
+  .wheel-bottom-row .octave-control::after { content: none; }
+
+  .wheel-bottom-row .octave-control button {
+    width: 34px;
+    height: 34px;
+    font-size: 17px;
+  }
+
+  .wheel-bottom-row .octave-control > span,
+  .wheel-bottom-row .octave-value { font-size: 20px; min-width: 24px; }
+
+  .wheel-bottom-row .hold-btn {
+    flex: 1;
+    min-width: 0;
+    height: 34px;
+    border-radius: 9px;
+    font-size: 12px;
+    margin-left: 0;
+  }
+
+  .wheel-bottom-row .hold-btn:first-of-type { margin-left: 6px; }
+
+  /* --- barra superior: marca a la izquierda --------------------------- */
+  .app-header {
+    position: fixed !important;
+    top: 14px;
+    left: 18px;
+    right: 18px;
+    bottom: auto !important;
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-start;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  .app-header h1 { font-size: 14px; letter-spacing: .32em; color: #46464e; }
+
+  .app-header::after {
+    content: 'MK1';
+    margin-top: 0;
+    margin-left: 7px;
+    font-size: 7px;
+    letter-spacing: .18em;
+    color: #3b3b42;
+  }
+
+  .bottom-left-corner {
+    position: fixed !important;
+    top: 14px;
+    right: 18px;
+    left: auto !important;
+    bottom: auto !important;
+    text-align: right;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  .bottom-left-corner,
+  .bottom-left-corner * { font-size: 9px; letter-spacing: .14em; color: #5e5e66; }
+
+  .circle-wrapper {
+    width: min(94vw, calc(100dvh - 300px), 420px);
+  }
+}
+
+/* --- Correcciones mobile ---------------------------------------------- */
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
+  /* el panel era display:grid heredado, por eso ignoraba flex-direction */
+  .arpeggiator-control {
+    display: flex !important;
+  }
+
+  /* Orden de la referencia: circulo, ARP, INSTRUMENT, y abajo acordes +
+     jazzy en la misma fila. Con display:contents los paneles pasan a ser
+     hijos directos de la grilla y se pueden ubicar uno por uno. */
+  .main-layout {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-rows: minmax(0, 1fr) auto auto auto auto !important;
+    grid-template-areas:
+      "circle circle"
+      "arp    arp"
+      "inst   inst"
+      "modes  jazzy"
+      "exp    exp" !important;
+    column-gap: 8px !important;
+  }
+
+  .center-panel,
+  .tools-right-container,
+  .tools-left-container,
+  .tools-left { display: contents !important; }
+
+  .circle-wrapper { grid-area: circle; justify-self: center; align-self: center; }
+  .arpeggiator-control { grid-area: arp; }
+  .style-selector-apple.instrument-panel { grid-area: inst; }
+  .wheel-bottom-row { grid-area: modes; }
+  .jazzy-control { grid-area: jazzy; }
+  .effects-box { grid-area: exp; }
+
+  /* jazzy pasa a ser una pastilla al lado de la barra de acordes */
+  .jazzy-control {
+    min-height: 52px !important;
+    border-radius: 16px !important;
+    padding: 0 14px !important;
+    gap: 9px !important;
+  }
+
+  .jazzy-control .jazzy-label { font-size: 12px; margin-right: 0; }
+  .jazzy-control .jazzy-state { display: none; }
+  .jazzy-control .jazzy-switch { width: 40px; height: 22px; }
+  .jazzy-control .jazzy-switch-thumb { width: 16px; height: 16px; }
+  .jazzy-control .jazzy-switch.on .jazzy-switch-thumb { transform: translateX(18px); }
+
+  /* expression: franja baja y ancha al pie */
+  .effects-box {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 12px;
+    min-height: 52px !important;
+  }
+
+  .effects-box .vfader-label { width: auto; align-self: center; }
+
+  .effects-box .vfader-wrap {
+    flex: 1;
+    flex-direction: row !important;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .effects-box .vfader-track { height: 34px !important; width: 14px !important; }
+  .effects-box .vfader-value { font-size: 13px !important; }
+}
+
+/* --- Pulido final mobile ---------------------------------------------- */
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
+  /* la referencia usa "ARP" corto, no la palabra entera */
+  .arpeggiator-control .arp-title-lite {
+    font-size: 0;
+    letter-spacing: 0;
+  }
+
+  .arpeggiator-control .arp-title-lite::after {
+    content: 'ARP';
+    font-family: var(--fv-sans);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: .18em;
+    color: var(--fv-label);
+  }
+
+  .arp-power-switch.arp-power-mini { width: 30px; height: 16px; }
+  .arp-power-switch.arp-power-mini .arp-power-thumb { width: 10px; height: 10px; }
+  .arp-power-switch.arp-power-mini.on .arp-power-thumb { transform: translateX(14px); }
+
+  /* el pulgar del fader se salia de la caña acortada */
+  .effects-box .vfader-track { height: 30px !important; width: 12px !important; }
+  .vfader-thumb { width: 22px !important; height: 11px !important; }
+  .vfader-thumb::after { width: 11px; height: 2px; }
+  .effects-box { min-height: 46px !important; }
+  .effects-box .vfader-label { font-size: 9px; letter-spacing: .18em; }
+}
+
+/* La etiqueta larga no entra en la franja mobile: se muestra una u otra.
+   (font-size:0 no sirve, WebKit reescala el texto en telefonos.) */
+.arp-title-short { display: none; }
+
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
+  .arpeggiator-control .arp-title-lite { font-size: 11px; letter-spacing: .18em; }
+  .arpeggiator-control .arp-title-lite::after { content: none; }
+  .arp-title-long { display: none; }
+  .arp-title-short { display: inline; }
+
+  /* la caña queda usable, no un hilo */
+  .effects-box { min-height: 54px !important; padding: 8px 14px !important; }
+  .effects-box .vfader-track { height: 36px !important; width: 16px !important; }
+  .vfader-thumb { width: 26px !important; height: 12px !important; }
+}
+
+/* --- La caña de expresion: vertical arriba, horizontal en mobile -------
+   El valor llega como --v; aca se decide si pinta alto o ancho. */
+.vfader-fill { height: var(--v, 50%); }
+.vfader-thumb { bottom: var(--v, 50%); }
+
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
+  .effects-box .vfader-track {
+    width: 100% !important;
+    height: 16px !important;
+    min-width: 120px;
+    border-radius: 9px !important;
+    cursor: ew-resize;
+    touch-action: none;
+  }
+
+  .effects-box .vfader-wrap { width: 100%; }
+
+  .vfader-fill {
+    height: 100% !important;
+    width: var(--v, 50%);
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: auto;
+    border-radius: 9px;
+  }
+
+  /* el filo caliente pasa del borde superior al derecho */
+  .vfader-fill::after {
+    top: 0;
+    bottom: 0;
+    left: auto;
+    right: 0;
+    width: 2px;
+    height: auto;
+  }
+
+  .vfader-fill::before {
+    background: linear-gradient(180deg, rgba(255, 255, 255, .36) 0%, rgba(255, 255, 255, .05) 42%, rgba(0, 0, 0, .06) 62%, rgba(0, 0, 0, .26) 100%);
+  }
+
+  .vfader-thumb {
+    bottom: auto !important;
+    top: 50% !important;
+    left: var(--v, 50%) !important;
+    width: 14px !important;
+    height: 26px !important;
+    transform: translate(-50%, -50%) !important;
+    border-radius: 5px !important;
+  }
+
+  .vfader-thumb::after {
+    width: 3px;
+    height: 13px;
+  }
+}
+
+/* --- Expresion primero, y la caña ocupa el ancho disponible ------------ */
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
+  .main-layout {
+    grid-template-areas:
+      "circle circle"
+      "exp    exp"
+      "arp    arp"
+      "inst   inst"
+      "modes  jazzy" !important;
+  }
+
+  /* la caña se come todo el hueco entre la etiqueta y el valor, en vez de
+     quedar como una linea corta en el medio */
+  .effects-box .vfader-wrap {
+    justify-content: stretch;
+    gap: 14px;
+  }
+
+  .effects-box .vfader-label,
+  .effects-box .vfader-value { flex: none; }
+
+  .effects-box .vfader-track {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0;
+  }
+}
+
+/* En tablet hay mas aire: caña mas gruesa y tipografia un punto mayor */
+@media (orientation: portrait) and (min-width: 600px) and (max-width: 1240px) {
+  .effects-box { min-height: 64px !important; padding: 10px 20px !important; }
+  .effects-box .vfader-track { height: 22px !important; border-radius: 12px !important; }
+  .vfader-thumb { width: 18px !important; height: 34px !important; }
+  .vfader-thumb::after { width: 3px; height: 17px; }
+  .effects-box .vfader-label { font-size: 11px; letter-spacing: .24em; }
+  .effects-box .vfader-value { font-size: 16px !important; }
+}
+
+/* La caña quedaba en 0: al ser un div vacio, flex-basis:auto le da ancho de
+   contenido. Con base 0 y grow reparte todo el hueco libre, y el min-width
+   evita que pueda colapsar de nuevo. */
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
+  .effects-box .vfader-wrap {
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .effects-box .vfader-track {
+    flex: 1 1 0% !important;
+    width: auto !important;
+    min-width: 80px !important;
+  }
+}
+
+/* El hijo directo del panel es .level-fader-wrap y venia con flex:0 1 auto,
+   asi que se quedaba al ancho de su contenido y la caña nunca crecia. */
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
+  .effects-box .level-fader-wrap {
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    min-width: 0;
+  }
+
+  .effects-box .vfader-wrap { width: 100%; }
+}
+
+/* El tope de 420px del bloque mobile achicaba el circulo en tablet, que
+   tiene ancho de sobra. Y la barra de acordes tiene que llenar su columna. */
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
+  .wheel-bottom-row {
+    width: 100% !important;
+    justify-self: stretch;
+  }
+}
+
+@media (orientation: portrait) and (min-width: 600px) and (max-width: 1240px) {
+  .circle-wrapper {
+    width: min(88vw, calc(100dvh - 430px), 700px) !important;
+  }
+}
+
+/* `.center-panel .wheel-bottom-row { width:auto }` de mas arriba ganaba por
+   especificidad, y los margenes auto la dejaban centrada a media columna. */
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
+  .center-panel .wheel-bottom-row,
+  .main-layout .wheel-bottom-row {
+    width: 100% !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+}
+
+/* --- Iconos en la barra inferior --------------------------------------
+   En telefono las palabras no entran en los botones. Se cambian por
+   iconos; en tablet y escritorio siguen las palabras, que ahi si entran. */
+.btn-icon {
+  display: none;
+  width: 17px;
+  height: 17px;
+  fill: currentColor;
+  flex: none;
+}
+
+@media (max-width: 599px) {
+  .wheel-bottom-row .hold-btn .btn-label { display: none; }
+  .wheel-bottom-row .hold-btn .btn-icon { display: block; }
+
+  .wheel-bottom-row .hold-btn {
+    flex: 0 0 auto;
+    min-width: 40px;
+    width: 40px;
+    padding: 0;
+  }
+}
+
+/* --- Perillas en tablet ------------------------------------------------
+   El bloque mobile las dejaba en 34px; en tablet sobra espacio y quedaban
+   diminutas. */
+@media (orientation: portrait) and (min-width: 600px) and (max-width: 1240px) {
+  .arpeggiator-control { min-height: 92px !important; padding: 0 20px !important; }
+
+  .arpeggiator-control .knob-control {
+    width: 56px !important;
+    height: 56px !important;
+  }
+
+  .arpeggiator-control .knob-indicator {
+    width: 3px;
+    height: 14px;
+    top: 6px;
+  }
+
+  .arpeggiator-control .knob-wrapper > label { font-size: 9px; letter-spacing: .22em; }
+  .arpeggiator-control .knob-value-label { font-size: 15px; }
+  .arpeggiator-control .arp-demo-control { gap: 14px; }
+  .arpeggiator-control .knob-wrapper { gap: 14px; }
+  .arpeggiator-control .arp-title-lite { font-size: 12px; }
+}
+
+/* En tablet los botones se estiraban a 252px cada uno porque heredaban el
+   flex:1 del bloque mobile. Van compactos, como en la referencia. */
+@media (orientation: portrait) and (min-width: 600px) and (max-width: 1240px) {
+  .wheel-bottom-row .hold-btn {
+    flex: 0 0 auto;
+    min-width: 104px;
+    height: 40px;
+    padding: 0 22px;
+    font-size: 13px;
+  }
+
+  .wheel-bottom-row .octave-control::after { content: ''; flex: 1; }
+}
+
+/* --- La barra inferior no puede quedar mas angosta que su contenido ----
+   Se dimensiona por la columna del circulo, no por lo que lleva adentro:
+   por debajo de ~1200px de ventana el boton "full" quedaba fuera de la
+   caja. Con min-width:max-content la columna crece lo necesario, y entre
+   1024 y 1300 se aprietan paddings y gaps para que ese minimo sea chico. */
+@media (min-width: 900px) and (min-height: 600px) {
+  .wheel-bottom-row,
+  .center-panel .wheel-bottom-row {
+    min-width: max-content;
+  }
+}
+
+@media (min-width: 900px) and (min-height: 600px) and (max-width: 1320px) {
+  .wheel-bottom-row,
+  .center-panel .wheel-bottom-row {
+    padding: 0 20px !important;
+  }
+
+  .wheel-bottom-row .octave-control { gap: 10px !important; }
+  .wheel-bottom-row .octave-control button { width: 40px; height: 40px; font-size: 19px; }
+  .wheel-bottom-row .octave-control > span,
+  .wheel-bottom-row .octave-value { font-size: 24px; min-width: 26px; }
+
+  .wheel-bottom-row .hold-btn {
+    min-width: 76px;
+    height: 40px;
+    margin-left: 8px;
+    font-size: 13px;
+  }
+}
+
+/* El circulo se dimensionaba por vw y alto de ventana, sin contar lo que
+   ocupan las columnas laterales (168px la de expresion, 250px la derecha).
+   Por debajo de ~1200px se metia debajo de los paneles de la derecha.
+   Ahora el ancho disponible del centro es parte del calculo. */
+@media (min-width: 900px) and (min-height: 600px) {
+  /* Columnas laterales fijas: asi el ancho del centro es un dato, no una
+     estimacion. El circulo se acota contra su propia columna y no puede
+     meterse debajo de los paneles, sea cual sea el ancho de ventana. */
+  .main-layout {
+    grid-template-columns: 220px minmax(0, 1fr) 300px !important;
+  }
+
+  .circle-wrapper {
+    width: min(94%, calc(100dvh - 260px), 585px) !important;
+  }
+}
+
+/* =====================================================================
+   BASE RESPONSIVE — 10/09/2026
+   El layout estaba armado como un cartel de tamano fijo: exactamente una
+   pantalla de alto, recortado y sin scroll (overflow:hidden en html/body,
+   en .app-container y en .main-layout). Eso funciona solo si todo entra
+   justo; en cuanto el alto real difiere del supuesto —barra del navegador
+   visible, telefono acostado, notch— algo queda fuera del marco y no hay
+   forma de llegar. De ahi salia toda la familia de bugs por dispositivo.
+
+   Aca se quita ese supuesto. El diseno no cambia: mientras entre, se ve
+   igual que hasta ahora, centrado. Solo cuando NO entra aparece scroll.
+   ===================================================================== */
+
+html,
+body,
+#root {
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: none;
+}
+
+.app-container {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  min-height: 100dvh;
+  overflow: visible;
+  box-sizing: border-box;
+
+  /* El notch: sin esto el navegador reserva la franja y nadie la pinta,
+     que es de donde salian las barras blancas al costado en apaisado. */
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.main-layout {
+  /* 100vw incluye la barra de scroll: con scroll visible desbordaba a lo
+     ancho. Y 100vh es el alto CON LA BARRA DEL NAVEGADOR OCULTA, por eso
+     se cortaba abajo; dvh es el alto real de este momento. */
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  min-height: 100dvh;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+/* =====================================================================
+   LOS CONTROLES RESPONDEN A SU PROPIA TARJETA
+   Hasta ahora los botones se adaptaban al ancho del DISPOSITIVO, con lo
+   cual cada aparato nuevo era un caso nuevo y se salian de su caja. Con
+   container queries cada modulo mide SU caja: si la barra se angosta, sus
+   botones se vuelven iconos, sin importar en que pantalla este.
+   ===================================================================== */
+
+.wheel-bottom-row,
+.style-selector-apple,
+.arpeggiator-control,
+.effects-box {
+  container-type: inline-size;
+}
+
+/* Nada puede desbordar su contenedor flex por no poder encogerse. */
+.wheel-bottom-row > *,
+.style-selector-apple > *,
+.arpeggiator-control > *,
+.effects-box > * {
+  min-width: 0;
+}
+
+/* max-content hacia crecer la barra a la fuerza; ahora se adapta el
+   contenido, que es lo correcto, y ademas es incompatible con
+   container-type: inline-size. */
+.wheel-bottom-row,
+.center-panel .wheel-bottom-row {
+  min-width: 0 !important;
+}
+
+/* --- Barra de modos: texto → iconos cuando su caja aprieta ------------ */
+@container (max-width: 440px) {
+  .wheel-bottom-row .hold-btn .btn-label { display: none; }
+  .wheel-bottom-row .hold-btn .btn-icon { display: block; }
+
+  .wheel-bottom-row .hold-btn {
+    min-width: 42px !important;
+    width: 42px;
+    flex: 0 0 auto;
+    padding: 0 !important;
+    margin-left: 8px;
+  }
+}
+
+@container (max-width: 300px) {
+  .wheel-bottom-row { padding: 0 10px !important; gap: 6px !important; }
+  .wheel-bottom-row .octave-control { gap: 6px !important; }
+  .wheel-bottom-row .octave-control button { width: 34px; height: 34px; font-size: 17px; }
+  .wheel-bottom-row .octave-control > span,
+  .wheel-bottom-row .octave-value { font-size: 20px; min-width: 22px; }
+  .wheel-bottom-row .hold-btn { min-width: 36px !important; width: 36px; height: 36px; margin-left: 6px; }
+  .btn-icon { width: 15px; height: 15px; }
+}
+
+/* Las container queries quedan SOLO en la barra de modos, que es donde
+   estaba el problema real. Probe ponerlas tambien en instrumentos,
+   arpegiador y expresion, y fue un error: esos paneles son angostos por
+   diseno en escritorio (250px y 168px), asi que se disparaban solos y
+   borraban etiquetas que tenian que estar. */
+
+/* container-type: inline-size prohibe medirse por el contenido. Sin un
+   ancho que venga del padre, la barra colapsaba a 42px y los botones
+   quedaban todos afuera. El ancho lo da el contenedor, como corresponde. */
+.wheel-bottom-row,
+.center-panel .wheel-bottom-row {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* La barra tiene que seguir el ancho de la rueda, no el de la columna.
+   Sin tope quedaba en 838px contra un circulo de 585. El valor es el que
+   ya tenia el diseno antes de este cambio. */
+@media (min-width: 900px) and (min-height: 600px) {
+  .main-layout .center-panel .wheel-bottom-row,
+  .main-layout .wheel-bottom-row {
+    max-width: 540px !important;
+  }
+}
+
+/* Los botones de la barra eran display:block, asi que el icono quedaba
+   pegado al borde izquierdo. El de pantalla completa se veia bien porque
+   su clase ya traia flex + center; ahora van todos igual. */
+.wheel-bottom-row .hold-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* =====================================================================
+   PISO DEL CIRCULO + ANCHOS DE LAS COLUMNAS
+   ===================================================================== */
+
+/* El circulo se achicaba sin limite para que todo entrara, con lo cual el
+   scroll no aparecia NUNCA: la pagina siempre media exactamente una
+   ventana. Si el margen que quedaba era menor que la barra del navegador
+   mas el indicador de inicio, el borde se comia el boton y no habia nada
+   que scrollear. Con un piso, cuando la ventana es demasiado baja el
+   contenido pasa a ser mas alto que la pantalla y el scroll aparece de
+   verdad. Ademas se reserva el safe-area de abajo. */
+@media (min-width: 900px) and (min-height: 600px) {
+  .main-layout {
+    /* Columnas mas angostas: las tres tarjetas de la derecha comparten el
+       ancho del arpegiador (250px) en vez de estirarse a 300, y eso le
+       devuelve espacio a la rueda. */
+    grid-template-columns: 200px minmax(0, 1fr) 268px !important;
+  }
+
+  .circle-wrapper {
+    width: max(260px, min(94%, calc(100dvh - 300px - env(safe-area-inset-bottom, 0px)), 585px)) !important;
+  }
+
+  .tools-right-container .arpeggiator-control,
+  .tools-right-container .style-selector-apple,
+  .tools-right-container .jazzy-control,
+  .rec-instrument-row .style-selector-apple,
+  .rec-instrument-row .jazzy-control {
+    width: 250px !important;
+    max-width: 100% !important;
+    margin-inline: auto !important;
+  }
+}
+
+/* En vertical el mismo piso, para que nunca quede algo inalcanzable. */
+@media (orientation: portrait) and (max-width: 1240px),
+       (max-width: 599px) and (min-height: 600px) {
+  .circle-wrapper {
+    min-width: 240px;
+  }
+}
+
+/* =====================================================================
+   TABLET APAISADO — proporciones propias
+   Comparte la composicion de columnas con escritorio, pero las medidas de
+   escritorio ahi quedan enormes. `pointer: coarse` distingue exactamente
+   el caso: tactil, ancho y alto suficientes.
+   ===================================================================== */
+@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+  /* Columna izquierda mas angosta: el texto EXPRESSION era lo que forzaba
+     el ancho del panel. */
+  .main-layout {
+    grid-template-columns: 156px minmax(0, 1fr) 268px !important;
+  }
+
+  .effects-box {
+    width: 132px !important;
+    padding: 14px 12px !important;
+  }
+
+  .effects-box .vfader-label {
+    font-size: 9px;
+    letter-spacing: .16em;
+  }
+
+  .effects-box .vfader-value { font-size: 14px !important; }
+  .effects-box .vfader-track { height: min(340px, 44vh) !important; width: 16px !important; }
+  .vfader-thumb { width: 40px !important; height: 20px !important; }
+  .vfader-thumb::after { width: 20px; height: 3px; }
+
+  /* Barra inferior mas discreta: era la altura de escritorio (104px) la
+     que le comia el alto a la rueda. */
+  .main-layout .center-panel .wheel-bottom-row,
+  .main-layout .wheel-bottom-row {
+    min-height: 72px !important;
+    max-width: 500px !important;
+    padding: 0 20px !important;
+    border-radius: 18px !important;
+  }
+
+  .wheel-bottom-row .octave-control { gap: 12px !important; }
+  .wheel-bottom-row .octave-control button { width: 36px; height: 36px; font-size: 18px; }
+  .wheel-bottom-row .octave-control > span,
+  .wheel-bottom-row .octave-value { font-size: 22px; min-width: 26px; }
+
+  .wheel-bottom-row .hold-btn {
+    min-width: 72px;
+    height: 36px;
+    font-size: 12px;
+    margin-left: 8px;
+  }
+
+  /* Todo ese alto liberado va a la rueda. */
+  .circle-wrapper {
+    width: max(260px, min(94%, calc(100dvh - 250px - env(safe-area-inset-bottom, 0px)), 585px)) !important;
+  }
+}
+
+/* =====================================================================
+   TABLET APAISADO — ajustes finos
+   ===================================================================== */
+@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+
+  /* --- 1. Por que "sin pantalla completa se ve como antes" ------------
+     dvh es el alto DINAMICO: con la barra de Safari a la vista vale
+     menos, y encima cambia mientras se scrollea. La rueda se calculaba
+     con dvh, asi que fuera de pantalla completa nacia chica y el layout
+     parecia el de antes. svh es el alto CHICO Y ESTABLE (el que queda con
+     las barras visibles): la rueda sale del mismo tamano en los dos
+     estados y no salta. */
+  .circle-wrapper {
+    width: max(260px, min(94%, calc(100svh - 200px - env(safe-area-inset-bottom, 0px)), 585px)) !important;
+    margin-block: auto !important;
+  }
+
+  /* --- 2. Todo lo de abajo en la misma linea -------------------------
+     Las columnas se centraban cada una por su cuenta, por eso la barra
+     quedaba mas arriba que la tarjeta de Jazzy. Ahora las tres ocupan el
+     alto completo y lo de abajo se apoya en el mismo borde. */
+  .main-layout { align-items: stretch !important; }
+
+  .center-panel {
+    display: flex !important;
+    flex-direction: column;
+    height: 100%;
+    justify-content: flex-end;
+    gap: 0;
+  }
+
+  .tools-right-container {
+    display: flex !important;
+    flex-direction: column;
+    justify-content: flex-end;
+    height: 100%;
+    gap: 12px !important;
+  }
+
+  .rec-instrument-row {
+    display: flex !important;
+    flex-direction: column;
+    gap: 12px !important;
+  }
+
+  .tools-left-container {
+    display: flex !important;
+    align-items: center;
+    height: 100%;
+  }
+
+  /* --- 3. Barra aun mas chica ----------------------------------------- */
+  .main-layout .center-panel .wheel-bottom-row,
+  .main-layout .wheel-bottom-row {
+    min-height: 60px !important;
+    max-width: 470px !important;
+    padding: 0 16px !important;
+    border-radius: 15px !important;
+    margin-top: 14px !important;
+    margin-bottom: 0 !important;
+  }
+
+  .wheel-bottom-row .octave-control { gap: 10px !important; }
+  .wheel-bottom-row .octave-control button { width: 32px; height: 32px; font-size: 16px; }
+  .wheel-bottom-row .octave-control > span,
+  .wheel-bottom-row .octave-value { font-size: 19px; min-width: 22px; }
+
+  .wheel-bottom-row .hold-btn {
+    min-width: 64px;
+    height: 32px;
+    font-size: 11px;
+    margin-left: 7px;
+  }
+
+  /* --- 4. Expresion: contenedor mas angosto, caña igual --------------- */
+  .main-layout { grid-template-columns: 112px minmax(0, 1fr) 268px !important; }
+
+  .effects-box {
+    width: 88px !important;
+    padding: 12px 6px !important;
+  }
+
+  /* La caña conserva su grosor; lo que cede es el panel. */
+  .effects-box .vfader-track { width: 16px !important; }
+  .vfader-thumb { width: 40px !important; height: 20px !important; }
+
+  /* --- 5. Titulos consistentes: los tres al mismo tamano -------------- */
+  .effects-box .vfader-label,
+  .arpeggiator-control .arp-title-lite,
+  .instrument-panel .panel-head label {
+    font-size: 8px !important;
+    letter-spacing: .18em !important;
+  }
+}
+
+@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+  /* Al alinear todo al fondo, la fila de abajo se pegaba al borde y se
+     montaba sobre la marca FIVO. Se reserva ese espacio. */
+  .main-layout {
+    padding-bottom: 56px !important;
+    padding-top: 18px !important;
+  }
+
+  /* La barra encogio y su contenido ya entra como texto muy por debajo del
+     umbral general de 440px, que estaba calibrado para botones de 88px.
+     Aca los botones son de 64, asi que el texto entra desde 330. */
+  @container (min-width: 330px) {
+    .wheel-bottom-row .hold-btn .btn-label { display: inline !important; }
+    .wheel-bottom-row .hold-btn .btn-icon { display: none !important; }
+
+    .wheel-bottom-row .hold-btn {
+      min-width: 64px !important;
+      width: auto !important;
+      padding: 0 12px !important;
+    }
+  }
+}
+
+@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+  /* La marca es absoluta abajo a la derecha y ahi le pasa por encima la
+     tarjeta de Jazzy. Con la columna derecha alineada al fondo, el hueco
+     libre quedo arriba: la marca se muda ahi. */
+  .app-header {
+    top: 20px !important;
+    bottom: auto !important;
+    right: 26px !important;
+    left: auto !important;
+    text-align: right;
+    align-items: flex-end !important;
+    flex-direction: column;
+    z-index: 1;
+  }
+
+  .app-header h1 { font-size: 20px; letter-spacing: .26em; }
+  .app-header::after { font-size: 8px; letter-spacing: .18em; }
+}
+
+@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+  /* Las tarjetas median 496px fijos y la columna entre 660 y 950 segun el
+     aparato, asi que todo el sobrante se acumulaba arriba: 264px en un
+     iPad Air 3 y 454px en un Pro 12.9. Se veia distinto en cada tablet
+     por eso, no por la tablet. Ahora crecen para llenar la columna y la
+     fila de abajo sigue alineada. */
+  /* flex-end: si las tarjetas tocan su techo y aun sobra alto, ese
+     sobrante cae ARRIBA y el borde de abajo sigue alineado con la barra. */
+  .tools-right-container {
+    justify-content: flex-end !important;
+  }
+
+  .tools-right-container > .arpeggiator-control {
+    flex: 1 1 0 !important;
+    min-height: 150px;
+    justify-content: center;
+  }
+
+  .tools-right-container > .rec-instrument-row {
+    flex: 1.35 1 0 !important;
+    min-height: 0;
+  }
+
+  .rec-instrument-row > .style-selector-apple {
+    flex: 1 1 auto !important;
+    min-height: 150px;
+  }
+
+  .rec-instrument-row > .jazzy-control {
+    flex: 0 0 auto !important;
+  }
+
+  /* Con mas alto, las filas de instrumentos se reparten el espacio en vez
+     de amontonarse arriba. */
+  .instrument-panel .style-list-apple { justify-content: space-between; }
+}
+
+@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+  /* El arpegiador estirado a 420px quedaba con demasiado aire adentro: dos
+     perillas flotando en una tarjeta enorme. Se le pone techo y el
+     sobrante lo absorbe la lista de instrumentos, que sí lo aprovecha. */
+  .tools-right-container > .arpeggiator-control {
+    flex: 1 1 0 !important;
+    min-height: 200px;
+    max-height: 340px;
+  }
+
+  .tools-right-container > .rec-instrument-row {
+    flex: 1.2 1 0 !important;
+    min-height: 220px;
+    max-height: 520px;
+  }
+
+  .rec-instrument-row > .style-selector-apple {
+    max-height: 460px;
+  }
+
+  /* Con la columna derecha llegando hasta arriba, la marca ya no entra
+     ahi: se va abajo a la izquierda, que es el unico rincon libre. */
+  .app-header {
+    top: auto !important;
+    bottom: 16px !important;
+    left: 22px !important;
+    right: auto !important;
+    text-align: left;
+    align-items: flex-start !important;
+  }
+}

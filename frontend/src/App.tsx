@@ -48,8 +48,11 @@ type FullscreenDoc = Document & {
 };
 
 function isMobileAudioActivationTarget() {
-  if (typeof window === 'undefined') return false;
-  return window.matchMedia?.('(pointer: coarse)').matches || window.innerWidth <= 1024;
+  // El gate "Activar audio" tapaba la pantalla en mobile. Existia porque el
+  // AudioContext no se despertaba solo; eso ahora se arregla en la raiz (se crea
+  // uno nuevo dentro del gesto), asi que el audio entra con el primer toque y el
+  // gate no hace falta en ninguna plataforma.
+  return false;
 }
 
 function FivoWorkspace() {
@@ -1164,28 +1167,6 @@ function FivoWorkspace() {
       {/* Error Banner - Fixed top */}
       {errorMsg && <div className="error-banner">{errorMsg}</div>}
 
-      {audioActivationRequired && (
-        <div
-          className="mobile-audio-gate"
-          onPointerDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            className={`mobile-audio-button ${audioActivationState === 'loading' ? 'loading' : ''}`}
-            disabled={audioActivationState === 'loading'}
-            onPointerDown={handleMobileAudioActivation}
-            onTouchStart={handleMobileAudioActivation}
-            onClick={handleMobileAudioActivation}
-          >
-            {audioActivationState === 'loading' ? 'Activando...' : 'Activar audio'}
-          </button>
-          {audioActivationState === 'error' && (
-            <span className="mobile-audio-error">Toca otra vez</span>
-          )}
-        </div>
-      )}
-
       {/* Main Layout - Object Centric */}
       {/* Main Layout - Grid: Left | Center | Right */}
       <div className="main-layout">
@@ -1227,25 +1208,28 @@ function FivoWorkspace() {
 
           {/* Bottom row: Key + Acordes + Octave */}
           <div className="wheel-bottom-row">
-            <KeySelector
-              currentKey={currentKey}
-              majorNotes={MAJOR_NOTES}
-              minorNotes={MINOR_NOTES}
-              onKeyChange={handleKeyChange}
-            />
-            <button
-              className={`hold-btn ${chordMode ? 'active' : ''}`}
-              onClick={() => setChordMode(prev => !prev)}
-            >
-              acordes
-            </button>
             <OctaveControl
               octave={octave}
               onOctaveChange={handleOctaveChange}
             />
             <button
               type="button"
-              className={`hold-btn ${isHold ? 'active' : ''}`}
+              className={`hold-btn btn-chords ${chordMode ? 'active' : ''}`}
+              aria-pressed={chordMode}
+              aria-label="Acordes"
+              title="Acordes"
+              onClick={() => setChordMode(prev => !prev)}
+            >
+              <span className="btn-label">acordes</span>
+              <svg className="btn-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                <rect x="2" y="3"  width="12" height="2" rx="1" />
+                <rect x="4" y="7"  width="8"  height="2" rx="1" />
+                <rect x="2" y="11" width="12" height="2" rx="1" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className={`hold-btn btn-hold ${isHold ? 'active' : ''}`}
               aria-pressed={isHold}
               onPointerDown={(e) => {
                 e.preventDefault();
@@ -1258,18 +1242,29 @@ function FivoWorkspace() {
                 e.stopPropagation();
                 toggleHold();
               }}
+              aria-label="Hold"
+              title="Hold"
             >
-              hold
+              <span className="btn-label">hold</span>
+              <svg className="btn-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                <rect x="3" y="7" width="10" height="7" rx="2" />
+                <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
             </button>
             {fullscreenAvailable && (
               <button
                 type="button"
-                className={`hold-btn fullscreen-toggle ${isFullscreen ? 'active' : ''}`}
+                className={`hold-btn fullscreen-toggle btn-full ${isFullscreen ? 'active' : ''}`}
                 aria-pressed={isFullscreen}
                 aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
                 onClick={toggleFullscreen}
+                title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
               >
-                {isFullscreen ? 'exit' : 'full'}
+                <span className="btn-label">{isFullscreen ? 'exit' : 'full'}</span>
+                <svg className="btn-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                  <path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"
+                        fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </button>
             )}
           </div>

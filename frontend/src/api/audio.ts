@@ -67,14 +67,36 @@ async function resumeRawContext(timeoutMs?: number) {
     await resolveAfterTimeout(resumePromise, timeoutMs);
 }
 
+// En iOS la Web Audio API sale por el canal de timbre: con la palanca de silencio
+// puesta no se escucha nada y no hay ningun error. Pedir 'playback' la manda al canal
+// de multimedia. Hay que fijarlo ANTES de que exista el AudioContext, si no ya quedo
+// asignado. En el resto de los navegadores no existe y no pasa nada.
+function ensureIosAudioSession() {
+    const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+    if (!session) return;
+    try {
+        session.type = 'playback';
+    } catch (error) {
+        console.warn('No se pudo fijar audioSession', error);
+    }
+}
+
 function ensureNativeToneContext() {
     if (nativeToneContextReady || typeof window === 'undefined') return;
+
+    ensureIosAudioSession();
 
     const NativeAudioContext = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!NativeAudioContext) return;
 
     const rawContext = Tone.getContext().rawContext as unknown;
-    if (typeof BaseAudioContext !== 'undefined' && rawContext instanceof BaseAudioContext) {
+    const isNative = typeof BaseAudioContext !== 'undefined' && rawContext instanceof BaseAudioContext;
+
+    // iOS no revive un AudioContext que nacio sin un gesto del usuario: se queda
+    // 'suspended' para siempre y resume() no resuelve nunca. Tone crea el suyo al
+    // importarse, o sea antes de que nadie toque nada. Solo sirve si ya esta despierto;
+    // si no, lo reemplazamos por uno creado aca, que si nace dentro del gesto.
+    if (isNative && (rawContext as BaseAudioContext).state === 'running') {
         nativeToneContextReady = true;
         return;
     }
