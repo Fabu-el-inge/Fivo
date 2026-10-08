@@ -6646,3 +6646,165 @@ body,
     align-items: flex-start !important;
   }
 }
+
+/* =====================================================================
+   TELEFONO APAISADO (alto <= 500px)
+   No tenia diseno propio: caia en capas viejas, con 108-163px de scroll,
+   la barra fuera de vista y la marca encima de la lista de instrumentos.
+   Usa la composicion aprobada de tablet apaisada (expresion a la
+   izquierda, circulo con la barra debajo, arpegiador / instrumentos /
+   Jazzy a la derecha, marca abajo a la izquierda) repartida en el alto
+   disponible. Va al final porque las capas de arriba usan !important.
+   ===================================================================== */
+@media (orientation: landscape) and (max-height: 500px) {
+  .app-container,
+  .main-layout {
+    height: 100dvh !important;
+    min-height: 0 !important;
+  }
+
+  .main-layout {
+    grid-template-columns: minmax(84px, 104px) minmax(0, 1fr) minmax(196px, 236px) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    gap: 8px !important;
+    padding: 8px max(8px, env(safe-area-inset-right)) 8px max(8px, env(safe-area-inset-left)) !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Izquierda: la expresion deja abajo el lugar de la marca. */
+  .tools-left-container {
+    height: 100% !important;
+    min-height: 0 !important;
+    padding: 0 0 40px !important;
+    box-sizing: border-box !important;
+    align-items: stretch !important;
+  }
+
+  .tools-left-container > .tools-left,
+  .tools-left-container .effects-box {
+    height: 100% !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Marca: la version compacta aprobada en mobile (FIVO + MK1), abajo a la
+     izquierda como en tablet apaisada, dentro del ancho de la columna. */
+  .app-header {
+    top: auto !important;
+    right: auto !important;
+    left: max(16px, env(safe-area-inset-left)) !important;
+    bottom: 14px !important;
+    display: flex !important;
+    align-items: baseline !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+  }
+
+  .app-header h1 { font-size: 14px !important; letter-spacing: .32em !important; color: #46464e !important; }
+
+  .app-header::after {
+    content: 'MK1' !important;
+    display: inline !important;
+    margin: 0 0 0 7px !important;
+    font-size: 7px !important;
+    letter-spacing: .18em !important;
+    color: #3b3b42 !important;
+  }
+
+  /* Centro: circulo + barra, el circulo se acota por el alto que queda. */
+  .center-panel {
+    height: 100% !important;
+    min-height: 0 !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    padding: 0 !important;
+  }
+
+  .circle-wrapper {
+    width: min(100%, calc(100dvh - 16px - 8px - 52px)) !important;
+    max-width: none !important;
+    height: auto !important;
+    margin: 0 auto !important;
+  }
+
+  .wheel-bottom-row {
+    height: 52px !important;
+    min-height: 0 !important;
+    padding: 4px 8px !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Derecha: tres paneles que suman el alto de la pantalla. */
+  .tools-right-container {
+    height: 100% !important;
+    min-height: 0 !important;
+    gap: 8px !important;
+    justify-content: flex-start !important;
+  }
+
+  .tools-right-container > .arpeggiator-control {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 10px 14px !important;
+    row-gap: 6px !important;
+  }
+
+  .tools-right-container .arp-demo-row {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  .tools-right-container > .rec-instrument-row {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    gap: 8px !important;
+  }
+
+  .rec-instrument-row > .instrument-panel {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 10px 14px !important;
+    justify-content: flex-start !important;
+  }
+
+  .instrument-panel .style-list-apple {
+    gap: 0 !important;
+    margin-top: 4px !important;
+    min-height: 0 !important;
+  }
+
+  .instrument-panel .style-item-apple {
+    min-height: 0 !important;
+    padding: 0 10px 0 0 !important;
+    gap: 10px !important;
+  }
+
+  .instrument-panel .slot-name { font-size: 15px !important; }
+  .instrument-panel .slot-rail { margin: 4px 0 !important; }
+
+  .rec-instrument-row > .jazzy-control {
+    flex: 0 0 36px !important;
+    height: 36px !important;
+    min-height: 0 !important;
+    padding: 0 14px !important;
+  }
+
+  .instrument-panel .style-item-apple { flex: 1 1 18px !important; line-height: 1.15 !important; }
+
+  /* Separadores y encabezados mas juntos: en 340px de alto (iPhone con las
+     barras de Safari) la lista de instrumentos no entraba. */
+  .tools-right-container,
+  .rec-instrument-row { gap: 6px !important; }
+
+  .tools-right-container > .arpeggiator-control { padding: 8px 14px !important; row-gap: 2px !important; }
+  .rec-instrument-row > .instrument-panel { padding: 8px 14px !important; gap: 0 !important; row-gap: 0 !important; }
+
+  .arpeggiator-control > .panel-rule,
+  .instrument-panel > .panel-rule { margin: 5px 0 !important; }
+}
