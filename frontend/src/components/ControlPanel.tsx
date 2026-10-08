@@ -261,7 +261,8 @@ export const ToolsLeft: React.FC<ToolsLeftProps> = ({
                     <SlideToggle on={strumEnabled}  onToggle={onStrumToggle}      label="strum" />
                     {!liteMode && (
                         // LITE: estos 4 toggles desaparecen — el fader 'level' aplica
-                        // attack/release/sustain/expression a la vez (MOD CC1 + EXPR CC11 + CUTOFF CC74).
+                        // expresion: un pasa-bajos y una ganancia de Tone despues de Surge (ver
+                        // AudioEngine.setExpressionControls).
                         <>
                             <SlideToggle on={attackOn}      onToggle={onAttackToggle}     label="atck"  />
                             <SlideToggle on={releaseOn}     onToggle={onReleaseToggle}    label="rlse"  />

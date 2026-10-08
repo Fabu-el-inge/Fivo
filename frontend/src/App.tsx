@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './App.css';
 import { CircleOfFifths } from './components/CircleOfFifths';
-import { ToolsLeft, StyleSelector, InstrumentSelector, OctaveControl, KeySelector, RotaryKnob, RecLoopHold, Arpeggiator, ArpTempoControl, Metronome } from './components/ControlPanel';
+import { ToolsLeft, StyleSelector, InstrumentSelector, OctaveControl, RotaryKnob, RecLoopHold, Arpeggiator, ArpTempoControl, Metronome } from './components/ControlPanel';
 import type { MetronomeClickSound } from './components/ControlPanel';
 import { ResultPanel } from './components/ResultPanel';
 import { fetchChord, getContext } from './api/fivo';
@@ -59,7 +59,8 @@ function FivoWorkspace() {
   const [strumEnabled, setStrumEnabled] = useState(false);
   const [style, setStyle] = useState<FivoStyle>('pop');
   const contextData = useMemo(() => getContext(currentKey, style), [currentKey, style]);
-  const [powerMode, setPowerMode] = useState<PowerMode>('auto');
+  // Power chord automatico: fijo en 'auto' (no hay control en la UI).
+  const powerMode: PowerMode = 'auto';
   // Fingers per note (default 1 for all)
   const [fingersPerNote, setFingersPerNote] = useState<Record<string, number>>({});
   // Inversion per note (default 0 = Root for all)
@@ -114,7 +115,7 @@ function FivoWorkspace() {
   const lastGlideTime = useRef<number>(0); // Throttle glide events (monophonic fallback)
   const arpStartTime = useRef<number>(0);
   const arpClockOrigin = useRef<number>(performance.now());
-  const pendingGlide = useRef<{ note: string; isMinor: boolean; arpNotes?: number[][]; baseNotes?: number[]; chordData?: FivoResponse } | null>(null);
+  const pendingGlide = useRef<{ note: string; isMinor: boolean; arpNotes?: number[][]; baseNotes?: number[] } | null>(null);
   const currentPressedRef = useRef<string | null>(null); // Track current pressed note (avoid state timing issues)
   const strumInversionRef = useRef<Record<string, number>>({}); // Inversion cycle per note for strum
   const keyboardHeldKeys = useRef<Set<string>>(new Set());
@@ -785,13 +786,12 @@ function FivoWorkspace() {
             if (pendingGlide.current) {
               const pending = pendingGlide.current;
               pendingGlide.current = null;
-              if (pending.arpNotes && (pending.baseNotes || pending.chordData)) {
-                arpBaseNotesRef.current = pending.baseNotes ?? pending.chordData!.notes.map(n => n + (octave - 3) * 12);
+              if (pending.arpNotes && pending.baseNotes) {
+                arpBaseNotesRef.current = pending.baseNotes;
                 arpNotes = pending.arpNotes;
                 setPressedRoot(pending.note);
                 setPressedRoots(new Set([pending.note]));
                 setIsMinorPressed(pending.isMinor);
-                if (pending.chordData) setChordData(pending.chordData);
               }
             }
           }

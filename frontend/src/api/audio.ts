@@ -486,7 +486,7 @@ class ToneFallbackInstrument {
     }
 
     setHoldMode(_enabled: boolean) {
-        // Tone.PolySynth handles held notes through triggerAttack/triggerRelease.
+        // El respaldo de osciladores sostiene con triggerAttack/triggerRelease.
     }
 
     activate() {
@@ -680,7 +680,8 @@ export class AudioEngine {
     private sustainVal: number = 70;  // 0-100 → linear 0..100%
     private releaseVal: number = 50;  // 0-100 → log 50ms..5000ms
 
-    // Expression = filtro pasa-bajos (0-100 → log 200Hz..20000Hz)
+    // Expression = pasa-bajos (0-100 → log 1200Hz..20000Hz; 500..16000 en el respaldo).
+    // La UI arranca en 50 (App.tsx), que pisa este valor inicial.
     private expressionVal: number = 80;
 
     // Strum timeout tracking (for cancellation)
@@ -787,8 +788,8 @@ export class AudioEngine {
 
         this.applyHoldModeToSamplers();
 
-        // NOTE: do NOT block on Tone.loaded() here. Sample buffers load in the
-        // background; play methods await only the active sample instrument.
+        // No esperar la carga aca: Surge carga en segundo plano y los metodos de
+        // ataque esperan solo al instrumento activo (ensureActiveLoaded).
 
         // Metronome click synths - go directly to destination (bypass limiter/recording)
         this.metronomeGain = new Tone.Gain(0.7).toDestination();
@@ -963,7 +964,7 @@ export class AudioEngine {
         this.releaseVal = Math.max(0, Math.min(100, val));
     }
 
-    // Expression: 0-100 → log 500Hz..20000Hz (low-pass filter brightness)
+    // Expression: 0-100 → log 1200Hz..20000Hz (pasa-bajos despues de Surge)
     // 0 = oscuro/apagado pero audible, 100 = brillo completo
     private expressionToHz(val: number): number {
         return 1200 * Math.pow(20000 / 1200, val / 100);
