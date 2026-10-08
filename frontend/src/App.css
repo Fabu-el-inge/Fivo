@@ -6158,14 +6158,14 @@ body,
    por debajo de ~1200px de ventana el boton "full" quedaba fuera de la
    caja. Con min-width:max-content la columna crece lo necesario, y entre
    1024 y 1300 se aprietan paddings y gaps para que ese minimo sea chico. */
-@media (min-width: 900px) and (min-height: 600px) {
+@media (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
   .wheel-bottom-row,
   .center-panel .wheel-bottom-row {
     min-width: max-content;
   }
 }
 
-@media (min-width: 900px) and (min-height: 600px) and (max-width: 1320px) {
+@media (orientation: landscape) and (min-width: 900px) and (min-height: 600px) and (max-width: 1320px) {
   .wheel-bottom-row,
   .center-panel .wheel-bottom-row {
     padding: 0 20px !important;
@@ -6188,7 +6188,7 @@ body,
    ocupan las columnas laterales (168px la de expresion, 250px la derecha).
    Por debajo de ~1200px se metia debajo de los paneles de la derecha.
    Ahora el ancho disponible del centro es parte del calculo. */
-@media (min-width: 900px) and (min-height: 600px) {
+@media (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
   /* Columnas laterales fijas: asi el ancho del centro es un dato, no una
      estimacion. El circulo se acota contra su propia columna y no puede
      meterse debajo de los paneles, sea cual sea el ancho de ventana. */
@@ -6326,7 +6326,7 @@ body,
 /* La barra tiene que seguir el ancho de la rueda, no el de la columna.
    Sin tope quedaba en 838px contra un circulo de 585. El valor es el que
    ya tenia el diseno antes de este cambio. */
-@media (min-width: 900px) and (min-height: 600px) {
+@media (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
   .main-layout .center-panel .wheel-bottom-row,
   .main-layout .wheel-bottom-row {
     max-width: 540px !important;
@@ -6354,7 +6354,7 @@ body,
    que scrollear. Con un piso, cuando la ventana es demasiado baja el
    contenido pasa a ser mas alto que la pantalla y el scroll aparece de
    verdad. Ademas se reserva el safe-area de abajo. */
-@media (min-width: 900px) and (min-height: 600px) {
+@media (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
   .main-layout {
     /* Columnas mas angostas: las tres tarjetas de la derecha comparten el
        ancho del arpegiador (250px) en vez de estirarse a 300, y eso le
@@ -6391,7 +6391,7 @@ body,
    escritorio ahi quedan enormes. `pointer: coarse` distingue exactamente
    el caso: tactil, ancho y alto suficientes.
    ===================================================================== */
-@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+@media (pointer: coarse) and (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
   /* Columna izquierda mas angosta: el texto EXPRESSION era lo que forzaba
      el ancho del panel. */
   .main-layout {
@@ -6444,7 +6444,7 @@ body,
 /* =====================================================================
    TABLET APAISADO — ajustes finos
    ===================================================================== */
-@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+@media (pointer: coarse) and (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
 
   /* --- 1. Por que "sin pantalla completa se ve como antes" ------------
      dvh es el alto DINAMICO: con la barra de Safari a la vista vale
@@ -6536,7 +6536,7 @@ body,
   }
 }
 
-@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+@media (pointer: coarse) and (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
   /* Al alinear todo al fondo, la fila de abajo se pegaba al borde y se
      montaba sobre la marca FIVO. Se reserva ese espacio. */
   .main-layout {
@@ -6559,7 +6559,7 @@ body,
   }
 }
 
-@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+@media (pointer: coarse) and (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
   /* La marca es absoluta abajo a la derecha y ahi le pasa por encima la
      tarjeta de Jazzy. Con la columna derecha alineada al fondo, el hueco
      libre quedo arriba: la marca se muda ahi. */
@@ -6578,7 +6578,7 @@ body,
   .app-header::after { font-size: 8px; letter-spacing: .18em; }
 }
 
-@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+@media (pointer: coarse) and (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
   /* Las tarjetas median 496px fijos y la columna entre 660 y 950 segun el
      aparato, asi que todo el sobrante se acumulaba arriba: 264px en un
      iPad Air 3 y 454px en un Pro 12.9. Se veia distinto en cada tablet
@@ -6615,7 +6615,7 @@ body,
   .instrument-panel .style-list-apple { justify-content: space-between; }
 }
 
-@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+@media (pointer: coarse) and (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
   /* El arpegiador estirado a 420px quedaba con demasiado aire adentro: dos
      perillas flotando en una tarjeta enorme. Se le pone techo y el
      sobrante lo absorbe la lista de instrumentos, que sí lo aprovecha. */
