@@ -1,4 +1,5 @@
 import * as Tone from 'tone';
+import { midiBus } from './midi';
 
 export type InstrumentName = 'EP2' | 'Messy' | 'Canadians' | 'E-Bass';
 
@@ -134,6 +135,8 @@ class SurgeWasmHost {
     }
 
     send(message: Record<string, unknown>) {
+        // MIDI (archivo y salida en vivo) escucha lo mismo que el worklet.
+        midiBus.handleWorkletMessage(message);
         if (this.node) {
             this.node.port.postMessage(message);
             return;

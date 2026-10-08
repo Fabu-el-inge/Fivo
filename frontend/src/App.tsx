@@ -6,6 +6,8 @@ import { RecLoopHold } from './components/RecLoopHold';
 import { Metronome } from './components/Metronome';
 import type { MetronomeClickSound } from './components/Metronome';
 import { ResultPanel } from './components/ResultPanel';
+import { MidiPanel } from './components/MidiPanel';
+import { midiPanelEnabled } from './api/midi';
 import { getContext } from './api/fivo';
 import { engineChord } from './api/engine';
 import type { FivoResponse, FivoStyle, PowerMode } from './api/fivo';
@@ -62,6 +64,7 @@ function FivoWorkspace() {
   const [strumEnabled, setStrumEnabled] = useState(false);
   const [style, setStyle] = useState<FivoStyle>('pop');
   const contextData = useMemo(() => getContext(currentKey, style), [currentKey, style]);
+  const showMidiPanel = useMemo(midiPanelEnabled, []);
   // Power chord automatico: fijo en 'auto' (no hay control en la UI).
   const powerMode: PowerMode = 'auto';
   // Fingers per note (default 1 for all)
@@ -1279,6 +1282,8 @@ function FivoWorkspace() {
       </div>
 
       {/* Minimal Branding - Bottom Center */}
+      {showMidiPanel && <MidiPanel bpm={arpTempo} />}
+
       <header className="app-header">
         <h1>Fivo</h1>
       </header>

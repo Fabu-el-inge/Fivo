@@ -117,7 +117,8 @@ export function engineChord(
         if (root === (key + 9) % 12) relation = 'RELATIVE_MINOR';
         else if (root === (key + 2) % 12) relation = 'SUPERTONIC_MINOR';
         else if (root === (key + 4) % 12) relation = 'MEDIANT_MINOR';
-        else if (root === (key + 9) % 12) relation = 'SUBMEDIANT_MINOR';
+        // El C++ tiene aca SUBMEDIANT_MINOR con la misma condicion que
+        // RELATIVE_MINOR (key + 9): nunca se ejecuta, asi que no se porta.
         else if (root === key) relation = 'PARALLEL_MINOR';
     } else {
         if (root === (key + 7) % 12) relation = 'DOMINANT';

@@ -1,0 +1,102 @@
+/* Panel MIDI (en prueba, ?midi=1). Flotante: no participa del layout, asi
+   no mueve nada de la pantalla aprobada. Usa los tokens del rediseno FIVO. */
+.midi-panel {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  z-index: 2300;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  font-family: var(--fv-sans, sans-serif);
+}
+
+.midi-panel-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .06);
+  background: linear-gradient(180deg, var(--fv-panel-top, #1c1c20), var(--fv-panel-bot, #141417));
+  color: var(--fv-label-2, #84848e);
+  font-family: var(--fv-mono, monospace);
+  font-size: 11px;
+  letter-spacing: .2em;
+  cursor: pointer;
+}
+
+.midi-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3b3b42;
+}
+.midi-dot.live { background: #4ade80; box-shadow: 0 0 8px rgba(74, 222, 128, .7); }
+.midi-dot.rec { background: var(--fv-accent, #ff7a3c); box-shadow: 0 0 8px rgba(255, 122, 60, .8); }
+
+.midi-panel-body {
+  width: min(280px, calc(100vw - 20px));
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, .05);
+  background: linear-gradient(180deg, var(--fv-panel-top, #1c1c20), var(--fv-panel-bot, #141417));
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .55);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.midi-section { display: flex; flex-direction: column; gap: 8px; }
+.midi-row { display: flex; align-items: center; gap: 12px; }
+
+.midi-label {
+  font-family: var(--fv-mono, monospace);
+  font-size: 10px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--fv-label, #7e7e88);
+}
+
+.midi-value {
+  font-family: var(--fv-mono, monospace);
+  font-size: 14px;
+  color: var(--fv-value, #e8e8ec);
+}
+
+.midi-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, .06);
+  background: #222227;
+  color: var(--fv-value, #e8e8ec);
+  font-family: var(--fv-sans, sans-serif);
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.midi-btn.rec { background: var(--fv-accent, #ff7a3c); color: #1a0d05; }
+.midi-download { color: var(--fv-accent, #ff7a3c); }
+
+.midi-select {
+  min-height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  background: #222227;
+  color: var(--fv-value, #e8e8ec);
+  font-size: 14px;
+  padding: 0 10px;
+}
+
+.midi-hint {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--fv-label-2, #84848e);
+}
+.midi-error { color: #f87171; }
