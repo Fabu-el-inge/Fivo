@@ -8,7 +8,7 @@ import { fetchChord, getContext } from './api/fivo';
 import type { FivoResponse, FivoStyle, PowerMode } from './api/fivo';
 import { calcChordNotes } from './api/chordCalc';
 import { audioEngine } from './api/audio';
-import type { InstrumentName } from './api/audio';
+import type { AudioNotice, InstrumentName } from './api/audio';
 import { LITE_MODE } from './config';
 
 const MAJOR_NOTES = ['C', 'G', 'D', 'A', 'E', 'B', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F'];
@@ -411,6 +411,11 @@ function FivoWorkspace() {
   }, [isHold]);
 
   const [chordData, setChordData] = useState<FivoResponse | null>(null);
+  const [audioNotice, setAudioNotice] = useState<AudioNotice | null>(null);
+  useEffect(() => {
+    audioEngine.onNotice(setAudioNotice);
+    return () => audioEngine.onNotice(null);
+  }, []);
   const [fullscreenAvailable, setFullscreenAvailable] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -1086,7 +1091,14 @@ function FivoWorkspace() {
 
   return (
     <div className="app-container">
-      {/* Error Banner - Fixed top */}
+      {/* Aviso si el sonido no es el aprobado (Surge no cargo o se detuvo) */}
+      {audioNotice && (
+        <div className="error-banner" role="status">
+          {audioNotice === 'fallback'
+            ? 'No se pudo cargar el sonido de Fivo: suena una versión básica. Recargá la página.'
+            : 'El motor de sonido se detuvo. Recargá la página.'}
+        </div>
+      )}
 
       {/* Main Layout - Object Centric */}
       {/* Main Layout - Grid: Left | Center | Right */}

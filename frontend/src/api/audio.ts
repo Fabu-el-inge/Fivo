@@ -2,14 +2,16 @@ import * as Tone from 'tone';
 
 export type InstrumentName = 'EP2' | 'Messy' | 'Canadians' | 'E-Bass';
 
+export type AudioNotice = 'fallback' | 'engine-stopped';
 export type MetronomeBeatCallback = (beat: number, isAccent: boolean) => void;
 
 type SurgeInstrumentName = Extract<InstrumentName, 'EP2' | 'Messy' | 'Canadians' | 'E-Bass'>;
 const SURGE_ASSET_VERSION = "mobile-surge-fast-ios-20260909-2";
 const SURGE_ENGINE_GAIN = 0.78;
 const SURGE_OUTPUT_GAIN = 1.85;
+// Lo mismo en todas las plataformas: con 15 s en mobile, una red lenta (7,4 MB
+// de WASM) caia al sonido de respaldo, que es otro instrumento.
 const SURGE_READY_TIMEOUT_MS = 45000;
-const MOBILE_SURGE_READY_TIMEOUT_MS = 15000;
 const MOBILE_AUDIO_START_TIMEOUT_MS = 700;
 
 const SURGE_PRESET_URLS: Record<SurgeInstrumentName, string> = {
@@ -112,6 +114,8 @@ class SurgeWasmHost {
     private destinations = new Set<any>();
     private lastDebug: Record<string, unknown> | null = null;
     private debugResolvers: Array<(message: Record<string, unknown> | null) => void> = [];
+    // Se llama si el motor se detiene despues de haber arrancado.
+    onFatalError: ((message: string) => void) | null = null;
 
     get isLoaded() {
         return this.ready;
@@ -124,7 +128,8 @@ class SurgeWasmHost {
     connect(destination: any) {
         this.destinations.add(destination);
         if (this.node) this.connectNode(this.node, destination);
-        void this.ensureNode();
+        // El fallo de carga lo maneja ensureActiveLoaded (pasa al respaldo y avisa).
+        this.ensureNode().catch(() => undefined);
     }
 
     send(message: Record<string, unknown>) {
@@ -134,7 +139,8 @@ class SurgeWasmHost {
         }
 
         this.messageQueue.push(message);
-        void this.ensureNode();
+        // El fallo de carga lo maneja ensureActiveLoaded (pasa al respaldo y avisa).
+        this.ensureNode().catch(() => undefined);
     }
 
     private async ensureNode(): Promise<AudioWorkletNode> {
@@ -193,7 +199,7 @@ class SurgeWasmHost {
         await new Promise<void>((resolve, reject) => {
             const timeout = window.setTimeout(
                 () => reject(new Error("Surge WASM init timed out")),
-                mobile ? MOBILE_SURGE_READY_TIMEOUT_MS : SURGE_READY_TIMEOUT_MS
+                SURGE_READY_TIMEOUT_MS
             );
             const handleMessage = (event: MessageEvent) => {
                 const message = event.data;
@@ -214,6 +220,7 @@ class SurgeWasmHost {
                 }
                 if (message?.type === "processError") {
                     console.warn("Surge WASM process error", message.error);
+                    if (message.fatal) this.onFatalError?.(String(message.error));
                 }
             };
             node.port.addEventListener("message", handleMessage);
@@ -240,12 +247,29 @@ class SurgeWasmHost {
     private async fetchPreset(url: string): Promise<ArrayBuffer> {
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Failed to load ${url}`);
-        return response.arrayBuffer();
+        const preset = await response.arrayBuffer();
+        // Un .fxp empieza con "CcnK". El rewrite de vercel.json devuelve
+        // index.html con 200 para cualquier ruta que no exista.
+        const magic = String.fromCharCode(...new Uint8Array(preset.slice(0, 4)));
+        if (magic !== 'CcnK') throw new Error(`${url} is not a Surge preset`);
+        return preset;
+    }
+
+    private async fetchPresetWithRetry(url: string, attempts = 4): Promise<ArrayBuffer> {
+        for (let attempt = 1; ; attempt++) {
+            try {
+                return await this.fetchPreset(url);
+            } catch (error) {
+                if (attempt >= attempts) throw error;
+                await new Promise(resolve => window.setTimeout(resolve, 1000 * 3 ** (attempt - 1)));
+            }
+        }
     }
 
     private preloadMobilePresets(node: AudioWorkletNode) {
         (["Messy", "Canadians", "E-Bass"] as SurgeInstrumentName[]).forEach(instrument => {
-            void this.fetchPreset(SURGE_PRESET_URLS[instrument])
+            // Si falla, el instrumento quedaria mudo toda la sesion: se reintenta.
+            void this.fetchPresetWithRetry(SURGE_PRESET_URLS[instrument])
                 .then(preset => {
                     try {
                         node.port.postMessage({ type: "preset", instrument, preset }, [preset]);
@@ -638,6 +662,14 @@ export class AudioEngine {
     private surgeFilter: Tone.Filter | null = null;
     private surgeExpressionGain: Tone.Gain | null = null;
     private usingFallbackInstruments = false;
+    private noticeListener: ((notice: AudioNotice) => void) | null = null;
+
+    // Avisa a la UI cuando el sonido deja de ser el aprobado (Surge): respaldo
+    // de osciladores o motor detenido. Antes pasaba en silencio.
+    public onNotice(listener: ((notice: AudioNotice) => void) | null) {
+        this.noticeListener = listener;
+        surgeWasmHost.onFatalError = listener ? () => listener('engine-stopped') : null;
+    }
     private initialized = false;
     private initPromise: Promise<void> | null = null;
     private mobilePrimeNodes: { oscillator: OscillatorNode; gain: GainNode } | null = null;
@@ -798,6 +830,7 @@ export class AudioEngine {
         if (this.usingFallbackInstruments) return;
 
         console.warn('Using Tone.js fallback instruments', reason);
+        this.noticeListener?.('fallback');
         try {
             this.releaseEveryInstrument(true);
         } catch {
