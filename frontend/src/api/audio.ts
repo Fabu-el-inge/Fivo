@@ -1202,8 +1202,11 @@ export class AudioEngine {
     public async attackNotesForTouch(midiNotes: number[], touchId: string) {
         const token = this.attackCancelToken;
         const isTouch = touchId.startsWith('touch-');
+        // Un id (dedo, mouse o tecla) que se suelta mientras carga el motor queda
+        // marcado en releasedTouchIds: al terminar la carga suena corto en vez
+        // de quedar colgado.
+        this.releasedTouchIds.delete(touchId);
         if (isTouch) {
-            this.releasedTouchIds.delete(touchId);
             this.touchAttackStartedAt.set(touchId, performance.now());
         }
         await this.init();
@@ -1232,7 +1235,7 @@ export class AudioEngine {
         const toAttack = newFreqs.filter(f => !alreadySounding.has(f.toFixed(2)));
 
         this.applyEnvelope(this.getEnvelopeSettings());
-        if (isTouch && this.releasedTouchIds.has(touchId)) {
+        if (this.releasedTouchIds.has(touchId)) {
             this.releasedTouchIds.delete(touchId);
             this.touchFreqs.delete(touchId);
             this.touchMidiNotes.delete(touchId);
@@ -1250,8 +1253,11 @@ export class AudioEngine {
     public async attackNotesStrumForTouch(midiNotes: number[], totalMs: number = 80, touchId: string) {
         const token = this.attackCancelToken;
         const isTouch = touchId.startsWith('touch-');
+        // Un id (dedo, mouse o tecla) que se suelta mientras carga el motor queda
+        // marcado en releasedTouchIds: al terminar la carga suena corto en vez
+        // de quedar colgado.
+        this.releasedTouchIds.delete(touchId);
         if (isTouch) {
-            this.releasedTouchIds.delete(touchId);
             this.touchAttackStartedAt.set(touchId, performance.now());
         }
         await this.init();
@@ -1279,7 +1285,7 @@ export class AudioEngine {
         }
 
         this.applyEnvelope(this.getEnvelopeSettings());
-        if (isTouch && this.releasedTouchIds.has(touchId)) {
+        if (this.releasedTouchIds.has(touchId)) {
             this.releasedTouchIds.delete(touchId);
             this.touchFreqs.delete(touchId);
             this.touchMidiNotes.delete(touchId);
@@ -1312,7 +1318,7 @@ export class AudioEngine {
         if (this.holdMode) return;
         const isTouch = touchId.startsWith('touch-');
         if (!this.synth) {
-            if (isTouch) this.releasedTouchIds.add(touchId);
+            this.releasedTouchIds.add(touchId);
             return;
         }
 
@@ -1322,7 +1328,7 @@ export class AudioEngine {
 
         const freqs = this.touchFreqs.get(touchId);
         if (!freqs || freqs.length === 0) {
-            if (isTouch) this.releasedTouchIds.add(touchId);
+            this.releasedTouchIds.add(touchId);
             this.touchMidiNotes.delete(touchId);
             this.syncActiveMidiFromTouches();
             return;
@@ -1437,8 +1443,10 @@ export class AudioEngine {
     // Hold mode: Attack with strum (humanized)
     // Uses setTimeout instead of Tone.js future scheduling so we can cancel pending notes
     public async attackNotesStrum(midiNotes: number[], speedMs: number = 50, humanize: boolean = true) {
+        const token = this.attackCancelToken;
         await this.init();
         await this.ensureActiveLoaded();
+        if (this.attackCancelToken !== token) return;
         if (!this.synth) return;
 
         // New chord replaces the previous held/strummed voices without muting Surge's next attack.

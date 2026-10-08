@@ -144,9 +144,13 @@ async function trace(browser, url, { name, viewport, touch, script }) {
   await page.goto(url, { waitUntil: 'networkidle' });
   await page.waitForSelector('.circle-svg');
   // Primer gesto: arranca el audio y carga Surge. Se descarta del registro.
-  await page.keyboard.down('m'); await sleep(page, 100); await page.keyboard.up('m');
+  // La tecla se suelta recien con el motor cargado: soltarla antes deja una
+  // nota colgada en 8773277 (bug H7) que contamina el resto del guion.
+  await page.keyboard.down('m');
   await page.waitForFunction(() => window.__trace.some((m) => m.type === 'gain'), null, { timeout: 30000 });
   await sleep(page, touch ? 6000 : 3000);
+  await page.keyboard.up('m');
+  await sleep(page, 500);
   await page.evaluate(() => { window.__trace = []; });
   await script(page);
   await sleep(page, 500);
