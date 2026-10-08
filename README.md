@@ -32,11 +32,16 @@ si se quiere comparar contra el binario.
 cd frontend
 npm test                    # notas, colores y sonido real de Surge (Node)
 npm run test:audio-trace    # lo que se le manda al motor, contra el commit aprobado
-npm run test:visual         # 20 pantallas + estados, pixel a pixel contra el aprobado
+npm run test:visual         # pantallas + estados, pixel a pixel contra el aprobado
+npm run test:midi           # grabar/descargar .mid y salida MIDI en vivo (simulada)
 ```
 
 Las dos últimas necesitan Google Chrome instalado. Si algo cambia lo que suena o se ve en una
 pantalla aprobada, el test falla: eso es lo que protege lo que el cliente ya aprobó.
+
+## MIDI (en prueba)
+
+`https://fivo.subestatica.com/?midi=1` muestra el botón **MIDI**. Ver [docs/MIDI.md](docs/MIDI.md).
 
 ## Deploy
 

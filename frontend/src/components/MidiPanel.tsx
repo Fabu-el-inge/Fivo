@@ -28,7 +28,8 @@ export const MidiPanel: React.FC<MidiPanelProps> = ({ bpm }) => {
     const [recording, setRecording] = useState(false);
     const [startedAt, setStartedAt] = useState(0);
     const [now, setNow] = useState(0);
-    const [take, setTake] = useState<{ url: string; name: string; notes: number } | null>(null);
+    const [take, setTake] = useState<{ url: string; name: string; notes: number; file: File } | null>(null);
+    const [emptyTake, setEmptyTake] = useState(false);
     const [ports, setPorts] = useState<MidiPort[] | null>(null);
     const [portId, setPortId] = useState('');
     const [liveError, setLiveError] = useState('');
@@ -43,7 +44,12 @@ export const MidiPanel: React.FC<MidiPanelProps> = ({ bpm }) => {
     useEffect(() => {
         const out = live.current;
         const rec = recorder.current;
+        // Al recargar o cerrar la pestana React no desmonta nada: sin esto la
+        // DAW queda con las notas que estaban sonando.
+        const silence = () => out.allNotesOff();
+        window.addEventListener('pagehide', silence);
         return () => {
+            window.removeEventListener('pagehide', silence);
             out.allNotesOff();
             out.select(null);
             rec.stop();
@@ -54,8 +60,9 @@ export const MidiPanel: React.FC<MidiPanelProps> = ({ bpm }) => {
 
     const toggleRecording = () => {
         if (!recording) {
+            // La toma anterior sigue disponible hasta que haya una nueva.
             recorder.current.start();
-            setTake(null);
+            setEmptyTake(false);
             setStartedAt(performance.now());
             setNow(performance.now());
             setRecording(true);
@@ -64,15 +71,42 @@ export const MidiPanel: React.FC<MidiPanelProps> = ({ bpm }) => {
         const events = recorder.current.stop();
         setRecording(false);
         const notes = events.filter(e => e.type === 'on').length;
-        if (notes === 0) return;
-        const blob = new Blob([writeMidiFile(events, bpm).slice().buffer], { type: 'audio/midi' });
-        setTake({ url: URL.createObjectURL(blob), name: fileName(), notes });
+        if (notes === 0) {
+            setEmptyTake(true);
+            return;
+        }
+        const name = fileName();
+        const file = new File([writeMidiFile(events, bpm).slice().buffer], name, { type: 'audio/midi' });
+        setTake({ url: URL.createObjectURL(file), name, notes, file });
+    };
+
+    // iPhone/iPad: el menu de compartir manda el archivo a GarageBand, Archivos
+    // o AirDrop, y funciona tambien en la app agregada a la pantalla de inicio,
+    // donde la descarga directa puede no hacer nada.
+    const canShare = Boolean(take && typeof navigator.canShare === 'function' && navigator.canShare({ files: [take.file] }));
+    const shareTake = async () => {
+        if (!take) return;
+        try {
+            await navigator.share({ files: [take.file], title: take.name });
+        } catch {
+            // Cancelado por el usuario: no hay nada que hacer.
+        }
     };
 
     const connectLive = async () => {
         setLiveError('');
         try {
-            live.current.onPortsChange = setPorts;
+            live.current.onPortsChange = (next) => {
+                setPorts(next);
+                // Si se desconecta el puerto elegido, se deja de mandar.
+                setPortId(current => {
+                    if (current && !next.some(p => p.id === current)) {
+                        live.current.select(null);
+                        return '';
+                    }
+                    return current;
+                });
+            };
             setPorts(await live.current.connect());
         } catch (error) {
             setLiveError(error instanceof Error ? error.message : 'No se pudo abrir MIDI');
@@ -102,10 +136,14 @@ export const MidiPanel: React.FC<MidiPanelProps> = ({ bpm }) => {
                             {recording && <span className="midi-value">{formatTime(now - startedAt)}</span>}
                         </div>
                         {take && (
-                            <a className="midi-btn midi-download" href={take.url} download={take.name}>
-                                Descargar .mid · {take.notes} notas
-                            </a>
+                            <div className="midi-row">
+                                <a className="midi-btn midi-download" href={take.url} download={take.name}>
+                                    Descargar .mid · {take.notes} notas
+                                </a>
+                                {canShare && <button type="button" className="midi-btn" onClick={shareTake}>Compartir</button>}
+                            </div>
                         )}
+                        {emptyTake && <span className="midi-hint">No se grabó ninguna nota.</span>}
                         <span className="midi-hint">Tempo del archivo: {bpm} bpm (el del arpegiador).</span>
                     </div>
 

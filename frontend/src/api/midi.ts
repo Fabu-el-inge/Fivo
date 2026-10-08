@@ -20,11 +20,12 @@ type WorkletMessage = { type?: unknown; notes?: unknown; velocity?: unknown };
 
 const clampByte = (v: number) => Math.max(0, Math.min(127, Math.round(v)));
 
-/** Replica en MIDI los mensajes al worklet. Lleva la cuenta de notas activas
- *  para que un "panic" (corte de todo) se traduzca en sus noteOff. */
+/** Replica en MIDI los mensajes al worklet. Como el motor, una altura suena
+ *  o no suena: un noteOn sobre una nota que ya suena la re-ataca (noteOff +
+ *  noteOn) y el primer noteOff la apaga. Un "panic" apaga todo lo que suena. */
 export class MidiBus {
     private listeners = new Set<Listener>();
-    private active = new Map<number, number>();
+    private active = new Set<number>();
 
     subscribe(listener: Listener): () => void {
         this.listeners.add(listener);
@@ -32,29 +33,28 @@ export class MidiBus {
     }
 
     get activeNotes(): number[] {
-        return [...this.active.keys()];
+        return [...this.active];
     }
 
     handleWorkletMessage(message: WorkletMessage, time = performance.now()) {
         if (this.listeners.size === 0 && this.active.size === 0) return;
-        const notes = Array.isArray(message.notes) ? message.notes.filter((n): n is number => typeof n === 'number') : [];
+        const notes = Array.isArray(message.notes)
+            ? message.notes.filter((n): n is number => typeof n === 'number').map(clampByte)
+            : [];
         if (message.type === 'noteOn') {
             const velocity = Math.max(1, clampByte(Number(message.velocity ?? 100)));
             for (const note of notes) {
-                this.active.set(note, (this.active.get(note) ?? 0) + 1);
-                this.emit({ type: 'on', note: clampByte(note), velocity, time });
+                if (this.active.has(note)) this.emit({ type: 'off', note, velocity: 64, time });
+                this.active.add(note);
+                this.emit({ type: 'on', note, velocity, time });
             }
         } else if (message.type === 'noteOff') {
             for (const note of notes) {
-                const count = this.active.get(note) ?? 0;
-                if (count === 0) continue;
-                if (count === 1) this.active.delete(note); else this.active.set(note, count - 1);
-                this.emit({ type: 'off', note: clampByte(note), velocity: 64, time });
+                if (!this.active.delete(note)) continue;
+                this.emit({ type: 'off', note, velocity: 64, time });
             }
         } else if (message.type === 'panic') {
-            for (const [note, count] of this.active) {
-                for (let i = 0; i < count; i++) this.emit({ type: 'off', note, velocity: 64, time });
-            }
+            for (const note of this.active) this.emit({ type: 'off', note, velocity: 64, time });
             this.active.clear();
         }
     }
@@ -86,7 +86,9 @@ const ascii = (s: string) => [...s].map(c => c.charCodeAt(0) & 0x7f);
  * define la grilla de la DAW: los tiempos reales se respetan.
  */
 export function writeMidiFile(events: MidiNoteEvent[], bpm: number, name = 'Fivo'): Uint8Array {
-    const sorted = [...events].sort((a, b) => a.time - b.time || (a.type === 'off' ? -1 : 1));
+    // Los eventos llegan en orden; sort es estable, asi que a igual tiempo se
+    // respeta el orden en que ocurrieron (un off+on de re-ataque queda bien).
+    const sorted = [...events].sort((a, b) => a.time - b.time);
     const start = sorted.length > 0 ? sorted[0].time : 0;
     const msPerTick = 60000 / (bpm * PPQ);
     const usPerQuarter = Math.round(60_000_000 / bpm);

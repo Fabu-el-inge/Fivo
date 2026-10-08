@@ -510,12 +510,19 @@ class ToneFallbackInstrument {
     triggerAttack(notes: number | number[], time?: Tone.Unit.Time, velocity: number = 1) {
         void this.context.resume?.();
         const noteList = Array.isArray(notes) ? notes : [notes];
+        // MIDI tambien con el respaldo: las notas tal como suenan aca.
+        midiBus.handleWorkletMessage({ type: 'noteOn', notes: this.toMidi(noteList), velocity: Math.max(1, Math.min(127, Math.round(velocity * 127))) });
         noteList.forEach(note => this.startVoice(this.toFrequency(note), time, velocity));
     }
 
     triggerRelease(notes: number | number[], time?: Tone.Unit.Time) {
         const noteList = Array.isArray(notes) ? notes : [notes];
+        midiBus.handleWorkletMessage({ type: 'noteOff', notes: this.toMidi(noteList) });
         noteList.forEach(note => this.stopVoice(this.toFrequency(note), time));
+    }
+
+    private toMidi(noteList: number[]) {
+        return noteList.map(note => Math.max(0, Math.min(127, Math.round(Tone.Frequency(note).toMidi()))));
     }
 
     triggerAttackRelease(notes: number | number[], duration: Tone.Unit.Time, time?: Tone.Unit.Time, velocity: number = 1) {
@@ -526,6 +533,7 @@ class ToneFallbackInstrument {
     }
 
     releaseAll(time?: Tone.Unit.Time) {
+        if (this.voices.size > 0) midiBus.handleWorkletMessage({ type: 'panic' });
         [...this.voices.keys()].forEach(key => this.stopVoiceByKey(key, time, true));
     }
 

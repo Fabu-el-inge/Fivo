@@ -90,6 +90,24 @@ gesto (círculo / teclado Z..M, Shift = menor)
 5. En mobile, los presets que no son EP2 se bajan después del arranque, con hasta 4 intentos.
    Cada preset se valida por su cabecera (`CcnK`).
 
+### 3.3 MIDI (en prueba, `?midi=1`)
+
+`frontend/src/api/midi.ts` escucha los mismos mensajes que van al worklet (`SurgeWasmHost.send`) y los
+traduce a MIDI. **No toca el sonido.**
+- **Qué notas manda:** las que suenan, con octava y transposición por instrumento (E-Bass −12,
+  Canadians +12) y con su velocity. Un `panic` se convierte en los `noteOff` de lo que estaba sonando.
+- **Grabar a archivo:** `MidiRecorder` → `writeMidiFile` genera un SMF formato 0, canal 1, 480
+  ticks por negra, con el tempo del arpegiador y compás 4/4. El archivo empieza en la primera nota.
+  Funciona en todos los navegadores.
+- **Salida en vivo:** `MidiLiveOutput` usa Web MIDI, disponible en Chrome y Edge de escritorio y
+  en Chrome de Android. Safari no implementa Web MIDI (ni en Mac ni en iPhone/iPad).
+  - En Mac, para GarageBand o Logic: Configuración de Audio MIDI → Estudio MIDI → IAC Driver →
+    "Dispositivo en línea", y en Chrome elegir "IAC Driver Bus 1".
+  - En Windows: un puerto virtual como loopMIDI.
+- **Interfaz:** el botón flotante "MIDI" (`components/MidiPanel.tsx`) solo aparece con `?midi=1`.
+  Cuando el cliente lo apruebe, se decide su lugar fijo.
+- **Con el respaldo de osciladores** (si Surge no carga) también hay MIDI, con las notas que suenan ahí.
+
 ## 4. Parámetros que definen el sonido aprobado (CONGELADOS)
 
 Cambiar cualquiera de estos valores cambia lo que escucha el cliente.
@@ -213,6 +231,7 @@ Todo en `frontend/`. Lo "aprobado" es el commit `8773277` (constante `APPROVED_R
 | `npm test` | Notas, colores y sonido | Snapshot de `calcChordNotes` en todo lo que se puede tocar en la versión LITE (y hash del espacio completo); tabla de colores; **render real de Surge en Node** (mismo WASM, presets y AudioWorklet que la app) en 9 escenarios, en escritorio y mobile |
 | `npm run test:audio-trace` | Lo que el host le manda al motor | Mismo guion (mouse, teclado, touch real, glide, hold, instrumentos, octava, Jazzy, arpegio) contra el aprobado y contra el árbol actual; compara cada `noteOn`/`noteOff`/`hold`/`panic` |
 | `npm run test:visual` | Pantallas | Compila el aprobado y el actual, captura 20 pantallas y 6 estados con interacción, y compara píxel a píxel. Las aprobadas tienen que dar 0 píxeles con cambio fuerte. También mide solapamientos, scroll y controles fuera de vista |
+| `npm run test:midi` | MIDI | En Chrome: graba, descarga el .mid y verifica que tenga exactamente los `noteOn` que recibió el motor; lo mismo con una salida en vivo simulada |
 | `node scripts/gen-context-table.mjs <fivo_demo> --check` | Tabla de colores contra el motor C++ | Falla si la tabla no coincide con el binario |
 | Tests C++ (`fivo_tests`) | Colores del motor | Corren en el build de Docker; si fallan, no se publica |
 

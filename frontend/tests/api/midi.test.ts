@@ -53,9 +53,10 @@ describe('writeMidiFile', () => {
     ]);
   });
 
-  it('a igual tiempo el noteOff va antes que el noteOn (nota repetida)', () => {
-    const file = readMidi(writeMidiFile([ev('on', 60, 0), ev('on', 60, 500), ev('off', 60, 500), ev('off', 60, 900)], 120));
-    expect(file.notes.map(n => n.type)).toEqual(['on', 'off', 'on', 'off']);
+  it('a igual tiempo respeta el orden en que ocurrieron', () => {
+    // Re-ataque (off + on) y una nota que empieza y termina en el mismo instante.
+    const file = readMidi(writeMidiFile([ev('on', 60, 0), ev('off', 60, 500), ev('on', 60, 500), ev('off', 60, 900), ev('on', 62, 900), ev('off', 62, 900)], 120));
+    expect(file.notes.map(n => `${n.type}${n.note}`)).toEqual(['on60', 'off60', 'on60', 'off60', 'on62', 'off62']);
   });
 
   it('deltas largos (VLQ de varios bytes) y archivo vacio valido', () => {
@@ -77,6 +78,18 @@ describe('MidiBus', () => {
     bus.handleWorkletMessage({ type: 'panic' }, 2);
     bus.handleWorkletMessage({ type: 'panic' }, 3); // los 4 panic seguidos de audio.ts
     expect(got).toEqual(['on60', 'on64', 'on67', 'off64', 'off60', 'off67']);
+    expect(bus.activeNotes).toEqual([]);
+  });
+
+  it('como el motor: una altura suena o no; re-atacar es off + on', () => {
+    const bus = new MidiBus();
+    const got: string[] = [];
+    bus.subscribe(e => got.push(`${e.type}${e.note}`));
+    bus.handleWorkletMessage({ type: 'noteOn', notes: [60], velocity: 127 }, 0);
+    bus.handleWorkletMessage({ type: 'noteOn', notes: [60], velocity: 127 }, 1);
+    bus.handleWorkletMessage({ type: 'noteOff', notes: [60] }, 2);
+    bus.handleWorkletMessage({ type: 'noteOff', notes: [60] }, 3);
+    expect(got).toEqual(['on60', 'off60', 'on60', 'off60']);
     expect(bus.activeNotes).toEqual([]);
   });
 });

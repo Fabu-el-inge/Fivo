@@ -5,7 +5,7 @@
 //     correspondan a lo tocado y que al salir no quede nada sonando.
 //
 //   npm run test:midi [-- --out dir]
-import { mkdirSync, readFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { chromium } from 'playwright-core';
@@ -26,7 +26,9 @@ const INIT = () => {
     return original.call(this, msg, ...rest);
   };
   const port = { id: 'fake', name: 'Puerto de prueba', send: (data) => window.__midiOut.push([...data]) };
-  navigator.requestMIDIAccess = async () => ({ outputs: new Map([['fake', port]]), onstatechange: null });
+  const access = { outputs: new Map([['fake', port]]), onstatechange: null };
+  window.__unplug = () => { access.outputs.delete('fake'); access.onstatechange?.({}); };
+  navigator.requestMIDIAccess = async () => access;
 };
 
 function readMidi(bytes) {
@@ -88,6 +90,11 @@ try {
   await page.click('.midi-panel-toggle');
   await page.screenshot({ path: join(outDir, 'panel.png') });
 
+  // 0. Toma vacia: se avisa.
+  await page.click('text="● Grabar"');
+  await page.click('text="■ Parar"');
+  check(await page.locator('text=No se grabó ninguna nota').count() === 1, 'toma vacia: avisa');
+
   // 1. Grabar y descargar
   await page.evaluate(() => { window.__worklet = []; });
   await page.click('text="● Grabar"');
@@ -120,6 +127,21 @@ try {
   const after = await page.evaluate(() => window.__midiOut);
   check(after.some(b => b[0] === 0xb0 && b[1] === 123), 'al quitar la salida manda "all notes off"');
 
+  // Salir de la pagina con una nota sonando: se apaga en la DAW.
+  await page.selectOption('.midi-select', 'fake');
+  await page.evaluate(() => { window.__midiOut = []; });
+  await page.keyboard.down('z');
+  await page.waitForTimeout(300);
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide')));
+  const onUnload = await page.evaluate(() => window.__midiOut);
+  await page.keyboard.up('z');
+  check(onUnload.some(b => (b[0] & 0xf0) === 0x80) && onUnload.some(b => b[0] === 0xb0 && b[1] === 123), 'al salir de la pagina apaga lo que suena en la DAW');
+
+  // Puerto desconectado: deja de mandar y el selector vuelve a "Sin salida".
+  await page.evaluate(() => window.__unplug());
+  await page.waitForTimeout(200);
+  check(await page.locator('.midi-select').inputValue() === '', 'puerto desconectado: el selector queda en "Sin salida"');
+
   // Sin ?midi=1 el panel no existe.
   await page.goto(server.url, { waitUntil: 'networkidle' });
   check(await page.locator('.midi-panel').count() === 0, 'sin ?midi=1 no hay panel');
@@ -132,6 +154,25 @@ try {
   await mobile.click('.midi-panel-toggle');
   check(await mobile.locator('text=Safari no lo soporta').count() === 1, 'sin Web MIDI se explica y se ofrece el archivo');
   await mobile.screenshot({ path: join(outDir, 'mobile.png') });
+
+  // Con el sonido de respaldo (Surge roto) tambien se graba.
+  const broken = mkdtempSync(join(tmpdir(), 'fivo-broken-'));
+  cpSync(build.dist, broken, { recursive: true });
+  writeFileSync(join(broken, 'surge', 'fivo-surge-wasm.js'), 'throw new Error("wasm roto a proposito");');
+  const brokenServer = await serve(broken);
+  const ctx3 = await browser.newContext({ viewport: { width: 1280, height: 800 }, acceptDownloads: true });
+  await ctx3.addInitScript(INIT);
+  const fb = await ctx3.newPage();
+  await fb.goto(`${brokenServer.url}?midi=1`, { waitUntil: 'networkidle' });
+  await fb.keyboard.down('m'); await fb.waitForTimeout(2500); await fb.keyboard.up('m');
+  await fb.waitForSelector('.error-banner');
+  await fb.click('.midi-panel-toggle');
+  await fb.click('text="● Grabar"');
+  await play(fb);
+  await fb.click('text="■ Parar"');
+  check(await fb.locator('.midi-download').count() === 1, 'con el sonido de respaldo tambien se graba');
+  brokenServer.close();
+  rmSync(broken, { recursive: true, force: true });
 } finally {
   await browser.close();
   server.close();
