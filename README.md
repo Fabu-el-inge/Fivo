@@ -12,8 +12,8 @@ arpegiador y strum, con sonido de Surge XT compilado a WebAssembly.
 | Carpeta | Qué es |
 |---|---|
 | `frontend/` | React + Vite + TS. Toda la lógica que suena y el motor Surge (`public/surge/`) |
-| `bff/` | Express. Ejecuta el binario C++ para la lectura del acorde (`/api/chord`) y `/api/context` |
-| `core/`, `demos/`, `tests/` | Motor musical en C++ (colores por estilo, voicings), CLI `fivo_demo` y tests |
+| `core/`, `demos/`, `tests/` | Motor musical en C++ (colores por estilo, voicings), CLI `fivo_demo` y tests. Es la fuente de verdad; el front usa derivados verificados (`contextTable.ts`, `engine.ts`) |
+| `bff/` | Express que expone el binario por HTTP. Solo para desarrollo: producción no usa backend |
 
 ## Desarrollo
 
@@ -23,8 +23,8 @@ npm ci
 npm run dev            # http://localhost:5173
 ```
 
-El BFF es opcional para tocar: los colores salen de `src/api/contextTable.ts`. En Windows,
-`start.bat` compila el core y levanta todo.
+No hace falta levantar ningún backend. En Windows, `start.bat` compila el core y levanta el BFF, por
+si se quiere comparar contra el binario.
 
 ## Antes de cada cambio
 
@@ -43,5 +43,5 @@ pantalla aprobada, el test falla: eso es lo que protege lo que el cliente ya apr
 - **Front:** Vercel, proyecto `fivo-ios-test` (`frontend/.vercel/`), por CLI desde `frontend/`.
   Antes de publicar, comprobar que el build sea el esperado (ver
   [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md), sección 8).
-- **Backend:** Railway, con el `Dockerfile` de la raíz. El build corre los tests del C++.
-  Variables: `ALLOWED_ORIGINS` y `RATE_LIMIT_MAX` (ver `bff/.env.example`).
+- **Backend:** no hay. Fivo corre entero en el navegador (desde el 08/10/2026). El `Dockerfile` y
+  `railway.toml` siguen en el repo por si hiciera falta volver a exponer el motor por HTTP.

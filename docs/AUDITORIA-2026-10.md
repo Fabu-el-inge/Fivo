@@ -326,6 +326,11 @@ Límites conocidos de las redes:
 - no se ejercita el fader de expresión;
 - el caso de mobile con presets que llegan tarde no tiene test de sonido.
 
+**Sin backend (08/10/2026, tarde).** Venció el pago de Railway. En vez de mudar el servidor, se
+portó lo único que todavía usaba, la lectura del acorde, a `engine.ts`. Se verificó contra el C++ en
+los 155.520 casos que la app puede pedir y contra producción (`659c152`). Desde entonces el front
+publicado no hace ningún pedido a un backend propio. Railway puede quedar vencido sin consecuencias.
+
 **Lo que sigue, en orden:**
 1. **Unificar `main` con producción.** Merge de `fix/ios-audio-sobre-front-nuevo` y después de esta
    rama. Publicar siempre desde `main`.

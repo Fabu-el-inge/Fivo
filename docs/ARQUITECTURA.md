@@ -15,29 +15,33 @@ Los hallazgos, bugs y deuda están en [AUDITORIA-2026-10.md](AUDITORIA-2026-10.m
 
 ## 1. Piezas y deploy
 
+**Desde el 08/10/2026, Fivo corre entero en el navegador.** No depende de ningún servidor propio.
+
 | Pieza | Carpeta | Dónde corre | Cómo se publica |
 |---|---|---|---|
 | Front (React 19 + Vite + TS + Tone.js) | `frontend/` | Vercel, proyecto `fivo-ios-test`, dominio `fivo.subestatica.com` | CLI de Vercel desde `frontend/` (no hay integración con GitHub: un push no publica) |
 | Motor de sonido (Surge XT compilado a WASM) | `frontend/public/surge/` | El navegador, en un AudioWorklet | Viaja con el front |
-| BFF (Express 5) | `bff/server.js` | Railway, `fivo-backend-production.up.railway.app` | Dockerfile + `railway.toml` |
-| Motor musical (C++) | `core/` + `demos/cli_main.cpp` | Dentro del contenedor de Railway, como binario `fivo_demo` | Se compila en el Dockerfile |
-
-El front encuentra al backend por `VITE_API_BASE_URL` (`frontend/.env.production`).
+| Motor musical (C++) | `core/` + `demos/cli_main.cpp` | **Fuente de verdad, no se ejecuta en producción.** El front usa dos derivados verificados contra el binario: `contextTable.ts` (colores) y `engine.ts` (lectura del acorde) | Se compila para regenerar o verificar (`gen-context-table.mjs --check`, `FIVO_CLI=... npx vitest run tests/api/engine.test.ts`) |
+| BFF (Express 5) | `bff/server.js` | Solo desarrollo. El deploy de Railway (`fivo-backend-production.up.railway.app`) quedó sin uso | Dockerfile + `railway.toml`, si se lo quisiera volver a publicar |
 
 ## 2. Qué hace cada parte (el reparto real)
 
 | Responsabilidad | Dónde vive | Nota |
 |---|---|---|
-| **Colores del círculo** (consonancia por tonalidad y estilo) | Lógica en C++ (`core/src/style_manager.cpp`). El front usa la tabla generada `frontend/src/api/contextTable.ts` | La tabla se regenera con `node scripts/gen-context-table.mjs <fivo_demo>` y se valida con `--check`. Verificada contra producción: 0 diferencias en 96 combinaciones |
-| **Notas que suenan** | Solo TS: `frontend/src/api/chordCalc.ts` (`calcChordNotes`), llamado desde `App.tsx` | Se calculan en el mismo gesto, sin red ("instant notes", `c78549a`) |
+| **Colores del círculo** (consonancia por tonalidad y estilo) | Lógica en C++ (`core/src/style_manager.cpp`). El front usa la tabla generada `frontend/src/api/contextTable.ts` | Se regenera con `node scripts/gen-context-table.mjs <fivo_demo>` y se valida con `--check`. Verificada contra el backend de producción: 0 diferencias en 96 combinaciones |
+| **Notas que suenan** | Solo TS: `frontend/src/api/chordCalc.ts` (`calcChordNotes`), llamado desde `App.tsx` | Se calculan en el mismo gesto ("instant notes", `c78549a`) |
 | Power chord automático | TS, con el mapa de colores de la tabla | Mayor con color naranja/rojo → quinta sola |
 | Posiciones, rotación y etiquetas del círculo | Solo front: `CircleOfFifths.tsx` | |
-| Voice leading, octava, arpegios, strum | Solo front: `App.tsx` | El voice leading del C++ (`--prev-notes`) no se usa |
-| Lectura del acorde (abajo a la izquierda, solo escritorio) | C++ vía `GET /api/chord` → `ResultPanel.tsx` | Es lo único que todavía pide al backend. Si falla, no se muestra nada; el sonido no depende de esto |
+| Voice leading, octava, arpegios, strum | Solo front: `App.tsx` | |
+| Lectura del acorde (abajo a la izquierda, solo escritorio) | `frontend/src/api/engine.ts`, port exacto del CLI C++ → `ResultPanel.tsx` | Verificado en 155.520 casos contra el binario (0 diferencias) y en 150 contra el `/api/chord` de producción |
 
-**Consecuencia:** tocar ya no depende de Railway. La lógica musical sigue en dos lenguajes:
-- Si cambia `style_manager.cpp`, hay que regenerar la tabla.
-- En jazz y bossa, lo que suena (TS) no coincide con los voicings del C++ (ver auditoría, H1).
+**Consecuencia:** tocar no depende de ninguna red. La lógica musical vive en tres lugares, cada uno con
+su verificación:
+- C++: la fuente;
+- `contextTable.ts` y `engine.ts`: derivados exactos del C++;
+- `chordCalc.ts`: lo que suena. En jazz y bossa no coincide con el C++ (ver auditoría, H1).
+
+Si cambia el C++, hay que regenerar la tabla y volver a correr el test del motor con `FIVO_CLI`.
 
 ## 3. La cadena de sonido
 
