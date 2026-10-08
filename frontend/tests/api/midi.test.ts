@@ -130,4 +130,22 @@ describe('MidiLiveOutput', () => {
     expect(sent).toEqual([[0x90, 62, 100], [0x90, 67, 90], [0x80, 62, 64], [0x80, 67, 64], [0xb0, 123, 0]]);
     vi.unstubAllGlobals();
   });
+
+  it('si el puerto falla, se suelta una sola vez y no rompe a quien toca', async () => {
+    let calls = 0;
+    const port = { id: 'x', name: 'X', send: () => { calls++; throw new Error('closed'); } };
+    vi.stubGlobal('navigator', { requestMIDIAccess: async () => ({ outputs: new Map([['x', port]]), onstatechange: null }) });
+    const bus = new MidiBus();
+    const out = new MidiLiveOutput(bus);
+    let errors = 0;
+    out.onSendError = () => { errors++; };
+    await out.connect();
+    out.select('x');
+    expect(() => bus.handleWorkletMessage({ type: 'noteOn', notes: [60, 64, 67], velocity: 127 }, 0)).not.toThrow();
+    bus.handleWorkletMessage({ type: 'noteOff', notes: [60, 64, 67] }, 1);
+    out.allNotesOff();
+    expect(errors).toBe(1);
+    expect(calls).toBe(1);
+    vi.unstubAllGlobals();
+  });
 });

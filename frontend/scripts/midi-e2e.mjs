@@ -28,7 +28,13 @@ const INIT = () => {
   const port = { id: 'fake', name: 'Puerto de prueba', send: (data) => window.__midiOut.push([...data]) };
   const access = { outputs: new Map([['fake', port]]), onstatechange: null };
   window.__unplug = () => { access.outputs.delete('fake'); access.onstatechange?.({}); };
-  navigator.requestMIDIAccess = async () => access;
+  // Puerto que falla al mandar (como un USB desenchufado): no puede cortar el sonido.
+  const broken = { id: 'roto', name: 'Puerto que falla', send: () => { throw new DOMException('closed', 'InvalidStateError'); } };
+  access.outputs.set('roto', broken);
+  navigator.requestMIDIAccess = async () => {
+    if (sessionStorage.getItem('denyMidi')) throw new DOMException('denied', 'NotAllowedError');
+    return access;
+  };
 };
 
 function readMidi(bytes) {
@@ -71,6 +77,10 @@ const build = buildCurrent();
 const server = await serve(build.dist);
 const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--autoplay-policy=no-user-gesture-required'] });
 let failed = false;
+const choose = async (page, name) => {
+  await page.click('.midi-select-button');
+  await page.click(`.midi-select-option >> text="${name}"`);
+};
 const check = (ok, label) => { console.log(`${ok ? 'ok   ' : 'FALLA'} ${label}`); if (!ok) failed = true; };
 
 try {
@@ -116,19 +126,42 @@ try {
 
   // 2. Salida en vivo
   await page.click('text="Conectar MIDI"');
-  await page.selectOption('.midi-select', 'fake');
+  await page.screenshot({ path: join(outDir, 'desplegable-cerrado.png') });
+  await page.click('.midi-select-button');
+  await page.screenshot({ path: join(outDir, 'desplegable-abierto.png') });
+  await page.keyboard.press('Escape');
+  await choose(page, 'Puerto de prueba');
   await page.evaluate(() => { window.__worklet = []; window.__midiOut = []; });
   await play(page);
   const worklet2 = await page.evaluate(() => window.__worklet);
   const sent = await page.evaluate(() => window.__midiOut);
   const sentOn = sent.filter(b => (b[0] & 0xf0) === 0x90).map(b => b[1]);
   check(JSON.stringify(sentOn) === JSON.stringify(worklet2.filter(m => m.type === 'noteOn').flatMap(m => m.notes)), `bytes en vivo = noteOn del motor (${sentOn.length} notas)`);
-  await page.selectOption('.midi-select', '');
+  await choose(page, 'Sin salida');
   const after = await page.evaluate(() => window.__midiOut);
   check(after.some(b => b[0] === 0xb0 && b[1] === 123), 'al quitar la salida manda "all notes off"');
 
+  // Teclado dentro del desplegable: navega, no toca acordes.
+  await page.evaluate(() => { window.__worklet = []; });
+  await page.focus('.midi-select-button');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('z');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  const kbNotes = await page.evaluate(() => window.__worklet.filter(m => m.type === 'noteOn').length);
+  check(kbNotes === 0 && (await page.locator('.midi-select-value').textContent()) === 'Puerto de prueba', 'el desplegable se maneja con teclado y no dispara acordes');
+  await page.locator('.midi-select-button').blur();
+
+  // Puerto que falla mientras se toca: Fivo sigue sonando y el panel avisa.
+  await choose(page, 'Puerto que falla');
+  await page.evaluate(() => { window.__worklet = []; });
+  await play(page);
+  const stillSounds = await page.evaluate(() => window.__worklet.filter(m => m.type === 'noteOn').length);
+  check(stillSounds > 0, `con un puerto que falla Fivo sigue sonando (${stillSounds} noteOn al motor)`);
+  check(await page.locator('text=dejó de responder').count() === 1, 'el panel avisa que la salida dejo de responder');
+
   // Salir de la pagina con una nota sonando: se apaga en la DAW.
-  await page.selectOption('.midi-select', 'fake');
+  await choose(page, 'Puerto de prueba');
   await page.evaluate(() => { window.__midiOut = []; });
   await page.keyboard.down('z');
   await page.waitForTimeout(300);
@@ -140,7 +173,14 @@ try {
   // Puerto desconectado: deja de mandar y el selector vuelve a "Sin salida".
   await page.evaluate(() => window.__unplug());
   await page.waitForTimeout(200);
-  check(await page.locator('.midi-select').inputValue() === '', 'puerto desconectado: el selector queda en "Sin salida"');
+  check((await page.locator('.midi-select-value').textContent()) === 'Sin salida', 'puerto desconectado: el selector queda en "Sin salida"');
+
+  // Permiso de MIDI denegado: explica como habilitarlo.
+  await page.evaluate(() => sessionStorage.setItem('denyMidi', '1'));
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.click('.midi-panel-toggle');
+  await page.click('text="Conectar MIDI"');
+  check(await page.locator('text=El navegador bloqueó el MIDI').count() === 1, 'permiso denegado: explica como habilitarlo');
 
   // Sin ?midi=1 el panel no existe.
   await page.goto(server.url, { waitUntil: 'networkidle' });

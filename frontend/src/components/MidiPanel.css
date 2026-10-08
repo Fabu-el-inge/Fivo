@@ -87,15 +87,77 @@
 .midi-btn.rec { background: var(--fv-accent, #ff7a3c); color: #1a0d05; }
 .midi-download { color: var(--fv-accent, #ff7a3c); }
 
-.midi-select {
-  min-height: 36px;
+.midi-select { position: relative; }
+
+.midi-select-button {
+  width: 100%;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 12px 0 14px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, .08);
+  border: 1px solid rgba(255, 255, 255, .06);
   background: #222227;
   color: var(--fv-value, #e8e8ec);
+  font-family: var(--fv-sans, sans-serif);
   font-size: 14px;
-  padding: 0 10px;
+  text-align: left;
+  cursor: pointer;
 }
+.midi-select-button.open,
+.midi-select-button:focus-visible { border-color: rgba(255, 122, 60, .55); outline: none; }
+
+.midi-select-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.midi-select-value.empty { color: var(--fv-label-2, #84848e); }
+
+.midi-select-chevron {
+  flex: none;
+  width: 12px;
+  height: 8px;
+  color: var(--fv-accent, #ff7a3c);
+  transition: transform .18s;
+}
+.midi-select-button.open .midi-select-chevron { transform: rotate(180deg); }
+
+.midi-select-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  max-height: 220px;
+  overflow-y: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, .06);
+  background: linear-gradient(180deg, var(--fv-panel-top, #1c1c20), var(--fv-panel-bot, #141417));
+  box-shadow: 0 16px 34px rgba(0, 0, 0, .6);
+}
+
+.midi-select-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 0 10px 0 4px;
+  border-radius: 8px;
+  color: #8b8b94;
+  font-size: 14px;
+  cursor: pointer;
+}
+.midi-select-option.empty { color: var(--fv-label-2, #84848e); }
+.midi-select-option.focus { background: rgba(255, 255, 255, .04); }
+.midi-select-option.selected {
+  color: var(--fv-value, #e8e8ec);
+  background: linear-gradient(90deg, rgba(255, 122, 60, .13), rgba(255, 122, 60, .02) 58%, rgba(0, 0, 0, 0));
+}
+
+.midi-select-rail { width: 2px; align-self: stretch; margin: 8px 0; border-radius: 2px; background: transparent; }
+.midi-select-option.selected .midi-select-rail { background: var(--fv-accent, #ff7a3c); }
 
 .midi-hint {
   font-size: 12px;

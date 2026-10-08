@@ -136,7 +136,11 @@ class SurgeWasmHost {
 
     send(message: Record<string, unknown>) {
         // MIDI (archivo y salida en vivo) escucha lo mismo que el worklet.
-        midiBus.handleWorkletMessage(message);
+        try {
+            midiBus.handleWorkletMessage(message);
+        } catch (error) {
+            console.warn('MIDI', error);
+        }
         if (this.node) {
             this.node.port.postMessage(message);
             return;

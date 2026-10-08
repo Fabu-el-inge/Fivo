@@ -59,8 +59,16 @@ export class MidiBus {
         }
     }
 
+    // Un error del MIDI (por ejemplo, un puerto que se desconecto) nunca puede
+    // cortar el sonido: este bus corre dentro del envio de notas al worklet.
     private emit(event: MidiNoteEvent) {
-        for (const listener of this.listeners) listener(event);
+        for (const listener of this.listeners) {
+            try {
+                listener(event);
+            } catch (error) {
+                console.warn('MIDI', error);
+            }
+        }
     }
 }
 
@@ -180,6 +188,8 @@ export class MidiLiveOutput {
     private sounding = new Map<number, number>();
     private unsubscribe: (() => void) | null = null;
     onPortsChange: ((ports: MidiPort[]) => void) | null = null;
+    /** Se llama si el puerto rechaza un mensaje (se desconecto, se cerro). */
+    onSendError: ((error: unknown) => void) | null = null;
     private bus: MidiBus;
     private channel: number;
 
@@ -213,27 +223,40 @@ export class MidiLiveOutput {
         return this.portId ? this.access?.outputs.get(this.portId) ?? null : null;
     }
 
+    private send(data: number[]) {
+        try {
+            this.output()?.send(data);
+        } catch (error) {
+            // El puerto murio: se suelta sin volver a escribirle (apagar notas
+            // en un puerto roto vuelve a fallar) y se avisa una sola vez.
+            this.portId = null;
+            this.unsubscribe?.();
+            this.unsubscribe = null;
+            this.sounding.clear();
+            this.onSendError?.(error);
+        }
+    }
+
     private forward(e: MidiNoteEvent) {
         const out = this.output();
         if (!out) return;
         if (e.type === 'on') {
             this.sounding.set(e.note, (this.sounding.get(e.note) ?? 0) + 1);
-            out.send([0x90 | this.channel, e.note, e.velocity]);
+            this.send([0x90 | this.channel, e.note, e.velocity]);
         } else {
             // Solo se apagan notas que esta salida prendio.
             const count = this.sounding.get(e.note) ?? 0;
             if (count === 0) return;
             if (count === 1) this.sounding.delete(e.note); else this.sounding.set(e.note, count - 1);
-            out.send([0x80 | this.channel, e.note, 64]);
+            this.send([0x80 | this.channel, e.note, 64]);
         }
     }
 
     /** Apaga lo que haya quedado sonando en la DAW (al cambiar de puerto o salir). */
     allNotesOff() {
-        const out = this.output();
-        if (out) {
-            for (const note of this.sounding.keys()) out.send([0x80 | this.channel, note, 64]);
-            out.send([0xb0 | this.channel, 123, 0]);
+        if (this.output()) {
+            for (const note of this.sounding.keys()) this.send([0x80 | this.channel, note, 64]);
+            this.send([0xb0 | this.channel, 123, 0]);
         }
         this.sounding.clear();
     }

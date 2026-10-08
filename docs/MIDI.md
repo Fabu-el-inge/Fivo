@@ -37,7 +37,44 @@ Edge.
 2. En GarageBand, creá una pista de instrumento de software y armala para grabar.
    Lo que toques en Fivo suena con el instrumento de GarageBand y se puede grabar ahí.
 
-**Windows:** instalar un puerto virtual (por ejemplo, loopMIDI), elegirlo en Fivo y como entrada en
-la DAW.
+**Windows (Chrome o Edge):** Windows no trae un puerto MIDI virtual como el IAC de Mac.
+1. Una sola vez: instalar **loopMIDI** (gratis, de Tobias Erichsen), abrirlo y tocar **+** para crear
+   un puerto ("loopMIDI Port"). Tiene que estar abierto mientras se usa.
+2. En Fivo: **MIDI** → **Conectar MIDI** → elegir **loopMIDI Port**.
+3. En la DAW, habilitar ese puerto como entrada (ver abajo).
+
+## Habilitar la entrada en cada DAW
+
+El esquema es siempre el mismo: Fivo manda por un puerto MIDI (IAC en Mac, loopMIDI en Windows) y
+la DAW lo escucha como si fuera un teclado. Cambia solo dónde se habilita la entrada:
+
+| DAW | Dónde |
+|---|---|
+| Logic, GarageBand | Nada: escuchan todas las entradas. Pista de instrumento de software armada |
+| Ableton Live | *Settings → Link, Tempo & MIDI → MIDI Ports*: en la entrada del puerto activar **Track**. Pista MIDI con monitor en *Auto* o *In* |
+| Pro Tools | *Setup → MIDI → Input Devices* (Mac) o *MIDI Input Enable* (Windows): marcar el puerto. Pista de instrumento con entrada *All* o el puerto |
+| FL Studio | *Options → MIDI settings → Input*: seleccionar el puerto y **Enable** |
+| Reaper | *Preferences → Audio → MIDI Devices*: habilitar la entrada del puerto. Pista armada con entrada MIDI |
+| Cubase | *Studio → Studio Setup → MIDI Port Setup*: marcar el puerto en *In 'All MIDI Inputs'* |
+
+Si hay un sinte o un teclado MIDI conectado a la compu por USB, también aparece en la lista de
+Fivo y se puede mandar directo a él.
+
+## Si algo no anda
+
+- **La lista de salidas está vacía:** falta el puerto virtual (IAC en línea en Mac, loopMIDI abierto
+  en Windows). Después de crearlo, recargá Fivo.
+- **"El navegador bloqueó el MIDI":** tocá el candado de la barra de direcciones → *Dispositivos
+  MIDI* → *Permitir* → recargá.
+- **La DAW no suena:** la pista tiene que estar armada o en monitoreo, y la entrada habilitada
+  (tabla de arriba).
+- **"La salida MIDI dejó de responder":** se desconectó el dispositivo o se cerró loopMIDI. Volvé a
+  elegir la salida. Fivo sigue sonando igual.
+- **Notas duplicadas o que se realimentan:** la DAW está mandando su salida MIDI de vuelta al mismo
+  puerto (por ejemplo, una pista con salida a IAC). Desactivá esa salida.
+- **Safari (Mac, iPhone, iPad):** no tiene MIDI en vivo. Usá Chrome o Edge, o grabá y descargá el
+  archivo, que funciona en todos lados.
+- **Firefox:** tiene MIDI en vivo, pero lo pide como un complemento de permisos del sitio. Aceptalo
+  y recargá.
 
 Al quitar la salida o cerrar la página, Fivo apaga las notas que hayan quedado sonando en la DAW.

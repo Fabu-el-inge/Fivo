@@ -1,7 +1,7 @@
 // Panel MIDI: grabar a .mid y salida en vivo a una DAW. En prueba: solo se
 // muestra con ?midi=1 en la URL, para no cambiar la pantalla aprobada hasta
 // que el cliente defina donde va.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { MidiLiveOutput, MidiRecorder, midiBus, webMidiSupported, writeMidiFile } from '../api/midi';
 import type { MidiPort } from '../api/midi';
 import './MidiPanel.css';
@@ -15,6 +15,86 @@ const fileName = () => {
 const formatTime = (ms: number) => {
     const s = Math.floor(ms / 1000);
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
+
+// Desplegable propio (el nativo no respeta el estilo de Fivo). Teclado:
+// flechas, Enter/Espacio para elegir, Escape para cerrar.
+const PortSelect: React.FC<{ ports: MidiPort[]; value: string; onChange: (id: string) => void }> = ({ ports, value, onChange }) => {
+    const [open, setOpen] = useState(false);
+    const [focus, setFocus] = useState(0);
+    const root = useRef<HTMLDivElement>(null);
+    const listId = useId();
+    const options = [{ id: '', name: 'Sin salida' }, ...ports];
+    const current = options.find(o => o.id === value) ?? options[0];
+
+    useEffect(() => {
+        if (!open) return;
+        const close = (e: PointerEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false); };
+        window.addEventListener('pointerdown', close, true);
+        return () => window.removeEventListener('pointerdown', close, true);
+    }, [open]);
+
+    const pick = (id: string) => {
+        onChange(id);
+        setOpen(false);
+    };
+
+    const onKeyDown = (e: React.KeyboardEvent) => {
+        // Las letras de Fivo (Z..M) tocan acordes: el selector no las deja pasar.
+        e.stopPropagation();
+        if (!open && (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown')) {
+            e.preventDefault();
+            setFocus(Math.max(0, options.findIndex(o => o.id === value)));
+            setOpen(true);
+        } else if (open && e.key === 'ArrowDown') {
+            e.preventDefault();
+            setFocus(f => Math.min(options.length - 1, f + 1));
+        } else if (open && e.key === 'ArrowUp') {
+            e.preventDefault();
+            setFocus(f => Math.max(0, f - 1));
+        } else if (open && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            pick(options[focus].id);
+        } else if (e.key === 'Escape') {
+            setOpen(false);
+        }
+    };
+
+    return (
+        <div className="midi-select" ref={root} onKeyDown={onKeyDown} onKeyUp={e => e.stopPropagation()}>
+            <button
+                type="button"
+                className={`midi-select-button ${open ? 'open' : ''}`}
+                aria-haspopup="listbox"
+                aria-expanded={open}
+                aria-controls={listId}
+                onClick={() => { setFocus(Math.max(0, options.findIndex(o => o.id === value))); setOpen(o => !o); }}
+            >
+                <span className={`midi-select-value ${value ? '' : 'empty'}`}>{current.name}</span>
+                <svg className="midi-select-chevron" viewBox="0 0 12 8" aria-hidden="true">
+                    <path d="M1 1.5l5 5 5-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+            </button>
+            {open && (
+                <ul className="midi-select-list" role="listbox" id={listId} aria-activedescendant={`${listId}-${focus}`}>
+                    {options.map((o, i) => (
+                        <li
+                            key={o.id || 'none'}
+                            id={`${listId}-${i}`}
+                            role="option"
+                            aria-selected={o.id === value}
+                            className={`midi-select-option ${o.id === value ? 'selected' : ''} ${i === focus ? 'focus' : ''} ${o.id ? '' : 'empty'}`}
+                            onPointerEnter={() => setFocus(i)}
+                            onClick={() => pick(o.id)}
+                        >
+                            <span className="midi-select-rail" aria-hidden="true" />
+                            {o.name}
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
 };
 
 interface MidiPanelProps {
@@ -107,13 +187,21 @@ export const MidiPanel: React.FC<MidiPanelProps> = ({ bpm }) => {
                     return current;
                 });
             };
+            live.current.onSendError = () => {
+                setLiveError('La salida MIDI dejó de responder. Elegila de nuevo o reconectá el dispositivo.');
+                setPortId('');
+            };
             setPorts(await live.current.connect());
         } catch (error) {
-            setLiveError(error instanceof Error ? error.message : 'No se pudo abrir MIDI');
+            const name = error instanceof Error ? error.name : '';
+            setLiveError(name === 'NotAllowedError' || name === 'SecurityError'
+                ? 'El navegador bloqueó el MIDI. Tocá el candado de la barra de direcciones, permití "Dispositivos MIDI" y recargá.'
+                : error instanceof Error ? error.message : 'No se pudo abrir MIDI');
         }
     };
 
     const choosePort = (id: string) => {
+        setLiveError('');
         setPortId(id);
         live.current.select(id || null);
     };
@@ -138,13 +226,15 @@ export const MidiPanel: React.FC<MidiPanelProps> = ({ bpm }) => {
                         {take && (
                             <div className="midi-row">
                                 <a className="midi-btn midi-download" href={take.url} download={take.name}>
-                                    Descargar .mid · {take.notes} notas
+                                    Descargar .mid
                                 </a>
                                 {canShare && <button type="button" className="midi-btn" onClick={shareTake}>Compartir</button>}
                             </div>
                         )}
                         {emptyTake && <span className="midi-hint">No se grabó ninguna nota.</span>}
-                        <span className="midi-hint">Tempo del archivo: {bpm} bpm (el del arpegiador).</span>
+                        <span className="midi-hint">
+                            {take ? `${take.notes} notas · ` : ''}Tempo del archivo: {bpm} bpm (el del arpegiador).
+                        </span>
                     </div>
 
                     <div className="midi-section">
@@ -158,10 +248,7 @@ export const MidiPanel: React.FC<MidiPanelProps> = ({ bpm }) => {
                             <button type="button" className="midi-btn" onClick={connectLive}>Conectar MIDI</button>
                         )}
                         {supported && ports !== null && (
-                            <select className="midi-select" value={portId} onChange={e => choosePort(e.target.value)}>
-                                <option value="">Sin salida</option>
-                                {ports.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                            </select>
+                            <PortSelect ports={ports} value={portId} onChange={choosePort} />
                         )}
                         {supported && ports !== null && ports.length === 0 && (
                             <span className="midi-hint">No hay salidas MIDI. En Mac: Configuración de Audio MIDI → Estudio MIDI → IAC Driver → "Dispositivo en línea".</span>
