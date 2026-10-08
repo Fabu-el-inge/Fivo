@@ -47,14 +47,6 @@ type FullscreenDoc = Document & {
   webkitExitFullscreen?: () => Promise<void> | void;
 };
 
-function isMobileAudioActivationTarget() {
-  // El gate "Activar audio" tapaba la pantalla en mobile. Existia porque el
-  // AudioContext no se despertaba solo; eso ahora se arregla en la raiz (se crea
-  // uno nuevo dentro del gesto), asi que el audio entra con el primer toque y el
-  // gate no hace falta en ninguna plataforma.
-  return false;
-}
-
 function FivoWorkspace() {
   const [currentKey, setCurrentKey] = useState('C');
   const [pressedRoot, setPressedRoot] = useState<string | null>(null);
@@ -126,9 +118,6 @@ function FivoWorkspace() {
   const currentPressedRef = useRef<string | null>(null); // Track current pressed note (avoid state timing issues)
   const strumInversionRef = useRef<Record<string, number>>({}); // Inversion cycle per note for strum
   const keyboardHeldKeys = useRef<Set<string>>(new Set());
-  const [audioActivationRequired, setAudioActivationRequired] = useState(() => isMobileAudioActivationTarget());
-  const [audioActivationState, setAudioActivationState] = useState<'idle' | 'loading' | 'error'>('idle');
-  const audioActivationStartedRef = useRef(false);
 
   // Hold State - keeps chord/arp playing after release
   const [isHold, setIsHold] = useState(false);
@@ -162,44 +151,6 @@ function FivoWorkspace() {
       window.removeEventListener('touchstart', unlockAudio, removeOptions);
       window.removeEventListener('keydown', unlockAudio, removeOptions);
     };
-  }, []);
-
-  useEffect(() => {
-    const updateAudioGate = () => {
-      if (!audioActivationStartedRef.current) {
-        setAudioActivationRequired(isMobileAudioActivationTarget());
-      }
-    };
-
-    updateAudioGate();
-    window.addEventListener('resize', updateAudioGate);
-    window.addEventListener('orientationchange', updateAudioGate);
-
-    return () => {
-      window.removeEventListener('resize', updateAudioGate);
-      window.removeEventListener('orientationchange', updateAudioGate);
-    };
-  }, []);
-
-  const handleMobileAudioActivation = useCallback((event: { preventDefault: () => void; stopPropagation: () => void }) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (audioActivationStartedRef.current) return;
-
-    audioActivationStartedRef.current = true;
-    setAudioActivationState('loading');
-    audioEngine.primeUserGesture();
-
-    void audioEngine.prepareForPlayback()
-      .then(() => {
-        setAudioActivationRequired(false);
-        setAudioActivationState('idle');
-      })
-      .catch(error => {
-        console.error('Mobile audio activation failed', error);
-        audioActivationStartedRef.current = false;
-        setAudioActivationState('error');
-      });
   }, []);
 
   useEffect(() => {
