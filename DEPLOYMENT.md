@@ -135,7 +135,7 @@ En el dashboard de Railway, ve a tu proyecto → **Variables**:
 NODE_ENV=production
 PORT=3001
 ALLOWED_ORIGINS=https://tu-proyecto.vercel.app
-RATE_LIMIT_MAX=100
+RATE_LIMIT_MAX=600
 ```
 
 **IMPORTANTE:** Actualiza `ALLOWED_ORIGINS` con tu URL de Vercel una vez la obtengas.

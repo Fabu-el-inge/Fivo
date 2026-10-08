@@ -6037,27 +6037,3 @@ body,
   .arpeggiator-control > .panel-rule,
   .instrument-panel > .panel-rule { margin: 5px 0 !important; }
 }
-
-/* Escritorio bajo (alto <= 760px): la marca fija de abajo a la derecha
-   quedaba encima de la tarjeta Jazzy (31px en 1250x700). Pasa abajo a la
-   izquierda, debajo de la expresion, como en tablet apaisada. */
-@media (orientation: landscape) and (min-width: 900px) and (min-height: 600px) and (max-height: 760px) {
-  .app-header {
-    right: auto !important;
-    left: max(22px, env(safe-area-inset-left)) !important;
-    text-align: left !important;
-    align-items: flex-start !important;
-  }
-
-  .app-header h1 { text-align: left !important; }
-}
-
-/* Telefono vertical bajo (alto <= 700px, ej. iPhone SE o con las barras de
-   Safari): sobraban 6-20px de scroll y el circulo arrancaba debajo de la
-   marca. El circulo resta un poco mas de alto. */
-@media (orientation: portrait) and (max-width: 599px) and (max-height: 700px) {
-  .circle-wrapper {
-    width: min(94vw, calc(100dvh - 366px), 420px) !important;
-    margin-top: 26px !important;
-  }
-}

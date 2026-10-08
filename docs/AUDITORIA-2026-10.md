@@ -289,9 +289,9 @@ redes de la sección 7 de [ARQUITECTURA.md](ARQUITECTURA.md).
 | H1 Jazzy suena distinto al motor | ⏸ **Sin tocar a propósito.** Lo que suena hoy es lo aprobado; quedó congelado en los snapshots. Decide el cliente | |
 | H2 Colores dependen del backend | ✅ Tabla local generada desde el C++ y verificada contra producción | `b1a66e2`, `cad862a` |
 | H3 Tests C++ fallaban sin aviso | ✅ Al día y corriendo en el build de Docker | `70f77d6` |
-| H4 CORS abierto | ✅ `ALLOWED_ORIGINS` se lee. ⚠ Hay que **definirla en Railway** (`https://fivo.subestatica.com`) para que cierre | `c27d822` |
+| H4 CORS abierto | ⏸ **Sin cambio en el código.** Railway ya tiene `ALLOWED_ORIGINS=https://frontend-iota-ten-90.vercel.app` (vieja). Si el código la leyera, fivo.subestatica.com perdería `/api/chord`. Primero hay que corregir la variable y después activarla | |
 | H5 Backend y cliente | ✅ Raíz en minúscula, logs `[DEBUG]`, prefetch inútil, `ResultPanel` "Major" | `c27d822`, `cad862a`, `e02bbc1` |
-| H6 Respaldo silencioso | ✅ Aviso en pantalla. Timeout de 45 s también en mobile | `34d0dda` |
+| H6 Respaldo silencioso | ✅ Aviso en pantalla. El timeout de mobile sigue en 15 s (decisión de Fabián) | `34d0dda` |
 | H7 Nota colgada durante la carga | ✅ Reproducido en producción y arreglado | `9fb276b` |
 | H8 Instrumento mudo en mobile | ✅ Reintento de presets y validación de cabecera | `34d0dda` |
 | H9 Fallas de carga del WASM | 🟡 Parcial: errores visibles y sin promesas sueltas. Falta el reintento sin recargar la página | `34d0dda` |
@@ -301,9 +301,30 @@ redes de la sección 7 de [ARQUITECTURA.md](ARQUITECTURA.md).
 | H13 Licencia GPL | 🔴 Pendiente: decisión legal y de negocio | |
 | H14 iPad Pro vertical roto | ✅ Usa la composición vertical aprobada | `74b2893` |
 | H15 Teléfono apaisado | ✅ Composición de tablet apaisada, sin scroll en 340–430 px de alto. Conviene que el cliente la vea | `38247bc` |
-| H16 Marca encima de Jazzy, táctiles chicos | ✅ Marca y teléfonos bajos. 🟡 Los botones −/+ de octava en 375 px siguen chicos | `d2bfe23` |
+| H16 Marca encima de Jazzy / del círculo | ⏸ **Sin tocar a propósito.** Pasa en tamaños reales que el cliente usa: notebooks (1280×720, 1366×657, 1536×730) y iPhone en Safari (390×664). Por eso es parte de lo que aprobó. Se arregla solo si el cliente lo pide. Los botones −/+ de octava en 375 px siguen chicos | |
 | Código muerto | ✅ Se sacaron 448 líneas de audio y gate, 104 reglas CSS, archivos de debug y `build.sh`. `RecLoopHold` y `Metronome` pasaron a archivos propios | `7a791e5`, `072c962`, `c27d822`, `5baa141` |
 | Fines de línea | ✅ `.gitattributes`. El build da los mismos hashes | `5e37117` |
+
+**Revisión adversarial (antes del push).** Encontró y se corrigió:
+- el riesgo de CORS de H4;
+- dos reglas de layout ("teléfono vertical bajo" y "escritorio bajo") que cambiaban lo que se ve
+  en tamaños reales con las barras del navegador. Se quitaron.
+
+Además:
+- la regresión visual ahora toma como aprobados esos tamaños reales y un estado con un acorde
+  tocado, con la lectura visible;
+- se subió `SURGE_ASSET_VERSION`.
+
+Cambios visibles que quedan, todos arreglos de bugs:
+- la lectura dice "Minor" en los acordes menores;
+- si `/api/chord` falla ya no aparece un banner rojo;
+- las ventanas de escritorio más altas que anchas (por ejemplo, media pantalla en un monitor de
+  1920×1080) usan la composición vertical. Antes se veían rotas.
+
+Límites conocidos de las redes:
+- la traza de audio no mide tiempos (duración de cada nota);
+- no se ejercita el fader de expresión;
+- el caso de mobile con presets que llegan tarde no tiene test de sonido.
 
 **Lo que sigue, en orden:**
 1. **Unificar `main` con producción.** Merge de `fix/ios-audio-sobre-front-nuevo` y después de esta

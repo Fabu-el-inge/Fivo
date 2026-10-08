@@ -51,8 +51,9 @@ export function serve(dist) {
 
 // El backend se responde localmente: las capturas no dependen de la red y no
 // gastan el rate limit de produccion (600 pedidos cada 15 min por IP).
-// /context sale de la tabla verificada contra el motor C++; /chord no hace
-// falta para la pantalla inicial.
+// /context sale de la tabla verificada contra el motor C++ (ojo: base y actual
+// reciben la misma tabla, asi que esto no compara colores: eso lo hacen
+// tests/api y gen-context-table --check). /chord solo responde G mayor.
 export async function fakeBackend(route) {
   const url = new URL(route.request().url());
   if (url.pathname.endsWith('/context')) {
@@ -60,6 +61,10 @@ export async function fakeBackend(route) {
     const [major, minor] = CONTEXT_TABLE[mode][url.searchParams.get('style')][url.searchParams.get('key')];
     const asMap = (colors) => Object.fromEntries(colors.map((c, i) => [String(i), c]));
     return route.fulfill({ json: { key: 0, style: url.searchParams.get('style'), map: asMap(major), minorMap: asMap(minor) } });
+  }
+  if (url.pathname.endsWith('/chord') && url.searchParams.get('root') === 'G' && url.searchParams.get('minor') !== 'true') {
+    // Respuesta real de produccion para G en C (pop, LITE), para que se dibuje la lectura.
+    return route.fulfill({ json: { key: 0, root: 7, isMinor: false, isPower: false, fingers: 3, style: 'Pop', color: 'GREEN (Safe)', colorCode: 2, relation: 'DOMINANT', fifthDistance: 1, notes: [55, 59, 62] } });
   }
   return route.fulfill({ status: 503, json: { error: 'sin backend en la regresion visual' } });
 }

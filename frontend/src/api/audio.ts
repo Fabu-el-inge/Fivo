@@ -6,12 +6,13 @@ export type AudioNotice = 'fallback' | 'engine-stopped';
 export type MetronomeBeatCallback = (beat: number, isAccent: boolean) => void;
 
 type SurgeInstrumentName = Extract<InstrumentName, 'EP2' | 'Messy' | 'Canadians' | 'E-Bass'>;
-const SURGE_ASSET_VERSION = "mobile-surge-fast-ios-20260909-2";
+// Subirla cada vez que cambie algo en public/surge/ (rompe la cache de mobile).
+const SURGE_ASSET_VERSION = "fatal-notice-20261008-1";
 const SURGE_ENGINE_GAIN = 0.78;
 const SURGE_OUTPUT_GAIN = 1.85;
-// Lo mismo en todas las plataformas: con 15 s en mobile, una red lenta (7,4 MB
-// de WASM) caia al sonido de respaldo, que es otro instrumento.
 const SURGE_READY_TIMEOUT_MS = 45000;
+// Decision de Fabian (8ddc0f7): en mobile se pasa antes al respaldo. Ahora con aviso.
+const MOBILE_SURGE_READY_TIMEOUT_MS = 15000;
 const MOBILE_AUDIO_START_TIMEOUT_MS = 700;
 
 const SURGE_PRESET_URLS: Record<SurgeInstrumentName, string> = {
@@ -199,7 +200,7 @@ class SurgeWasmHost {
         await new Promise<void>((resolve, reject) => {
             const timeout = window.setTimeout(
                 () => reject(new Error("Surge WASM init timed out")),
-                SURGE_READY_TIMEOUT_MS
+                mobile ? MOBILE_SURGE_READY_TIMEOUT_MS : SURGE_READY_TIMEOUT_MS
             );
             const handleMessage = (event: MessageEvent) => {
                 const message = event.data;

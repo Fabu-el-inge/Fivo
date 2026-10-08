@@ -20,7 +20,16 @@ export const VIEWPORTS = [
   ['375x667', 375, 667, true, false],
   ['390x844', 390, 844, true, true],
   ['430x932', 430, 932, true, true],
-  ['390x664-barras-safari', 390, 664, true, false],
+  // Tamanos reales con las barras del navegador (lo que el cliente ve en
+  // Safari o en una notebook): cuentan como aprobados.
+  ['390x664-barras-safari', 390, 664, true, true],
+  ['393x659-barras-safari', 393, 659, true, true],
+  ['1024x694-ipad-safari', 1024, 694, true, true],
+  ['1180x746-ipad-safari', 1180, 746, true, true],
+  ['1280x720-notebook', 1280, 720, false, true],
+  ['1366x657-notebook', 1366, 657, false, true],
+  ['1536x730-notebook', 1536, 730, false, true],
+  ['1440x789-notebook', 1440, 789, false, true],
   ['667x375', 667, 375, true, false],
   ['844x390', 844, 390, true, false],
   ['932x430', 932, 430, true, false],
@@ -44,9 +53,16 @@ export const VIEWPORTS = [
 const STATES = [
   ['jazzy', async (page) => { await page.click('.jazzy-switch'); }],
   ['tonalidad-Am', async (page) => { await page.click('.circle-center'); await page.click('.key-option.minor >> text="Am"'); }],
+  // Toca un acorde mayor: aparece la lectura del acorde (abajo a la izquierda
+  // en escritorio) con la respuesta simulada de /chord.
+  ['acorde-G', async (page) => {
+    const b = await page.locator('[data-note="G"][data-minor="false"] text').first().boundingBox();
+    await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+    await page.waitForTimeout(400);
+  }],
   ['tonalidad-Eb-jazzy', async (page) => { await page.click('.jazzy-switch'); await page.click('.circle-center'); await page.click('.key-option:not(.minor) >> text="Eb"'); }],
 ];
-const STATE_VIEWPORTS = ['390x844', '1280x800'];
+const STATE_VIEWPORTS = ['390x844', '1280x800', '1366x657-notebook'];
 
 const arg = cliArgs();
 const base = arg('--base') ?? APPROVED_REF;
@@ -63,7 +79,7 @@ function measureIssues() {
   const docH = Math.max(de.scrollHeight, document.body.scrollHeight);
   if (docH > vh + 1) issues.push(`scroll vertical (${docH - vh}px)`);
   const visible = (e) => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden' && getComputedStyle(e).display !== 'none';
-  const blocks = ['.circle-wrapper', '.wheel-bottom-row', '.effects-box', '.arpeggiator-control', '.rec-instrument-row', '.jazzy-control', '.app-header']
+  const blocks = ['.circle-wrapper', '.wheel-bottom-row', '.effects-box', '.arpeggiator-control', '.rec-instrument-row', '.jazzy-control', '.app-header', '.result-minimal']
     .map((s) => [s, document.querySelector(s)]).filter(([, e]) => e && visible(e));
   for (let i = 0; i < blocks.length; i++) for (let j = i + 1; j < blocks.length; j++) {
     const [sa, a] = blocks[i]; const [sb, b] = blocks[j];

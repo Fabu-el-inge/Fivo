@@ -79,7 +79,7 @@ gesto (círculo / teclado Z..M, Shift = menor)
    no está `running` (`ensureNativeToneContext`).
 2. Se cargan, con `?v=SURGE_ASSET_VERSION`: `fivo-surge-prelude.js`, `fivo-surge-wasm.js` y
    `fivo-surge-processor.js`. Después se crea el nodo y se espera `ready`, con timeout de 45 s en
-   todas las plataformas.
+   escritorio y 15 s en mobile.
 3. No hay pantalla de "Activar audio": se sacó en `3af58b3`.
 4. Si Surge no carga, suena el respaldo (`ToneFallbackInstrument`, osciladores) y aparece un aviso
    para recargar. Lo mismo si el worklet se detiene después de arrancar.
@@ -186,19 +186,18 @@ del C++ (ver auditoría, H1). Lo que el cliente escuchó y aprobó es lo que sue
 - **El círculo** es un SVG con `viewBox` de 500×500. Su tamaño lo fija `.circle-wrapper` con
   `aspect-ratio: 1`, usando fórmulas atadas al viewport (`100dvh - Npx`).
 - `App.css` son 7 capas apiladas (base → MK1 → tablet viejo → ajustes 09/09 → rediseño
-  10/09 → mobile/tablet 10/09 → base responsive), más tres bloques al final para los casos que
-  no tenían diseño:
-  - teléfono apaisado (alto ≤ 500 px);
-  - escritorio bajo (alto ≤ 760 px);
-  - teléfono vertical bajo (alto ≤ 700 px).
+  10/09 → mobile/tablet 10/09 → base responsive), más un bloque al final para el caso que
+  no tenía diseño: el teléfono apaisado (alto ≤ 500 px).
 - Las reglas de escritorio y tablet apaisada exigen `orientation: landscape`. Una tablet en vertical
   usa siempre la composición vertical.
 - **Pantallas aprobadas** (referencia de la regresión visual):
   - vertical: 390×844, 430×932, 744×1133, 768×1024 y 820×1180;
   - tablet apaisada: 1024×768 y 1180×820;
-  - escritorio: 1280×800, 1440×900 y 1920×1080.
-- **Resto de la matriz:** sin solapamientos ni scroll, medido. Incluye 375×667, 390×664, 667×375,
-  844×390, 932×430, 844×340, 1024×1366 (táctil o con mouse), 1366×1024 y 1250×700.
+  - escritorio: 1280×800, 1440×900 y 1920×1080;
+  - tamaños reales con las barras del navegador: iPhone en Safari (390×664 y 393×659), iPad
+    apaisado en Safari (1024×694 y 1180×746) y notebooks (1280×720, 1366×657, 1536×730 y
+    1440×789).
+- **Corregidos en esta rama:** el iPad Pro vertical (1024×1366) y el teléfono apaisado (alto ≤ 500).
 
 ## 7. Redes de seguridad (correr antes de cada cambio)
 

@@ -18,15 +18,10 @@ app.use(express.json({ limit: '32kb' }));
 // Trust Railway/proxy headers so rate limiting uses real client IP
 app.set('trust proxy', 1);
 
-// CORS: si ALLOWED_ORIGINS esta definida (lista separada por comas), solo esos
-// origenes; si no, cualquiera (comportamiento historico). No hay cookies ni
-// auth, asi que credentials no hace falta.
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
-    .split(',').map(o => o.trim()).filter(Boolean);
-app.use(cors({
-    origin: allowedOrigins.length > 0 ? allowedOrigins : true,
-    optionsSuccessStatus: 200,
-}));
+// CORS abierto a cualquier origen (comportamiento aprobado). OJO: Railway tiene
+// definida ALLOWED_ORIGINS con una URL vieja de Vercel; si algun dia se la lee,
+// primero hay que actualizarla o fivo.subestatica.com queda sin /api/chord.
+app.use(cors({ origin: true, optionsSuccessStatus: 200 }));
 
 // Rate limiting to prevent abuse (por usuario real, no por proxy compartido)
 const limiter = rateLimit({
