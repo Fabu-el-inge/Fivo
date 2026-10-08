@@ -28,16 +28,16 @@ El front encuentra al backend por `VITE_API_BASE_URL` (`frontend/.env.production
 
 | Responsabilidad | Dónde vive | Nota |
 |---|---|---|
-| **Colores del círculo** (consonancia por tonalidad y estilo) | **Solo C++**: `core/src/style_manager.cpp`. Llega al front por `GET /api/context` | Sin backend el círculo queda gris (salvo la tónica) |
-| **Notas que suenan** | **Solo TS**: `frontend/src/api/chordCalc.ts` (`calcChordNotes`), llamado desde `App.tsx` | Se calculan en el mismo gesto, sin esperar red ("instant notes", `c78549a`) |
-| Power chord automático | TS, pero decide con el mapa de colores que manda el backend | Mayor con color naranja/rojo → quinta sola |
+| **Colores del círculo** (consonancia por tonalidad y estilo) | Lógica en C++ (`core/src/style_manager.cpp`). El front usa la tabla generada `frontend/src/api/contextTable.ts` | La tabla se regenera con `node scripts/gen-context-table.mjs <fivo_demo>` y se valida con `--check`. Verificada contra producción: 0 diferencias en 96 combinaciones |
+| **Notas que suenan** | Solo TS: `frontend/src/api/chordCalc.ts` (`calcChordNotes`), llamado desde `App.tsx` | Se calculan en el mismo gesto, sin red ("instant notes", `c78549a`) |
+| Power chord automático | TS, con el mapa de colores de la tabla | Mayor con color naranja/rojo → quinta sola |
 | Posiciones, rotación y etiquetas del círculo | Solo front: `CircleOfFifths.tsx` | |
 | Voice leading, octava, arpegios, strum | Solo front: `App.tsx` | El voice leading del C++ (`--prev-notes`) no se usa |
-| Lectura del acorde (abajo a la izquierda, solo escritorio) | C++ vía `GET /api/chord` → `ResultPanel.tsx` | Informativo; no decide lo que suena |
+| Lectura del acorde (abajo a la izquierda, solo escritorio) | C++ vía `GET /api/chord` → `ResultPanel.tsx` | Es lo único que todavía pide al backend. Si falla, no se muestra nada; el sonido no depende de esto |
 
-**Consecuencia:** la lógica musical está repartida entre dos lenguajes. Los colores solo
-existen en C++, y lo que suena solo existe en TS. En pop y rock las dos implementaciones dan
-las mismas notas. En jazz y bossa no (ver auditoría, H1).
+**Consecuencia:** tocar ya no depende de Railway. La lógica musical sigue en dos lenguajes:
+- Si cambia `style_manager.cpp`, hay que regenerar la tabla.
+- En jazz y bossa, lo que suena (TS) no coincide con los voicings del C++ (ver auditoría, H1).
 
 ## 3. La cadena de sonido
 
@@ -79,8 +79,12 @@ gesto (círculo / teclado Z..M, Shift = menor)
    no está `running` (`ensureNativeToneContext`).
 2. Se cargan, con `?v=SURGE_ASSET_VERSION`: `fivo-surge-prelude.js`, `fivo-surge-wasm.js` y
    `fivo-surge-processor.js`. Después se crea el nodo y se espera `ready`, con timeout de 45 s en
-   escritorio y 15 s en mobile.
+   todas las plataformas.
 3. No hay pantalla de "Activar audio": se sacó en `3af58b3`.
+4. Si Surge no carga, suena el respaldo (`ToneFallbackInstrument`, osciladores) y aparece un aviso
+   para recargar. Lo mismo si el worklet se detiene después de arrancar.
+5. En mobile, los presets que no son EP2 se bajan después del arranque, con hasta 4 intentos.
+   Cada preset se valida por su cabecera (`CcnK`).
 
 ## 4. Parámetros que definen el sonido aprobado (CONGELADOS)
 
@@ -182,13 +186,44 @@ del C++ (ver auditoría, H1). Lo que el cliente escuchó y aprobó es lo que sue
 - **El círculo** es un SVG con `viewBox` de 500×500. Su tamaño lo fija `.circle-wrapper` con
   `aspect-ratio: 1`, usando fórmulas atadas al viewport (`100dvh - Npx`).
 - `App.css` son 7 capas apiladas (base → MK1 → tablet viejo → ajustes 09/09 → rediseño
-  10/09 → mobile/tablet 10/09 → base responsive), con 393 `!important`.
-- Pantallas verificadas que se ven bien:
-  - Vertical: 390×844, 430×932, 768×1024, 744×1133 y 820×1180.
-  - Escritorio: 1280×800, 1440×900 y 1920×1080.
-  - Tablet apaisada: 1024×768 y 1180×820.
+  10/09 → mobile/tablet 10/09 → base responsive), más tres bloques al final para los casos que
+  no tenían diseño:
+  - teléfono apaisado (alto ≤ 500 px);
+  - escritorio bajo (alto ≤ 760 px);
+  - teléfono vertical bajo (alto ≤ 700 px).
+- Las reglas de escritorio y tablet apaisada exigen `orientation: landscape`. Una tablet en vertical
+  usa siempre la composición vertical.
+- **Pantallas aprobadas** (referencia de la regresión visual):
+  - vertical: 390×844, 430×932, 744×1133, 768×1024 y 820×1180;
+  - tablet apaisada: 1024×768 y 1180×820;
+  - escritorio: 1280×800, 1440×900 y 1920×1080.
+- **Resto de la matriz:** sin solapamientos ni scroll, medido. Incluye 375×667, 390×664, 667×375,
+  844×390, 932×430, 844×340, 1024×1366 (táctil o con mouse), 1366×1024 y 1250×700.
 
-## 7. Cómo verificar qué está en línea
+## 7. Redes de seguridad (correr antes de cada cambio)
+
+Todo en `frontend/`. Lo "aprobado" es el commit `8773277` (constante `APPROVED_REF` en
+`scripts/lib/harness.mjs`).
+
+| Comando | Qué congela | Cómo |
+|---|---|---|
+| `npm test` | Notas, colores y sonido | Snapshot de `calcChordNotes` en todo lo que se puede tocar en la versión LITE (y hash del espacio completo); tabla de colores; **render real de Surge en Node** (mismo WASM, presets y AudioWorklet que la app) en 9 escenarios, en escritorio y mobile |
+| `npm run test:audio-trace` | Lo que el host le manda al motor | Mismo guion (mouse, teclado, touch real, glide, hold, instrumentos, octava, Jazzy, arpegio) contra el aprobado y contra el árbol actual; compara cada `noteOn`/`noteOff`/`hold`/`panic` |
+| `npm run test:visual` | Pantallas | Compila el aprobado y el actual, captura 20 pantallas y 6 estados con interacción, y compara píxel a píxel. Las aprobadas tienen que dar 0 píxeles con cambio fuerte. También mide solapamientos, scroll y controles fuera de vista |
+| `node scripts/gen-context-table.mjs <fivo_demo> --check` | Tabla de colores contra el motor C++ | Falla si la tabla no coincide con el binario |
+| Tests C++ (`fivo_tests`) | Colores del motor | Corren en el build de Docker; si fallan, no se publica |
+
+Las tres herramientas se probaron contra sí mismas: dos corridas sin cambios dan igual. Además, un
+cambio mínimo hecho a propósito las hace fallar:
+- `holdTargetRms` de 0,055 a 0,056 → falla `npm test`;
+- E-Bass transpuesto un semitono → falla la traza;
+- un bloque corrido 2 px → falla la regresión visual.
+
+Si un cambio es intencional y aprobado, se actualiza el snapshot (`npx vitest -u`) o `APPROVED_REF`, y
+se explica en el commit.
+
+## 8. Cómo verificar qué está en línea
+
 
 ```bash
 cd frontend && npm ci && npm run build

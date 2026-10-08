@@ -275,3 +275,44 @@ Cada paso se valida con los tests de la fase 0.
 Todas las notas pasan por `AudioEngine` (`noteOn`/`noteOff` hacia el worklet). Ese es el punto
 único para agregar una salida MIDI (Web MIDI API) sin tocar el sonido: un emisor en paralelo al
 worklet. Conviene hacerlo con `AudioEngine` ya separado y con los tests de la fase 0 en verde.
+
+---
+
+## 3. Estado al 08/10/2026
+
+Se trabajó sin acceso a Fabián ni al cliente, con un criterio único: **lo que hoy suena y se ve es
+lo aprobado**. Ningún cambio altera el sonido ni las pantallas aprobadas. Cada uno pasó por las
+redes de la sección 7 de [ARQUITECTURA.md](ARQUITECTURA.md).
+
+| # | Estado | Commit |
+|---|---|---|
+| H1 Jazzy suena distinto al motor | ⏸ **Sin tocar a propósito.** Lo que suena hoy es lo aprobado; quedó congelado en los snapshots. Decide el cliente | |
+| H2 Colores dependen del backend | ✅ Tabla local generada desde el C++ y verificada contra producción | `b1a66e2`, `cad862a` |
+| H3 Tests C++ fallaban sin aviso | ✅ Al día y corriendo en el build de Docker | `70f77d6` |
+| H4 CORS abierto | ✅ `ALLOWED_ORIGINS` se lee. ⚠ Hay que **definirla en Railway** (`https://fivo.subestatica.com`) para que cierre | `c27d822` |
+| H5 Backend y cliente | ✅ Raíz en minúscula, logs `[DEBUG]`, prefetch inútil, `ResultPanel` "Major" | `c27d822`, `cad862a`, `e02bbc1` |
+| H6 Respaldo silencioso | ✅ Aviso en pantalla. Timeout de 45 s también en mobile | `34d0dda` |
+| H7 Nota colgada durante la carga | ✅ Reproducido en producción y arreglado | `9fb276b` |
+| H8 Instrumento mudo en mobile | ✅ Reintento de presets y validación de cabecera | `34d0dda` |
+| H9 Fallas de carga del WASM | 🟡 Parcial: errores visibles y sin promesas sueltas. Falta el reintento sin recargar la página | `34d0dda` |
+| H10 Pánicos repetidos | ⏸ Sin tocar: el corte duro al apagar hold es parte de lo que se escucha hoy | |
+| H11 Strum en hold / sustain E-Bass | 🟡 El strum en hold ya respeta la cancelación. El sustain con dos bajos no se tocó, porque cambia el sonido | `9fb276b` |
+| H12 WASM sin receta | 🔴 **Pendiente: solo Fabián tiene la receta.** Mitigado: el test de sonido detecta cualquier cambio del binario | |
+| H13 Licencia GPL | 🔴 Pendiente: decisión legal y de negocio | |
+| H14 iPad Pro vertical roto | ✅ Usa la composición vertical aprobada | `74b2893` |
+| H15 Teléfono apaisado | ✅ Composición de tablet apaisada, sin scroll en 340–430 px de alto. Conviene que el cliente la vea | `38247bc` |
+| H16 Marca encima de Jazzy, táctiles chicos | ✅ Marca y teléfonos bajos. 🟡 Los botones −/+ de octava en 375 px siguen chicos | `d2bfe23` |
+| Código muerto | ✅ Se sacaron 448 líneas de audio y gate, 104 reglas CSS, archivos de debug y `build.sh`. `RecLoopHold` y `Metronome` pasaron a archivos propios | `7a791e5`, `072c962`, `c27d822`, `5baa141` |
+| Fines de línea | ✅ `.gitattributes`. El build da los mismos hashes | `5e37117` |
+
+**Lo que sigue, en orden:**
+1. **Unificar `main` con producción.** Merge de `fix/ios-audio-sobre-front-nuevo` y después de esta
+   rama. Publicar siempre desde `main`.
+2. **Receta del WASM** (H12), cuando vuelva Fabián.
+3. **Consolidar `App.css` por componente**, sin `!important` y con el círculo dimensionado por su
+   contenedor. Ya hay red: `npm run test:visual` exige 0 píxeles fuertes en las aprobadas.
+4. **Partir `FivoWorkspace`** (`App.tsx`, unas 1400 líneas) en hooks: audio, arpegiador y teclado.
+   La red es `npm run test:audio-trace`.
+5. **Salida MIDI:** un emisor en paralelo a `SurgeWasmHost.send`, que es el punto único por donde
+   pasan todas las notas. No toca el sonido.
+6. **Decisiones del cliente:** Jazzy (H1), teléfono apaisado (H15) y licencia (H13).

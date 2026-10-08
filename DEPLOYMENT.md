@@ -1,3 +1,7 @@
+> **Nota (octubre 2026):** esta guia es de la primera puesta en produccion (diciembre 2025) y usa
+> URLs de ejemplo. El estado actual (dominio, proyecto de Vercel, variables) esta en
+> [README.md](README.md) y [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
+
 # Fivo - Guía de Deployment
 
 Esta guía te ayudará a desplegar Fivo en producción usando **Vercel** (frontend) y **Railway** (backend).
