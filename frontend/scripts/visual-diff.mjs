@@ -45,6 +45,15 @@ export const VIEWPORTS = [
   ['1920x1080', 1920, 1080, false, true],
 ];
 
+// Estados con interaccion, capturados en una pantalla de mobile y una de
+// escritorio: cubren el cambio de estilo y de tonalidad (colores del circulo).
+const STATES = [
+  ['jazzy', async (page) => { await page.click('.jazzy-switch'); }],
+  ['tonalidad-Am', async (page) => { await page.click('.circle-center'); await page.click('.key-option.minor >> text="Am"'); }],
+  ['tonalidad-Eb-jazzy', async (page) => { await page.click('.jazzy-switch'); await page.click('.circle-center'); await page.click('.key-option:not(.minor) >> text="Eb"'); }],
+];
+const STATE_VIEWPORTS = ['390x844', '1280x800'];
+
 const args = process.argv.slice(2);
 const arg = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
 // 8773277 = lo publicado en fivo.subestatica.com al 08/10/2026.
@@ -124,7 +133,7 @@ async function fakeBackend(route) {
   return route.fulfill({ status: 503, json: { error: 'sin backend en la regresion visual' } });
 }
 
-async function shoot(browser, url, [name, w, h, touch]) {
+async function shoot(browser, url, [name, w, h, touch], action) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, isMobile: touch, hasTouch: touch, deviceScaleFactor: 1, reducedMotion: 'reduce' });
   await ctx.route(/\/api\/(context|chord)/, fakeBackend);
   const page = await ctx.newPage();
@@ -134,11 +143,14 @@ async function shoot(browser, url, [name, w, h, touch]) {
   // backend): sin esta espera, la captura sale gris y el diff es ruido.
   await page.waitForFunction(() => document.querySelector('.circle-svg')?.outerHTML.includes('--color-safe'), null, { timeout: 30000 });
   await page.evaluate(() => document.fonts.ready);
+  if (action) {
+    await action(page);
+    await page.mouse.click(1, 1);
+  }
   await page.waitForTimeout(800);
   const png = await page.screenshot({ fullPage: true, animations: 'disabled' });
   const issues = await page.evaluate(measureIssues);
   await ctx.close();
-  writeFileSync(join(outDir, `${name}.png`), png);
   return { png, issues };
 }
 
@@ -171,10 +183,13 @@ const [baseServer, curServer] = await Promise.all([serve(baseBuild.dist), serve(
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 let failed = false;
 try {
-  for (const vp of VIEWPORTS.filter(([name]) => !only || only.includes(name))) {
-    const [name, , , , approved] = vp;
-    const cur = await shoot(browser, curServer.url, vp);
-    const baseShot = await shoot(browser, baseServer.url, vp);
+  const runs = VIEWPORTS.map((vp) => ({ vp, name: vp[0], approved: vp[4] }));
+  for (const [state, action] of STATES) for (const vpName of STATE_VIEWPORTS) {
+    runs.push({ vp: VIEWPORTS.find(([n]) => n === vpName), name: `${vpName}-${state}`, approved: true, action });
+  }
+  for (const { vp, name, approved, action } of runs.filter(({ name }) => !only || only.some((o) => name.startsWith(o)))) {
+    const cur = await shoot(browser, curServer.url, vp, action);
+    const baseShot = await shoot(browser, baseServer.url, vp, action);
     writeFileSync(join(outDir, 'base', `${name}.png`), baseShot.png);
     writeFileSync(join(outDir, `${name}.png`), cur.png);
     const { strong, weak, total, size } = await diffPixels(browser, baseShot.png, cur.png);

@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './App.css';
 import { CircleOfFifths } from './components/CircleOfFifths';
 import { ToolsLeft, StyleSelector, InstrumentSelector, OctaveControl, KeySelector, RotaryKnob, RecLoopHold, Arpeggiator, ArpTempoControl, Metronome } from './components/ControlPanel';
 import type { MetronomeClickSound } from './components/ControlPanel';
 import { ResultPanel } from './components/ResultPanel';
-import { fetchChord, fetchContext, prefetchChords } from './api/fivo';
-import type { FivoResponse, FivoContextResponse, FivoStyle, PowerMode } from './api/fivo';
+import { fetchChord, getContext } from './api/fivo';
+import type { FivoResponse, FivoStyle, PowerMode } from './api/fivo';
 import { calcChordNotes } from './api/chordCalc';
 import { audioEngine } from './api/audio';
 import type { InstrumentName } from './api/audio';
@@ -66,6 +66,7 @@ function FivoWorkspace() {
   const [inversion, setInversion] = useState(0);
   const [strumEnabled, setStrumEnabled] = useState(false);
   const [style, setStyle] = useState<FivoStyle>('pop');
+  const contextData = useMemo(() => getContext(currentKey, style), [currentKey, style]);
   const [powerMode, setPowerMode] = useState<PowerMode>('auto');
   // Fingers per note (default 1 for all)
   const [fingersPerNote, setFingersPerNote] = useState<Record<string, number>>({});
@@ -459,8 +460,6 @@ function FivoWorkspace() {
   }, [isHold]);
 
   const [chordData, setChordData] = useState<FivoResponse | null>(null);
-  const [contextData, setContextData] = useState<FivoContextResponse | null>(null);
-  const [errorMsg, setErrorMsg] = useState('');
   const [fullscreenAvailable, setFullscreenAvailable] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -502,20 +501,9 @@ function FivoWorkspace() {
     }
   }, []);
 
-  const updateContext = useCallback(async (key: string, styleParam: FivoStyle) => {
-    try {
-      const ctx = await fetchContext(key, styleParam);
-      console.log("Context loaded:", ctx);
-      setContextData(ctx);
-    } catch (e: unknown) {
-      console.error("Context Error", e);
-    }
-  }, []);
-
   // Fetch chord data WITHOUT playing sound
   const fetchChordData = useCallback(async (key: string, root: string, isMinor: boolean = false, inv: number = 0, styleParam: FivoStyle = 'pop', power: PowerMode = 'auto', fingersParam: number = 3) => {
     try {
-      setErrorMsg('');
       const apiRoot = isMinor ? getMinorRoot(root) : root;
       // Pass isMinor to API - backend now generates correct minor chord notes
       const res = await fetchChord(key, apiRoot, inv, styleParam, isMinor, power, fingersParam);
@@ -523,33 +511,16 @@ function FivoWorkspace() {
       return res;
     } catch (e: unknown) {
       const error = e as Error;
-      console.error(error);
-      setErrorMsg(error.message || 'Unknown Error');
+      // La lectura del acorde es informativa: si el backend falla, el sonido
+      // y los colores siguen funcionando, asi que no se muestra error.
+      console.warn('Lectura del acorde no disponible', error);
       return null;
     }
   }, []);
 
-  // Initial load - fetch context + pre-cargar acordes con delay para no saturar rate limit
-  useEffect(() => {
-    updateContext(currentKey, style);
-    const t = setTimeout(() => prefetchChords(currentKey, style, powerMode), 1500);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Update ONLY when style changes - NO sound, just refresh colors
-  useEffect(() => {
-    // Skip initial render
-    if (contextData !== null) {
-      updateContext(currentKey, style);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [style]);
-
-  // Key change - update context only, NO sound
+  // Key change - NO sound, solo cambia los colores
   const handleKeyChange = (newKey: string) => {
     setCurrentKey(newKey);
-    updateContext(newKey, style);
   };
 
   // Get fingers for a specific note
@@ -1165,7 +1136,6 @@ function FivoWorkspace() {
   return (
     <div className="app-container">
       {/* Error Banner - Fixed top */}
-      {errorMsg && <div className="error-banner">{errorMsg}</div>}
 
       {/* Main Layout - Object Centric */}
       {/* Main Layout - Grid: Left | Center | Right */}

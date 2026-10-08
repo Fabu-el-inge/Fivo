@@ -25,6 +25,9 @@ export interface FivoContextResponse {
 export type FivoStyle = 'pop' | 'rock' | 'jazz' | 'bossa';
 
 import { LITE_MODE } from '../config';
+import { CONTEXT_TABLE } from './contextTable';
+
+type ContextKey = keyof typeof CONTEXT_TABLE.lite.pop;
 
 // In dev, Vite proxies /api to the BFF. This keeps mobile testing on one LAN port.
 const getApiBase = () => {
@@ -79,22 +82,13 @@ export const fetchChord = async (
     return data;
 };
 
-// Pre-carga todos los acordes de la key+estilo actual en background
-// Así el primer clic ya tiene el dato listo
-const MAJOR_ROOTS = ['C', 'G', 'D', 'A', 'E', 'B', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F'];
-const MINOR_ROOTS  = ['A', 'E', 'B', 'F#', 'C#', 'G#', 'Eb', 'Bb', 'F', 'C', 'G', 'D'];
-
-export const prefetchChords = (key: string, style: FivoStyle, power: PowerMode = 'auto') => {
-    const fetches = [
-        ...MAJOR_ROOTS.map(root => fetchChord(key, root, 0, style, false, power, 1)),
-        ...MINOR_ROOTS.map(root  => fetchChord(key, root, 0, style, true,  power, 1)),
-    ];
-    // fire-and-forget, no bloqueamos nada
-    Promise.all(fetches).catch(() => {});
-};
-
-export const fetchContext = async (key: string, style: FivoStyle = 'pop'): Promise<FivoContextResponse> => {
-    const response = await fetch(`${API_BASE}/context?key=${encodeURIComponent(key)}&style=${style}&lite=${LITE_MODE}`);
-    if (!response.ok) throw new Error('Failed to fetch Context');
-    return response.json();
+// Colores del circulo: salen de la tabla generada desde el motor C++
+// (contextTable.ts), sin red. Antes venian de /api/context en cada cambio de
+// tonalidad o estilo; si el backend fallaba, el circulo quedaba gris y el
+// power chord automatico dejaba de aplicarse.
+export const getContext = (key: string, style: FivoStyle = 'pop'): FivoContextResponse | null => {
+    const entry = CONTEXT_TABLE[LITE_MODE ? 'lite' : 'full'][style][key as ContextKey];
+    if (!entry) return null;
+    const toMap = (colors: readonly number[]) => Object.fromEntries(colors.map((c, i) => [String(i), c]));
+    return { key: 0, style, map: toMap(entry[0]), minorMap: toMap(entry[1]) };
 };
