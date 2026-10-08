@@ -1,0 +1,5 @@
+# Fin de linea unico en el repo: LF. Los .bat de Windows quedan en CRLF.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.fxp binary
+*.wasm binary

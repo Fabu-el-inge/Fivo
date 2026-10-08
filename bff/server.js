@@ -18,13 +18,15 @@ app.use(express.json({ limit: '32kb' }));
 // Trust Railway/proxy headers so rate limiting uses real client IP
 app.set('trust proxy', 1);
 
-// CORS configuration
-app.use(cors({ origin: true, credentials: true, optionsSuccessStatus: 200 }));
+// CORS abierto a cualquier origen (comportamiento aprobado). OJO: Railway tiene
+// definida ALLOWED_ORIGINS con una URL vieja de Vercel; si algun dia se la lee,
+// primero hay que actualizarla o fivo.subestatica.com queda sin /api/chord.
+app.use(cors({ origin: true, optionsSuccessStatus: 200 }));
 
 // Rate limiting to prevent abuse (por usuario real, no por proxy compartido)
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: NODE_ENV === 'production' ? 600 : 1000,
+    max: Number(process.env.RATE_LIMIT_MAX) || (NODE_ENV === 'production' ? 600 : 1000),
     message: 'Too many requests from this IP, please try again later.',
     standardHeaders: true,
     legacyHeaders: false,
@@ -58,10 +60,14 @@ app.get('/', (req, res) => {
 
 // Valid styles for validation
 const VALID_STYLES = ['pop', 'rock', 'jazz', 'bossa'];
+const upperNote = (value) => (typeof value === 'string' && value.length > 0
+    ? value[0].toUpperCase() + value.slice(1)
+    : value);
 
 app.get('/api/chord', (req, res) => {
-    const key = req.query.key || 'C';
-    const root = req.query.root || 'C';
+    // El motor solo reconoce la letra en mayuscula: "g" se leia como C.
+    const key = upperNote(req.query.key || 'C');
+    const root = upperNote(req.query.root || 'C');
     const inversion = req.query.inversion || '0';
     const style = (req.query.style || 'pop').toLowerCase();
     const isMinor = req.query.minor === 'true';
@@ -101,7 +107,7 @@ app.get('/api/chord', (req, res) => {
     if (req.query.lite === 'true') {
         args.push('--lite');
     }
-    console.log('[DEBUG] minor param:', req.query.minor, '-> isMinor:', isMinor, '-> fingers:', fingersNum, '-> args:', args);
+    if (NODE_ENV === 'development') console.log('[DEBUG] minor param:', req.query.minor, '-> isMinor:', isMinor, '-> fingers:', fingersNum, '-> args:', args);
 
     execFile(CLI_PATH, args, { timeout: 5000, env: execEnv }, (error, stdout, stderr) => {
         if (error) {
@@ -125,7 +131,7 @@ app.get('/api/chord', (req, res) => {
 });
 
 app.get('/api/context', (req, res) => {
-    const key = req.query.key || 'C';
+    const key = upperNote(req.query.key || 'C');
     const style = (req.query.style || 'pop').toLowerCase();
 
     // Validate key (allow minor keys like "Am", "Em", etc.)
@@ -143,7 +149,7 @@ app.get('/api/context', (req, res) => {
     if (req.query.lite === 'true') {
         args.push('--lite');
     }
-    console.log('[DEBUG] CLI_PATH:', CLI_PATH, 'args:', args);
+    if (NODE_ENV === 'development') console.log('[DEBUG] CLI_PATH:', CLI_PATH, 'args:', args);
 
     execFile(CLI_PATH, args, { timeout: 5000, env: execEnv }, (error, stdout, stderr) => {
         if (error) {

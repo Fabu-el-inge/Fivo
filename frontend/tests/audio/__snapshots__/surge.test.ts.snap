@@ -1,0 +1,145 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`sonido Surge (worklet real) > Canadians acorde G [mobile] 1`] = `
+{
+  "peak": 0.3213,
+  "rms": 0.07255,
+  "sha256": "f9fd6fc5ec66c79e0d5358aa990722946d3371c2aa4ae111e00940ba4e4c5bdd",
+}
+`;
+
+exports[`sonido Surge (worklet real) > Canadians acorde G 1`] = `
+{
+  "peak": 0.3213,
+  "rms": 0.07255,
+  "sha256": "f9fd6fc5ec66c79e0d5358aa990722946d3371c2aa4ae111e00940ba4e4c5bdd",
+}
+`;
+
+exports[`sonido Surge (worklet real) > E-Bass dos notas [mobile] 1`] = `
+{
+  "peak": 0.5506,
+  "rms": 0.08011,
+  "sha256": "10a18351677f61d2f36abd2257cecf8f0672ae6dec21decc24719e5ec8b51d5a",
+}
+`;
+
+exports[`sonido Surge (worklet real) > E-Bass dos notas 1`] = `
+{
+  "peak": 0.5506,
+  "rms": 0.08011,
+  "sha256": "10a18351677f61d2f36abd2257cecf8f0672ae6dec21decc24719e5ec8b51d5a",
+}
+`;
+
+exports[`sonido Surge (worklet real) > E-Bass raiz sostenida (sustain sintetico) [mobile] 1`] = `
+{
+  "peak": 0.4451,
+  "rms": 0.03991,
+  "sha256": "c5b7618150b2b4ab92f8d4ec120efa872eefaf55612f5cec913893365c8a8e86",
+}
+`;
+
+exports[`sonido Surge (worklet real) > E-Bass raiz sostenida (sustain sintetico) 1`] = `
+{
+  "peak": 0.4451,
+  "rms": 0.03991,
+  "sha256": "c5b7618150b2b4ab92f8d4ec120efa872eefaf55612f5cec913893365c8a8e86",
+}
+`;
+
+exports[`sonido Surge (worklet real) > EP2 acorde C [mobile] 1`] = `
+{
+  "peak": 0.596,
+  "rms": 0.05419,
+  "sha256": "bb42d073c156be21d9c96f686e1e3b7ec18f839a0f586fb374af9115254a2c51",
+}
+`;
+
+exports[`sonido Surge (worklet real) > EP2 acorde C 1`] = `
+{
+  "peak": 0.596,
+  "rms": 0.05419,
+  "sha256": "bb42d073c156be21d9c96f686e1e3b7ec18f839a0f586fb374af9115254a2c51",
+}
+`;
+
+exports[`sonido Surge (worklet real) > EP2 hold (auto-ganancia) [mobile] 1`] = `
+{
+  "peak": 0.596,
+  "rms": 0.06,
+  "sha256": "3cc311eb292f6931a6e38dc1d01970c1117922f5b219669886a3c35e4ff59b7b",
+}
+`;
+
+exports[`sonido Surge (worklet real) > EP2 hold (auto-ganancia) 1`] = `
+{
+  "peak": 0.596,
+  "rms": 0.06,
+  "sha256": "3cc311eb292f6931a6e38dc1d01970c1117922f5b219669886a3c35e4ff59b7b",
+}
+`;
+
+exports[`sonido Surge (worklet real) > EP2 strum (velocity 102) [mobile] 1`] = `
+{
+  "peak": 0.2581,
+  "rms": 0.04311,
+  "sha256": "2bc8026cec2ddeb4c68fa82376c46e8a31b377d5b2aace053385d04dca9eda7c",
+}
+`;
+
+exports[`sonido Surge (worklet real) > EP2 strum (velocity 102) 1`] = `
+{
+  "peak": 0.2581,
+  "rms": 0.04311,
+  "sha256": "2bc8026cec2ddeb4c68fa82376c46e8a31b377d5b2aace053385d04dca9eda7c",
+}
+`;
+
+exports[`sonido Surge (worklet real) > Messy acorde Am [mobile] 1`] = `
+{
+  "peak": 0.698,
+  "rms": 0.0637,
+  "sha256": "7264e4b8f18ad4e3c1507e3d386abac7d8392d0756c19087142561edf252746e",
+}
+`;
+
+exports[`sonido Surge (worklet real) > Messy acorde Am 1`] = `
+{
+  "peak": 0.698,
+  "rms": 0.0637,
+  "sha256": "7264e4b8f18ad4e3c1507e3d386abac7d8392d0756c19087142561edf252746e",
+}
+`;
+
+exports[`sonido Surge (worklet real) > arpegio corto (80% del paso) [mobile] 1`] = `
+{
+  "peak": 0.3611,
+  "rms": 0.05393,
+  "sha256": "0d52835c8bde7ad29cda6d7074ecd387071ce1c8d95368122f8543a3978e6721",
+}
+`;
+
+exports[`sonido Surge (worklet real) > arpegio corto (80% del paso) 1`] = `
+{
+  "peak": 0.3611,
+  "rms": 0.05393,
+  "sha256": "0d52835c8bde7ad29cda6d7074ecd387071ce1c8d95368122f8543a3978e6721",
+}
+`;
+
+exports[`sonido Surge (worklet real) > cambio de instrumento con cola [mobile] 1`] = `
+{
+  "peak": 0.596,
+  "rms": 0.07068,
+  "sha256": "b8b1f6af54aa0f6366012cf4e74443a1f7b9127ccb0fdbd1b06be16d0c2436aa",
+}
+`;
+
+exports[`sonido Surge (worklet real) > cambio de instrumento con cola 1`] = `
+{
+  "peak": 0.596,
+  "rms": 0.07068,
+  "sha256": "b8b1f6af54aa0f6366012cf4e74443a1f7b9127ccb0fdbd1b06be16d0c2436aa",
+}
+`;

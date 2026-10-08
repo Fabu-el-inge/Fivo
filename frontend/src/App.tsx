@@ -1,14 +1,19 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './App.css';
 import { CircleOfFifths } from './components/CircleOfFifths';
-import { ToolsLeft, StyleSelector, InstrumentSelector, OctaveControl, KeySelector, RotaryKnob, RecLoopHold, Arpeggiator, ArpTempoControl, Metronome } from './components/ControlPanel';
-import type { MetronomeClickSound } from './components/ControlPanel';
+import { ToolsLeft, StyleSelector, InstrumentSelector, OctaveControl, RotaryKnob, Arpeggiator, ArpTempoControl } from './components/ControlPanel';
+import { RecLoopHold } from './components/RecLoopHold';
+import { Metronome } from './components/Metronome';
+import type { MetronomeClickSound } from './components/Metronome';
 import { ResultPanel } from './components/ResultPanel';
-import { fetchChord, fetchContext, prefetchChords } from './api/fivo';
-import type { FivoResponse, FivoContextResponse, FivoStyle, PowerMode } from './api/fivo';
+import { MidiPanel } from './components/MidiPanel';
+import { midiPanelEnabled } from './api/midi';
+import { getContext } from './api/fivo';
+import { engineChord } from './api/engine';
+import type { FivoResponse, FivoStyle, PowerMode } from './api/fivo';
 import { calcChordNotes } from './api/chordCalc';
 import { audioEngine } from './api/audio';
-import type { InstrumentName } from './api/audio';
+import type { AudioNotice, InstrumentName } from './api/audio';
 import { LITE_MODE } from './config';
 
 const MAJOR_NOTES = ['C', 'G', 'D', 'A', 'E', 'B', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F'];
@@ -47,14 +52,6 @@ type FullscreenDoc = Document & {
   webkitExitFullscreen?: () => Promise<void> | void;
 };
 
-function isMobileAudioActivationTarget() {
-  // El gate "Activar audio" tapaba la pantalla en mobile. Existia porque el
-  // AudioContext no se despertaba solo; eso ahora se arregla en la raiz (se crea
-  // uno nuevo dentro del gesto), asi que el audio entra con el primer toque y el
-  // gate no hace falta en ninguna plataforma.
-  return false;
-}
-
 function FivoWorkspace() {
   const [currentKey, setCurrentKey] = useState('C');
   const [pressedRoot, setPressedRoot] = useState<string | null>(null);
@@ -66,7 +63,10 @@ function FivoWorkspace() {
   const [inversion, setInversion] = useState(0);
   const [strumEnabled, setStrumEnabled] = useState(false);
   const [style, setStyle] = useState<FivoStyle>('pop');
-  const [powerMode, setPowerMode] = useState<PowerMode>('auto');
+  const contextData = useMemo(() => getContext(currentKey, style), [currentKey, style]);
+  const showMidiPanel = useMemo(midiPanelEnabled, []);
+  // Power chord automatico: fijo en 'auto' (no hay control en la UI).
+  const powerMode: PowerMode = 'auto';
   // Fingers per note (default 1 for all)
   const [fingersPerNote, setFingersPerNote] = useState<Record<string, number>>({});
   // Inversion per note (default 0 = Root for all)
@@ -121,13 +121,10 @@ function FivoWorkspace() {
   const lastGlideTime = useRef<number>(0); // Throttle glide events (monophonic fallback)
   const arpStartTime = useRef<number>(0);
   const arpClockOrigin = useRef<number>(performance.now());
-  const pendingGlide = useRef<{ note: string; isMinor: boolean; arpNotes?: number[][]; baseNotes?: number[]; chordData?: FivoResponse } | null>(null);
+  const pendingGlide = useRef<{ note: string; isMinor: boolean; arpNotes?: number[][]; baseNotes?: number[] } | null>(null);
   const currentPressedRef = useRef<string | null>(null); // Track current pressed note (avoid state timing issues)
   const strumInversionRef = useRef<Record<string, number>>({}); // Inversion cycle per note for strum
   const keyboardHeldKeys = useRef<Set<string>>(new Set());
-  const [audioActivationRequired, setAudioActivationRequired] = useState(() => isMobileAudioActivationTarget());
-  const [audioActivationState, setAudioActivationState] = useState<'idle' | 'loading' | 'error'>('idle');
-  const audioActivationStartedRef = useRef(false);
 
   // Hold State - keeps chord/arp playing after release
   const [isHold, setIsHold] = useState(false);
@@ -161,44 +158,6 @@ function FivoWorkspace() {
       window.removeEventListener('touchstart', unlockAudio, removeOptions);
       window.removeEventListener('keydown', unlockAudio, removeOptions);
     };
-  }, []);
-
-  useEffect(() => {
-    const updateAudioGate = () => {
-      if (!audioActivationStartedRef.current) {
-        setAudioActivationRequired(isMobileAudioActivationTarget());
-      }
-    };
-
-    updateAudioGate();
-    window.addEventListener('resize', updateAudioGate);
-    window.addEventListener('orientationchange', updateAudioGate);
-
-    return () => {
-      window.removeEventListener('resize', updateAudioGate);
-      window.removeEventListener('orientationchange', updateAudioGate);
-    };
-  }, []);
-
-  const handleMobileAudioActivation = useCallback((event: { preventDefault: () => void; stopPropagation: () => void }) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (audioActivationStartedRef.current) return;
-
-    audioActivationStartedRef.current = true;
-    setAudioActivationState('loading');
-    audioEngine.primeUserGesture();
-
-    void audioEngine.prepareForPlayback()
-      .then(() => {
-        setAudioActivationRequired(false);
-        setAudioActivationState('idle');
-      })
-      .catch(error => {
-        console.error('Mobile audio activation failed', error);
-        audioActivationStartedRef.current = false;
-        setAudioActivationState('error');
-      });
   }, []);
 
   useEffect(() => {
@@ -459,8 +418,11 @@ function FivoWorkspace() {
   }, [isHold]);
 
   const [chordData, setChordData] = useState<FivoResponse | null>(null);
-  const [contextData, setContextData] = useState<FivoContextResponse | null>(null);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [audioNotice, setAudioNotice] = useState<AudioNotice | null>(null);
+  useEffect(() => {
+    audioEngine.onNotice(setAudioNotice);
+    return () => audioEngine.onNotice(null);
+  }, []);
   const [fullscreenAvailable, setFullscreenAvailable] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -502,54 +464,20 @@ function FivoWorkspace() {
     }
   }, []);
 
-  const updateContext = useCallback(async (key: string, styleParam: FivoStyle) => {
-    try {
-      const ctx = await fetchContext(key, styleParam);
-      console.log("Context loaded:", ctx);
-      setContextData(ctx);
-    } catch (e: unknown) {
-      console.error("Context Error", e);
-    }
-  }, []);
-
   // Fetch chord data WITHOUT playing sound
+  // Lectura del acorde (abajo a la izquierda en escritorio). Antes era un
+  // GET /api/chord al backend en Railway; ahora la calcula engine.ts, el port
+  // exacto del motor C++ (verificado en todo el dominio), sin red.
   const fetchChordData = useCallback(async (key: string, root: string, isMinor: boolean = false, inv: number = 0, styleParam: FivoStyle = 'pop', power: PowerMode = 'auto', fingersParam: number = 3) => {
-    try {
-      setErrorMsg('');
-      const apiRoot = isMinor ? getMinorRoot(root) : root;
-      // Pass isMinor to API - backend now generates correct minor chord notes
-      const res = await fetchChord(key, apiRoot, inv, styleParam, isMinor, power, fingersParam);
-      setChordData(res);
-      return res;
-    } catch (e: unknown) {
-      const error = e as Error;
-      console.error(error);
-      setErrorMsg(error.message || 'Unknown Error');
-      return null;
-    }
+    const apiRoot = isMinor ? getMinorRoot(root) : root;
+    const res = engineChord(key, apiRoot, inv, styleParam, isMinor, power, fingersParam, LITE_MODE);
+    setChordData(res);
+    return res;
   }, []);
 
-  // Initial load - fetch context + pre-cargar acordes con delay para no saturar rate limit
-  useEffect(() => {
-    updateContext(currentKey, style);
-    const t = setTimeout(() => prefetchChords(currentKey, style, powerMode), 1500);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Update ONLY when style changes - NO sound, just refresh colors
-  useEffect(() => {
-    // Skip initial render
-    if (contextData !== null) {
-      updateContext(currentKey, style);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [style]);
-
-  // Key change - update context only, NO sound
+  // Key change - NO sound, solo cambia los colores
   const handleKeyChange = (newKey: string) => {
     setCurrentKey(newKey);
-    updateContext(newKey, style);
   };
 
   // Get fingers for a specific note
@@ -858,13 +786,12 @@ function FivoWorkspace() {
             if (pendingGlide.current) {
               const pending = pendingGlide.current;
               pendingGlide.current = null;
-              if (pending.arpNotes && (pending.baseNotes || pending.chordData)) {
-                arpBaseNotesRef.current = pending.baseNotes ?? pending.chordData!.notes.map(n => n + (octave - 3) * 12);
+              if (pending.arpNotes && pending.baseNotes) {
+                arpBaseNotesRef.current = pending.baseNotes;
                 arpNotes = pending.arpNotes;
                 setPressedRoot(pending.note);
                 setPressedRoots(new Set([pending.note]));
                 setIsMinorPressed(pending.isMinor);
-                if (pending.chordData) setChordData(pending.chordData);
               }
             }
           }
@@ -1164,8 +1091,14 @@ function FivoWorkspace() {
 
   return (
     <div className="app-container">
-      {/* Error Banner - Fixed top */}
-      {errorMsg && <div className="error-banner">{errorMsg}</div>}
+      {/* Aviso si el sonido no es el aprobado (Surge no cargo o se detuvo) */}
+      {audioNotice && (
+        <div className="error-banner" role="status">
+          {audioNotice === 'fallback'
+            ? 'No se pudo cargar el sonido de Fivo: suena una versión básica. Recargá la página.'
+            : 'El motor de sonido se detuvo. Recargá la página.'}
+        </div>
+      )}
 
       {/* Main Layout - Object Centric */}
       {/* Main Layout - Grid: Left | Center | Right */}
@@ -1349,6 +1282,8 @@ function FivoWorkspace() {
       </div>
 
       {/* Minimal Branding - Bottom Center */}
+      {showMidiPanel && <MidiPanel bpm={arpTempo} />}
+
       <header className="app-header">
         <h1>Fivo</h1>
       </header>

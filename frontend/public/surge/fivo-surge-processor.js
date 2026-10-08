@@ -545,7 +545,7 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
             if (rightOut !== leftOut) rightOut.fill(0);
             if (!this.processErrorReported) {
                 this.processErrorReported = true;
-                this.port.postMessage({ type: "processError", error: this.error });
+                this.port.postMessage({ type: "processError", fatal: true, error: this.error });
             }
         }
 
@@ -668,7 +668,7 @@ class FivoSurgeProcessor extends AudioWorkletProcessor {
             if (rightOut !== leftOut) rightOut.fill(0);
             if (!this.processErrorReported) {
                 this.processErrorReported = true;
-                this.port.postMessage({ type: "processError", error: this.error });
+                this.port.postMessage({ type: "processError", fatal: true, error: this.error });
             }
         }
     }

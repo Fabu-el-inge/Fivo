@@ -1,15 +1,18 @@
 import * as Tone from 'tone';
+import { midiBus } from './midi';
 
 export type InstrumentName = 'EP2' | 'Messy' | 'Canadians' | 'E-Bass';
 
+export type AudioNotice = 'fallback' | 'engine-stopped';
 export type MetronomeBeatCallback = (beat: number, isAccent: boolean) => void;
 
-type SampleUrls = Record<string, string>;
 type SurgeInstrumentName = Extract<InstrumentName, 'EP2' | 'Messy' | 'Canadians' | 'E-Bass'>;
-const SURGE_ASSET_VERSION = "mobile-surge-fast-ios-20260909-2";
+// Subirla cada vez que cambie algo en public/surge/ (rompe la cache de mobile).
+const SURGE_ASSET_VERSION = "fatal-notice-20261008-1";
 const SURGE_ENGINE_GAIN = 0.78;
 const SURGE_OUTPUT_GAIN = 1.85;
 const SURGE_READY_TIMEOUT_MS = 45000;
+// Decision de Fabian (8ddc0f7): en mobile se pasa antes al respaldo. Ahora con aviso.
 const MOBILE_SURGE_READY_TIMEOUT_MS = 15000;
 const MOBILE_AUDIO_START_TIMEOUT_MS = 700;
 
@@ -113,6 +116,8 @@ class SurgeWasmHost {
     private destinations = new Set<any>();
     private lastDebug: Record<string, unknown> | null = null;
     private debugResolvers: Array<(message: Record<string, unknown> | null) => void> = [];
+    // Se llama si el motor se detiene despues de haber arrancado.
+    onFatalError: ((message: string) => void) | null = null;
 
     get isLoaded() {
         return this.ready;
@@ -125,17 +130,25 @@ class SurgeWasmHost {
     connect(destination: any) {
         this.destinations.add(destination);
         if (this.node) this.connectNode(this.node, destination);
-        void this.ensureNode();
+        // El fallo de carga lo maneja ensureActiveLoaded (pasa al respaldo y avisa).
+        this.ensureNode().catch(() => undefined);
     }
 
     send(message: Record<string, unknown>) {
+        // MIDI (archivo y salida en vivo) escucha lo mismo que el worklet.
+        try {
+            midiBus.handleWorkletMessage(message);
+        } catch (error) {
+            console.warn('MIDI', error);
+        }
         if (this.node) {
             this.node.port.postMessage(message);
             return;
         }
 
         this.messageQueue.push(message);
-        void this.ensureNode();
+        // El fallo de carga lo maneja ensureActiveLoaded (pasa al respaldo y avisa).
+        this.ensureNode().catch(() => undefined);
     }
 
     private async ensureNode(): Promise<AudioWorkletNode> {
@@ -215,6 +228,7 @@ class SurgeWasmHost {
                 }
                 if (message?.type === "processError") {
                     console.warn("Surge WASM process error", message.error);
+                    if (message.fatal) this.onFatalError?.(String(message.error));
                 }
             };
             node.port.addEventListener("message", handleMessage);
@@ -241,12 +255,29 @@ class SurgeWasmHost {
     private async fetchPreset(url: string): Promise<ArrayBuffer> {
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Failed to load ${url}`);
-        return response.arrayBuffer();
+        const preset = await response.arrayBuffer();
+        // Un .fxp empieza con "CcnK". El rewrite de vercel.json devuelve
+        // index.html con 200 para cualquier ruta que no exista.
+        const magic = String.fromCharCode(...new Uint8Array(preset.slice(0, 4)));
+        if (magic !== 'CcnK') throw new Error(`${url} is not a Surge preset`);
+        return preset;
+    }
+
+    private async fetchPresetWithRetry(url: string, attempts = 4): Promise<ArrayBuffer> {
+        for (let attempt = 1; ; attempt++) {
+            try {
+                return await this.fetchPreset(url);
+            } catch (error) {
+                if (attempt >= attempts) throw error;
+                await new Promise(resolve => window.setTimeout(resolve, 1000 * 3 ** (attempt - 1)));
+            }
+        }
     }
 
     private preloadMobilePresets(node: AudioWorkletNode) {
         (["Messy", "Canadians", "E-Bass"] as SurgeInstrumentName[]).forEach(instrument => {
-            void this.fetchPreset(SURGE_PRESET_URLS[instrument])
+            // Si falla, el instrumento quedaria mudo toda la sesion: se reintenta.
+            void this.fetchPresetWithRetry(SURGE_PRESET_URLS[instrument])
                 .then(preset => {
                     try {
                         node.port.postMessage({ type: "preset", instrument, preset }, [preset]);
@@ -463,7 +494,7 @@ class ToneFallbackInstrument {
     }
 
     setHoldMode(_enabled: boolean) {
-        // Tone.PolySynth handles held notes through triggerAttack/triggerRelease.
+        // El respaldo de osciladores sostiene con triggerAttack/triggerRelease.
     }
 
     activate() {
@@ -483,12 +514,19 @@ class ToneFallbackInstrument {
     triggerAttack(notes: number | number[], time?: Tone.Unit.Time, velocity: number = 1) {
         void this.context.resume?.();
         const noteList = Array.isArray(notes) ? notes : [notes];
+        // MIDI tambien con el respaldo: las notas tal como suenan aca.
+        midiBus.handleWorkletMessage({ type: 'noteOn', notes: this.toMidi(noteList), velocity: Math.max(1, Math.min(127, Math.round(velocity * 127))) });
         noteList.forEach(note => this.startVoice(this.toFrequency(note), time, velocity));
     }
 
     triggerRelease(notes: number | number[], time?: Tone.Unit.Time) {
         const noteList = Array.isArray(notes) ? notes : [notes];
+        midiBus.handleWorkletMessage({ type: 'noteOff', notes: this.toMidi(noteList) });
         noteList.forEach(note => this.stopVoice(this.toFrequency(note), time));
+    }
+
+    private toMidi(noteList: number[]) {
+        return noteList.map(note => Math.max(0, Math.min(127, Math.round(Tone.Frequency(note).toMidi()))));
     }
 
     triggerAttackRelease(notes: number | number[], duration: Tone.Unit.Time, time?: Tone.Unit.Time, velocity: number = 1) {
@@ -499,6 +537,7 @@ class ToneFallbackInstrument {
     }
 
     releaseAll(time?: Tone.Unit.Time) {
+        if (this.voices.size > 0) midiBus.handleWorkletMessage({ type: 'panic' });
         [...this.voices.keys()].forEach(key => this.stopVoiceByKey(key, time, true));
     }
 
@@ -623,326 +662,6 @@ class ToneFallbackInstrument {
     }
 }
 
-class LoopingSampler {
-    private output: Tone.Volume;
-    private buffers: any;
-    private midiNotes: number[];
-    private activeSources: Map<number, any> = new Map();
-    private sustainVoices: Map<number, { osc: any; gain: Tone.Gain; voiceId: number }> = new Map();
-    private releasedNotes: Set<number> = new Set();
-    private voiceIds: Map<number, number> = new Map();
-    private nextVoiceId = 1;
-    private attack: number;
-    private release: number;
-    private holdMode = false;
-    private sustainType: "sine" | "triangle";
-    private sustainLevel: number;
-    private sustainFadeIn: number;
-    private loopStartRatio: number;
-    private loopEndRatio: number;
-    private loadedPromise: Promise<void>;
-
-    constructor(options: { urls: SampleUrls; baseUrl: string; attack: number; release: number; volume: number; sustainType?: "sine" | "triangle"; sustainLevel?: number; sustainFadeIn?: number; loopStartRatio?: number; loopEndRatio?: number }) {
-        this.attack = options.attack;
-        this.release = options.release;
-        this.sustainType = options.sustainType ?? "sine";
-        this.sustainLevel = options.sustainLevel ?? 0.16;
-        this.sustainFadeIn = options.sustainFadeIn ?? 0.8;
-        this.loopStartRatio = options.loopStartRatio ?? 0.48;
-        this.loopEndRatio = options.loopEndRatio ?? 0.88;
-        this.output = new Tone.Volume(options.volume);
-
-        const midiUrlMap: Record<number, string> = {};
-        Object.entries(options.urls).forEach(([note, url]) => {
-            midiUrlMap[Tone.Frequency(note).toMidi()] = url;
-        });
-        this.midiNotes = Object.keys(midiUrlMap).map(Number).sort((a, b) => a - b);
-        this.loadedPromise = new Promise<void>((resolve) => {
-            this.buffers = new (Tone as any).Buffers(midiUrlMap, () => resolve(), options.baseUrl);
-        });
-    }
-
-    get isLoaded(): boolean {
-        return !!this.buffers?.loaded;
-    }
-
-    whenLoaded(): Promise<void> {
-        return this.loadedPromise;
-    }
-
-    connect(destination: any) {
-        this.output.connect(destination);
-        return this;
-    }
-
-    set(options: { attack?: number; release?: number; volume?: number }) {
-        if (options.attack !== undefined) this.attack = options.attack;
-        if (options.release !== undefined) this.release = options.release;
-        if (options.volume !== undefined) this.output.volume.value = options.volume;
-    }
-
-    setHoldMode(enabled: boolean) {
-        this.holdMode = enabled;
-    }
-
-    triggerAttack(notes: number | number[], time?: Tone.Unit.Time, velocity: number = 1) {
-        const noteList = Array.isArray(notes) ? notes : [notes];
-        if (noteList.length <= 1) {
-            noteList.forEach(note => this.startOne(note, time, velocity));
-            return;
-        }
-
-        const prepared = noteList.map(note => this.prepareNote(note));
-        const groupDuration = this.holdMode
-            ? undefined
-            : Math.max(0.12, Math.min(...prepared.map(note => note.buffer.duration / note.playbackRate)) - 0.02);
-        prepared.forEach(note => this.startPrepared(note, time, velocity, groupDuration));
-    }
-
-    triggerRelease(notes: number | number[], time?: Tone.Unit.Time) {
-        const noteList = Array.isArray(notes) ? notes : [notes];
-        noteList.forEach(note => this.stopOne(note, time, false));
-    }
-
-    triggerAttackRelease(notes: number | number[], duration: Tone.Unit.Time, time?: Tone.Unit.Time, velocity: number = 1) {
-        this.triggerAttack(notes, time, velocity);
-        const startTime = time === undefined ? Tone.now() : Tone.Time(time).toSeconds();
-        const releaseTime = startTime + Tone.Time(duration).toSeconds();
-        window.setTimeout(() => this.triggerRelease(notes), Math.max(0, (releaseTime - Tone.now()) * 1000));
-    }
-
-    releaseAll(time?: Tone.Unit.Time, hard = false) {
-        const now = time ?? Tone.now();
-        const allMidi = new Set<number>([
-            ...this.activeSources.keys(),
-            ...this.voiceIds.keys(),
-        ]);
-        allMidi.forEach(midi => {
-            this.releasedNotes.add(midi);
-            this.voiceIds.set(midi, this.nextVoiceId++);
-        });
-        this.activeSources.forEach(source => {
-            try {
-                if (hard) source.fadeOut = 0.015;
-                source.stop(now);
-            } catch {
-                // Source may already be stopping; ignore duplicate stop calls.
-            }
-        });
-        this.activeSources.clear();
-        this.sustainVoices.forEach(voice => this.stopSustainVoice(voice, now, hard));
-        this.sustainVoices.clear();
-        this.voiceIds.clear();
-    }
-
-    private startOne(freq: number, time?: Tone.Unit.Time, velocity: number = 1) {
-        this.startPrepared(this.prepareNote(freq), time, velocity);
-    }
-
-    private prepareNote(freq: number) {
-        const midiFloat = Tone.Frequency(freq).toMidi();
-        const midi = Math.round(midiFloat);
-        const closest = this.findClosestMidi(midi);
-        const buffer = this.buffers.get(closest);
-        const playbackRate = Math.pow(2, (midiFloat - closest) / 12);
-        return { freq, midi, closest, buffer, playbackRate };
-    }
-
-    private startPrepared(note: { freq: number; midi: number; closest: number; buffer: any; playbackRate: number }, time?: Tone.Unit.Time, velocity: number = 1, duration?: number) {
-        const { freq, midi, closest, buffer, playbackRate } = note;
-        this.stopOne(freq, undefined, true);
-        this.releasedNotes.delete(midi);
-        const voiceId = this.nextVoiceId++;
-        this.voiceIds.set(midi, voiceId);
-        this.startSampleSource(midi, voiceId, freq, buffer, playbackRate, velocity, time, duration);
-    }
-
-    private stopOne(freq: number, time?: Tone.Unit.Time, hard = false) {
-        const midi = Math.round(Tone.Frequency(freq).toMidi());
-        this.releasedNotes.add(midi);
-        this.voiceIds.set(midi, this.nextVoiceId++);
-        const stopTime = time ?? Tone.now();
-        const source = this.activeSources.get(midi);
-        if (source) {
-            try {
-                if (hard) source.fadeOut = 0.015;
-                source.stop(stopTime);
-            } catch {
-                // Source may already be stopping; ignore duplicate stop calls.
-            }
-            this.activeSources.delete(midi);
-        }
-        const sustainVoice = this.sustainVoices.get(midi);
-        if (sustainVoice) {
-            this.stopSustainVoice(sustainVoice, stopTime, hard);
-            this.sustainVoices.delete(midi);
-        }
-        this.voiceIds.delete(midi);
-    }
-
-    private findClosestMidi(midi: number) {
-        return this.midiNotes.reduce((best, current) => (
-            Math.abs(current - midi) < Math.abs(best - midi) ? current : best
-        ), this.midiNotes[0]);
-    }
-
-    private startSampleSource(midi: number, voiceId: number, freq: number, buffer: any, playbackRate: number, velocity: number, time?: Tone.Unit.Time, duration?: number) {
-        if (this.releasedNotes.has(midi)) return;
-        if (this.voiceIds.get(midi) !== voiceId) return;
-        if (!buffer || !buffer.loaded) return;
-
-        const source = new (Tone as any).BufferSource({
-            url: buffer,
-            playbackRate,
-            loop: false,
-            fadeIn: this.attack,
-            fadeOut: this.release,
-        }).connect(this.output);
-
-        source.start(time, 0, duration, velocity);
-
-        this.activeSources.set(midi, source);
-        source.onended = () => {
-            if (this.voiceIds.get(midi) !== voiceId) return;
-            if (this.activeSources.get(midi) === source) this.activeSources.delete(midi);
-        };
-
-        void freq;
-        void velocity;
-    }
-
-    private startSustainVoice(midi: number, voiceId: number, freq: number, velocity: number, time?: Tone.Unit.Time) {
-        const existing = this.sustainVoices.get(midi);
-        if (existing) this.stopSustainVoice(existing, Tone.now(), true);
-
-        const startTime = time === undefined ? Tone.now() : Tone.Time(time).toSeconds();
-        const gain = new Tone.Gain(0).connect(this.output);
-        const osc = new Tone.Oscillator({
-            frequency: freq,
-            type: this.sustainType,
-        }).connect(gain);
-
-        this.sustainVoices.set(midi, { osc, gain, voiceId });
-        osc.start(startTime);
-        gain.gain.setValueAtTime(0, startTime);
-        gain.gain.linearRampToValueAtTime(this.sustainLevel * velocity, startTime + this.sustainFadeIn);
-    }
-
-    private stopSustainVoice(voice: { osc: any; gain: Tone.Gain; voiceId: number }, time: Tone.Unit.Time, hard = false) {
-        const stopTime = Tone.Time(time).toSeconds();
-        const releaseTime = hard ? 0.02 : Math.max(0.08, Math.min(this.release, 0.35));
-        try {
-            voice.gain.gain.cancelScheduledValues(stopTime);
-            voice.gain.gain.setValueAtTime(voice.gain.gain.value, stopTime);
-            voice.gain.gain.linearRampToValueAtTime(0, stopTime + releaseTime);
-            voice.osc.stop(stopTime + releaseTime + 0.01);
-            window.setTimeout(() => {
-                voice.osc.dispose?.();
-                voice.gain.dispose();
-            }, (releaseTime + 0.08) * 1000);
-        } catch {
-            // Voice may already be stopping.
-        }
-    }
-
-    private getMicroLoopPoints(buffer: any, closestMidi: number) {
-        const audioBuffer: AudioBuffer | null = typeof buffer.get === "function" ? buffer.get() : null;
-        const duration = Math.max(0.2, buffer.duration);
-        const fundamental = Tone.Frequency(closestMidi, "midi").toFrequency();
-        const period = 1 / fundamental;
-        const loopLength = Math.max(0.025, Math.min(0.09, period * 10));
-        const targetStart = Math.max(0.16, Math.min(duration * 0.24, duration - loopLength - 0.05));
-
-        if (!audioBuffer) {
-            return { start: targetStart, end: Math.min(duration - 0.02, targetStart + loopLength) };
-        }
-
-        const start = this.findQuietPoint(audioBuffer, targetStart, Math.min(0.12, duration * 0.08));
-        const safeStart = Math.max(0, Math.min(start, duration - loopLength - 0.03));
-        const endTarget = Math.min(duration - 0.02, safeStart + loopLength);
-        const end = this.findMatchingLoopEnd(audioBuffer, safeStart, endTarget, Math.min(0.015, loopLength * 0.35));
-        return {
-            start: safeStart,
-            end: Math.max(safeStart + period * 4, Math.min(end, duration - 0.02)),
-        };
-    }
-
-    private getLoopPoints(buffer: any) {
-        const audioBuffer: AudioBuffer | null = typeof buffer.get === "function" ? buffer.get() : null;
-        const duration = Math.max(0.5, buffer.duration);
-        const rawStart = duration * this.loopStartRatio;
-        const rawEnd = Math.max(rawStart + 0.25, duration * this.loopEndRatio);
-
-        if (!audioBuffer) {
-            return {
-                start: Math.max(0, Math.min(rawStart, duration - 0.25)),
-                end: Math.max(rawStart + 0.2, Math.min(rawEnd, duration - 0.02)),
-            };
-        }
-
-        const start = this.findQuietPoint(audioBuffer, rawStart, duration * 0.16);
-        const end = this.findMatchingLoopEnd(audioBuffer, start, rawEnd, duration * 0.06);
-        return {
-            start: Math.max(0, Math.min(start, duration - 0.3)),
-            end: Math.max(start + 0.25, Math.min(end, duration - 0.02)),
-        };
-    }
-
-    private findQuietPoint(buffer: AudioBuffer, targetSeconds: number, radiusSeconds: number) {
-        const channel = buffer.getChannelData(0);
-        const sampleRate = buffer.sampleRate;
-        const center = Math.round(targetSeconds * sampleRate);
-        const radius = Math.max(32, Math.round(radiusSeconds * sampleRate));
-        const start = Math.max(1, center - radius);
-        const end = Math.min(channel.length - 2, center + radius);
-
-        let best = center;
-        let bestScore = Number.POSITIVE_INFINITY;
-        for (let i = start; i <= end; i++) {
-            const crossesZero = channel[i - 1] <= 0 && channel[i] >= 0 || channel[i - 1] >= 0 && channel[i] <= 0;
-            if (!crossesZero) continue;
-            const slope = Math.abs(channel[i + 1] - channel[i - 1]);
-            const score = Math.abs(channel[i]) + slope * 0.5 + Math.abs(i - center) / sampleRate * 0.02;
-            if (score < bestScore) {
-                bestScore = score;
-                best = i;
-            }
-        }
-
-        return best / sampleRate;
-    }
-
-    private findMatchingLoopEnd(buffer: AudioBuffer, startSeconds: number, targetSeconds: number, radiusSeconds: number) {
-        const channel = buffer.getChannelData(0);
-        const sampleRate = buffer.sampleRate;
-        const startIndex = Math.max(1, Math.min(channel.length - 2, Math.round(startSeconds * sampleRate)));
-        const center = Math.round(targetSeconds * sampleRate);
-        const radius = Math.max(32, Math.round(radiusSeconds * sampleRate));
-        const from = Math.max(startIndex + Math.round(0.25 * sampleRate), center - radius);
-        const to = Math.min(channel.length - 2, center + radius);
-        const startValue = channel[startIndex];
-        const startSlope = channel[startIndex + 1] - channel[startIndex - 1];
-
-        let best = Math.max(from, Math.min(to, center));
-        let bestScore = Number.POSITIVE_INFINITY;
-        for (let i = from; i <= to; i++) {
-            const crossesZero = channel[i - 1] <= 0 && channel[i] >= 0 || channel[i - 1] >= 0 && channel[i] <= 0;
-            if (!crossesZero) continue;
-            const slope = channel[i + 1] - channel[i - 1];
-            const score =
-                Math.abs(channel[i] - startValue) +
-                Math.abs(slope - startSlope) * 0.4 +
-                Math.abs(i - center) / sampleRate * 0.01;
-            if (score < bestScore) {
-                bestScore = score;
-                best = i;
-            }
-        }
-
-        return best / sampleRate;
-    }
-}
-
 export class AudioEngine {
     private synth: any = null;
     private polySynth: any = null;
@@ -959,6 +678,14 @@ export class AudioEngine {
     private surgeFilter: Tone.Filter | null = null;
     private surgeExpressionGain: Tone.Gain | null = null;
     private usingFallbackInstruments = false;
+    private noticeListener: ((notice: AudioNotice) => void) | null = null;
+
+    // Avisa a la UI cuando el sonido deja de ser el aprobado (Surge): respaldo
+    // de osciladores o motor detenido. Antes pasaba en silencio.
+    public onNotice(listener: ((notice: AudioNotice) => void) | null) {
+        this.noticeListener = listener;
+        surgeWasmHost.onFatalError = listener ? () => listener('engine-stopped') : null;
+    }
     private initialized = false;
     private initPromise: Promise<void> | null = null;
     private mobilePrimeNodes: { oscillator: OscillatorNode; gain: GainNode } | null = null;
@@ -969,7 +696,8 @@ export class AudioEngine {
     private sustainVal: number = 70;  // 0-100 → linear 0..100%
     private releaseVal: number = 50;  // 0-100 → log 50ms..5000ms
 
-    // Expression = filtro pasa-bajos (0-100 → log 200Hz..20000Hz)
+    // Expression = pasa-bajos (0-100 → log 1200Hz..20000Hz; 500..16000 en el respaldo).
+    // La UI arranca en 50 (App.tsx), que pisa este valor inicial.
     private expressionVal: number = 80;
 
     // Strum timeout tracking (for cancellation)
@@ -1076,8 +804,8 @@ export class AudioEngine {
 
         this.applyHoldModeToSamplers();
 
-        // NOTE: do NOT block on Tone.loaded() here. Sample buffers load in the
-        // background; play methods await only the active sample instrument.
+        // No esperar la carga aca: Surge carga en segundo plano y los metodos de
+        // ataque esperan solo al instrumento activo (ensureActiveLoaded).
 
         // Metronome click synths - go directly to destination (bypass limiter/recording)
         this.metronomeGain = new Tone.Gain(0.7).toDestination();
@@ -1119,6 +847,7 @@ export class AudioEngine {
         if (this.usingFallbackInstruments) return;
 
         console.warn('Using Tone.js fallback instruments', reason);
+        this.noticeListener?.('fallback');
         try {
             this.releaseEveryInstrument(true);
         } catch {
@@ -1140,16 +869,6 @@ export class AudioEngine {
     public async unlock() {
         await this.init();
         await resumeRawContext();
-    }
-
-    public async prepareForPlayback() {
-        try {
-            await this.unlock();
-            await this.ensureActiveLoaded();
-            await resumeRawContext();
-        } finally {
-            this.stopMobilePrime();
-        }
     }
 
     public primeUserGesture() {
@@ -1261,7 +980,7 @@ export class AudioEngine {
         this.releaseVal = Math.max(0, Math.min(100, val));
     }
 
-    // Expression: 0-100 → log 500Hz..20000Hz (low-pass filter brightness)
+    // Expression: 0-100 → log 1200Hz..20000Hz (pasa-bajos despues de Surge)
     // 0 = oscuro/apagado pero audible, 100 = brillo completo
     private expressionToHz(val: number): number {
         return 1200 * Math.pow(20000 / 1200, val / 100);
@@ -1452,37 +1171,6 @@ export class AudioEngine {
         return instrument === 'Canadians' ? 12 : 0;
     }
 
-    public async playNotes(midiNotes: number[], duration: string = "2n") {
-        await this.init();
-        await this.ensureActiveLoaded();
-        if (!this.synth) return;
-
-        // Apply settings
-        this.applyEnvelope(this.getEnvelopeSettings());
-
-        const playableNotes = this.playableMidiNotes(midiNotes);
-        const freqs = playableNotes.map(n => Tone.Frequency(n, "midi").toFrequency());
-
-        // Trigger
-        this.synth.triggerAttackRelease(freqs, duration);
-    }
-
-    public async playNotesStrum(midiNotes: number[], speedMs: number = 50) {
-        await this.init();
-        await this.ensureActiveLoaded();
-        if (!this.synth) return;
-
-        this.applyEnvelope(this.getEnvelopeSettings());
-        const now = Tone.now();
-        const playableNotes = this.playableMidiNotes(midiNotes);
-
-        playableNotes.forEach((note, index) => {
-            const freq = Tone.Frequency(note, "midi").toFrequency();
-            const time = now + (index * (speedMs / 1000));
-            this.synth?.triggerAttackRelease(freq, "2n", time);
-        });
-    }
-
     // Track currently playing frequencies for release
     private activeFreqs: number[] = [];
     // Track MIDI notes too, so hold can latch the current chord.
@@ -1564,8 +1252,11 @@ export class AudioEngine {
     public async attackNotesForTouch(midiNotes: number[], touchId: string) {
         const token = this.attackCancelToken;
         const isTouch = touchId.startsWith('touch-');
+        // Un id (dedo, mouse o tecla) que se suelta mientras carga el motor queda
+        // marcado en releasedTouchIds: al terminar la carga suena corto en vez
+        // de quedar colgado.
+        this.releasedTouchIds.delete(touchId);
         if (isTouch) {
-            this.releasedTouchIds.delete(touchId);
             this.touchAttackStartedAt.set(touchId, performance.now());
         }
         await this.init();
@@ -1594,7 +1285,7 @@ export class AudioEngine {
         const toAttack = newFreqs.filter(f => !alreadySounding.has(f.toFixed(2)));
 
         this.applyEnvelope(this.getEnvelopeSettings());
-        if (isTouch && this.releasedTouchIds.has(touchId)) {
+        if (this.releasedTouchIds.has(touchId)) {
             this.releasedTouchIds.delete(touchId);
             this.touchFreqs.delete(touchId);
             this.touchMidiNotes.delete(touchId);
@@ -1612,8 +1303,11 @@ export class AudioEngine {
     public async attackNotesStrumForTouch(midiNotes: number[], totalMs: number = 80, touchId: string) {
         const token = this.attackCancelToken;
         const isTouch = touchId.startsWith('touch-');
+        // Un id (dedo, mouse o tecla) que se suelta mientras carga el motor queda
+        // marcado en releasedTouchIds: al terminar la carga suena corto en vez
+        // de quedar colgado.
+        this.releasedTouchIds.delete(touchId);
         if (isTouch) {
-            this.releasedTouchIds.delete(touchId);
             this.touchAttackStartedAt.set(touchId, performance.now());
         }
         await this.init();
@@ -1641,7 +1335,7 @@ export class AudioEngine {
         }
 
         this.applyEnvelope(this.getEnvelopeSettings());
-        if (isTouch && this.releasedTouchIds.has(touchId)) {
+        if (this.releasedTouchIds.has(touchId)) {
             this.releasedTouchIds.delete(touchId);
             this.touchFreqs.delete(touchId);
             this.touchMidiNotes.delete(touchId);
@@ -1674,7 +1368,7 @@ export class AudioEngine {
         if (this.holdMode) return;
         const isTouch = touchId.startsWith('touch-');
         if (!this.synth) {
-            if (isTouch) this.releasedTouchIds.add(touchId);
+            this.releasedTouchIds.add(touchId);
             return;
         }
 
@@ -1684,7 +1378,7 @@ export class AudioEngine {
 
         const freqs = this.touchFreqs.get(touchId);
         if (!freqs || freqs.length === 0) {
-            if (isTouch) this.releasedTouchIds.add(touchId);
+            this.releasedTouchIds.add(touchId);
             this.touchMidiNotes.delete(touchId);
             this.syncActiveMidiFromTouches();
             return;
@@ -1715,22 +1409,6 @@ export class AudioEngine {
         }
 
         release();
-    }
-
-    // Hold mode: Release (stop sound)
-    public releaseNotes() {
-        if (this.holdMode) return;
-        if (!this.synth || this.activeFreqs.length === 0) return;
-
-        // Cancel any pending strum notes that haven't triggered yet
-        this.cancelStrumTimeouts();
-
-        // Release all currently sounding notes
-        this.synth.triggerRelease(this.activeFreqs);
-
-        this.activeFreqs = [];
-        this.activeMidiNotes = [];
-        this.strumEndTime = 0;
     }
 
     // Smooth stop for a latched Hold note/chord. Unlike panic/releaseAll, this sends noteOff
@@ -1804,27 +1482,6 @@ export class AudioEngine {
         return this.mediaStreamDest.stream;
     }
 
-    // Get the raw AudioContext for loops (separate from recording path)
-    public async getAudioContext(): Promise<AudioContext> {
-        await this.init();
-        // Get the underlying native AudioContext
-        const ctx = Tone.getContext().rawContext;
-        // Ensure we have a full AudioContext with all methods
-        if (ctx instanceof AudioContext) {
-            return ctx;
-        }
-        // Fallback: create a new AudioContext if needed
-        return new AudioContext();
-    }
-
-    // Get a direct output node that bypasses recording
-    // Loops should connect here to avoid being recorded
-    public async getDirectOutput(): Promise<AudioNode> {
-        await this.init();
-        const ctx = Tone.getContext().rawContext as AudioContext;
-        return ctx.destination;
-    }
-
     // Cancel all pending strum timeouts
     private cancelStrumTimeouts() {
         for (const id of this.strumTimeouts) {
@@ -1836,8 +1493,10 @@ export class AudioEngine {
     // Hold mode: Attack with strum (humanized)
     // Uses setTimeout instead of Tone.js future scheduling so we can cancel pending notes
     public async attackNotesStrum(midiNotes: number[], speedMs: number = 50, humanize: boolean = true) {
+        const token = this.attackCancelToken;
         await this.init();
         await this.ensureActiveLoaded();
+        if (this.attackCancelToken !== token) return;
         if (!this.synth) return;
 
         // New chord replaces the previous held/strummed voices without muting Surge's next attack.

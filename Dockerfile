@@ -23,7 +23,8 @@ COPY demos ./demos
 RUN mkdir -p build && \
     cd build && \
     cmake .. && \
-    make -j$(nproc)
+    make -j$(nproc) && \
+    ./bin/fivo_tests
 
 # Verify binary was created
 RUN ls -la /app/build/bin/ && \

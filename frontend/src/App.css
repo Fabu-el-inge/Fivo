@@ -86,118 +86,7 @@ body {
   justify-content: center;
 }
 
-.mobile-audio-gate {
-  position: fixed;
-  inset: 0;
-  z-index: 2200;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  background: rgba(8, 8, 10, 0.62);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-.mobile-audio-button {
-  min-width: 190px;
-  min-height: 64px;
-  border: 1px solid rgba(255, 122, 60, 0.72);
-  border-radius: 8px;
-  background: linear-gradient(180deg, rgba(34, 34, 39, 0.96), rgba(12, 12, 15, 0.96));
-  color: var(--text-primary);
-  box-shadow:
-    0 18px 44px rgba(0, 0, 0, 0.62),
-    0 0 22px rgba(255, 122, 60, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  font: inherit;
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-.mobile-audio-button:active {
-  transform: translateY(1px);
-  border-color: var(--accent-active);
-}
-
-.mobile-audio-button.loading {
-  opacity: 0.82;
-  cursor: wait;
-}
-
-.mobile-audio-error {
-  color: #ff8a6c;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-@media (min-width: 1241px) and (pointer: fine) {
-  .mobile-audio-gate {
-    display: none;
-  }
-}
-
 /* ===== TEMPORARY ROLE LOGIN ===== */
-.login-screen {
-  width: 100vw;
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  padding: 24px;
-  background: var(--bg-base);
-}
-
-.login-role-button {
-  width: min(240px, 40vw);
-  min-height: 88px;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  box-shadow: var(--glass-shadow);
-  font: inherit;
-  font-size: 1.2rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    transform var(--transition-fast),
-    border-color var(--transition-fast),
-    box-shadow var(--transition-fast);
-}
-
-.login-role-button:hover {
-  transform: translateY(-2px);
-  border-color: var(--accent-active);
-  box-shadow: 0 8px 28px var(--accent-active-glow);
-}
-
-.login-role-button:active {
-  transform: translateY(0);
-}
-
-.login-role-button:focus-visible {
-  outline: 3px solid var(--accent-active-glow);
-  outline-offset: 3px;
-}
-
-@media (max-width: 520px) {
-  .login-screen {
-    flex-direction: column;
-  }
-
-  .login-role-button {
-    width: min(280px, 85vw);
-  }
-}
 
 /* ===== MINIMAL HEADER - FLOATING ===== */
 .app-header {
@@ -219,10 +108,6 @@ body {
   color: var(--text-muted);
   text-transform: uppercase;
   margin: 0;
-}
-
-.app-header .subtitle {
-  display: none;
 }
 
 /* ===== MAIN LAYOUT - GRID SYSTEM ===== */
@@ -352,31 +237,12 @@ body {
 }
 
 /* ToolsLeft inner layout */
-.tools-left-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
 
 .tools-left-buttons {
   display: none;
   flex-direction: column;
   gap: 6px;
   align-items: flex-start;
-}
-
-.effect-slot {
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  padding: 2px 4px;
-  border: 1px solid transparent;
-  transition: border-color 0.15s ease;
-}
-
-.effect-slot--selected {
-  border-color: var(--accent-active);
-  background: rgba(229, 168, 0, 0.06);
 }
 
 .effects-box {
@@ -402,20 +268,6 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-}
-
-.tl-voicing-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 4px;
-  margin-bottom: 4px;
-}
-
-.tl-small-label {
-  font-size: 0.5rem;
-  color: var(--text-muted);
-  letter-spacing: 0.5px;
 }
 
 /* Slide Toggle */
@@ -469,58 +321,11 @@ body {
 }
 
 /* CC Toggle (atck, etc.) */
-.cc-toggle-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.cc-toggle-btn {
-  padding: 5px 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--glass-border);
-  background: var(--bg-surface);
-  color: var(--text-muted);
-  font-size: 0.65rem;
-  font-weight: 600;
-  text-transform: lowercase;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.cc-toggle-btn.active {
-  background: var(--accent-active);
-  color: #000;
-  border-color: var(--accent-active);
-}
 
 .cc-toggle-sub {
   font-size: 0.5rem;
   color: var(--text-muted);
   letter-spacing: 0.5px;
-}
-
-.auto-voicing-standalone {
-  padding: 8px 14px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--glass-border);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: lowercase;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  width: 100%;
-}
-
-.auto-voicing-standalone.active {
-  background: var(--accent-active);
-  color: #000;
-  border-color: var(--accent-active);
 }
 
 .hold-btn {
@@ -619,55 +424,10 @@ body {
 
 
 /* REMOVE OLD LEFT PANEL STYLES */
-.left-panel {
-  display: none;
-}
 
 /* ===== GLASS CARD - Subtle floating panels ===== */
-.glass-card {
-  background: var(--bg-glass);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--glass-shadow);
-}
 
 /* ===== CONTROL PANEL - INSTRUMENT STYLE ===== */
-.control-panel {
-  padding: var(--space-md);
-}
-
-.control-panel h2 {
-  font-size: 0.6rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  color: var(--text-muted);
-  margin-bottom: var(--space-md);
-  padding-bottom: var(--space-xs);
-  border-bottom: 1px solid var(--glass-border);
-}
-
-.controls-grid {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-}
-
-.control-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.control-group label {
-  font-size: 0.55rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--text-label);
-}
 
 /* COMPONENT STYLES */
 
@@ -679,194 +439,15 @@ body {
 }
 
 /* Auto Voicing Toggle */
-.auto-voicing-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.auto-voicing-label {
-  font-size: 0.7rem;
-  color: var(--text-secondary);
-  text-transform: capitalize;
-}
-
-.auto-voicing-btn {
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--glass-border);
-  background: var(--bg-glass);
-  border-radius: 3px;
-  cursor: pointer;
-  transition: var(--transition-fast);
-}
-
-.auto-voicing-btn:hover {
-  border-color: var(--text-muted);
-}
-
-.auto-voicing-btn.active {
-  background: var(--accent-active);
-  border-color: var(--accent-active);
-}
 
 
 /* Expression Vertical Slider */
-.expression-slider-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-.expression-slider-wrapper label {
-  font-size: 0.6rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
-.expression-slider-container {
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.expression-slider {
-  -webkit-appearance: slider-vertical;
-  appearance: slider-vertical;
-  writing-mode: vertical-lr;
-  direction: rtl;
-  width: 8px;
-  height: 70px;
-  background: var(--glass-border);
-  border-radius: 4px;
-  outline: none;
-  cursor: pointer;
-}
-
-.expression-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: linear-gradient(145deg, #ffffff, #e6e6e6);
-  border: 1px solid var(--glass-border);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  cursor: grab;
-}
-
-.expression-slider::-webkit-slider-thumb:active {
-  cursor: grabbing;
-  box-shadow: 0 0 0 3px var(--accent-active-glow);
-}
-
-.expression-slider::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: linear-gradient(145deg, #ffffff, #e6e6e6);
-  border: 1px solid var(--glass-border);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  cursor: grab;
-}
-
-.expression-slider::-moz-range-track {
-  width: 8px;
-  background: var(--glass-border);
-  border-radius: 4px;
-}
-
-.expression-value {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  min-width: 24px;
-  text-align: center;
-}
-
-.tool-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  align-items: center;
-  text-align: center;
-}
-
-.tools-left .btn-group.vertical {
-  flex-direction: column;
-  width: 100%;
-}
 
 /* Style Selector Buttons */
-.style-selector {
-  width: 140px;
-}
-
-.style-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-}
-
-.style-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0.8rem;
-  border-radius: 8px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  width: 100%;
-}
-
-.style-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
-}
-
-.style-btn.active {
-  background: var(--accent-active);
-  color: #000;
-  border-color: var(--accent-active);
-  font-weight: 600;
-  box-shadow: 0 0 15px rgba(229, 168, 0, 0.4);
-}
 
 /* Vertical Ranges & Stacks */
-.vertical-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: center;
-  width: 100%;
-}
-
-.sub-control {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  font-size: 0.7rem;
-  color: var(--text-label);
-  width: 100%;
-}
-
-.sub-control input[type="range"] {
-  width: 100%;
-  margin-top: 4px;
-}
 
 /* Vertical Range Input Transform */
-.vertical-range {
-  -webkit-appearance: slider-vertical;
-  appearance: slider-vertical;
-  width: 8px;
-  height: 80px;
-  margin: 10px 0;
-}
 
 /* Octave Control */
 .octave-control {
@@ -893,134 +474,14 @@ body {
 }
 
 /* Key Selector */
-.key-selector {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  width: 120px;
-  text-align: center;
-}
 
 /* Minimal select */
-.control-group select {
-  appearance: none;
-  background: var(--bg-surface);
-  border: 1px solid var(--glass-border);
-  color: var(--text-primary);
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-sm);
-  font-size: 0.8rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  text-align: center;
-}
-
-.control-group select:hover {
-  border-color: var(--text-muted);
-}
-
-.control-group select:focus {
-  outline: none;
-  border-color: var(--accent-active);
-  box-shadow: 0 0 0 3px var(--accent-active-glow);
-}
 
 /* Instrument-style button group */
-.control-group .btn-group {
-  display: flex;
-  gap: 1px;
-  background: var(--glass-border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.control-group .btn-group button,
-.control-group button {
-  appearance: none;
-  background: var(--bg-surface);
-  border: none;
-  color: var(--text-secondary);
-  padding: var(--space-sm) var(--space-md);
-  font-size: 0.75rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  flex: 1;
-  text-align: center;
-}
-
-.control-group .btn-group button:hover,
-.control-group button:hover {
-  background: var(--bg-glass-subtle);
-  color: var(--text-primary);
-}
-
-.control-group button.active {
-  background: var(--accent-active);
-  color: #000;
-  font-weight: 600;
-}
-
-.control-group button:disabled {
-  cursor: default;
-  color: var(--text-primary);
-  font-weight: 600;
-}
 
 /* Solo button styling */
-.control-group>button:not(.btn-group button) {
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--glass-border);
-}
 
 /* ===== RESULT PANEL - MINIMAL INFO ===== */
-.result-panel {
-  padding: var(--space-md);
-}
-
-.result-panel h3 {
-  font-size: 0.55rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  margin-bottom: var(--space-sm);
-}
-
-.result-panel .chord-name {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: var(--space-xs);
-}
-
-.result-panel .chord-name span {
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: var(--radius-sm);
-  display: inline-block;
-}
-
-.result-panel .relation {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  margin-bottom: var(--space-sm);
-}
-
-.result-panel .midi-notes {
-  display: flex;
-  gap: var(--space-xs);
-  flex-wrap: wrap;
-}
-
-.result-panel .midi-note {
-  background: var(--bg-surface);
-  border: 1px solid var(--glass-border);
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-  font-size: 0.7rem;
-  color: var(--text-secondary);
-}
 
 /* ===== CIRCLE OF FIFTHS - GLASS PAD STYLE ===== */
 .circle-wrapper {
@@ -1275,10 +736,6 @@ body {
     width: 40px !important;
     height: 40px !important;
   }
-  .arp-section {
-    padding: 6px 8px;
-    gap: 4px;
-  }
   .rec-instrument-row {
     gap: 4px;
     flex-wrap: wrap;
@@ -1341,31 +798,6 @@ body {
 }
 
 /* Test Strum Button */
-.test-strum-btn {
-  padding: 6px 12px;
-  font-size: 0.7rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  background: var(--bg-glass);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: var(--transition-fast);
-  backdrop-filter: var(--glass-blur);
-  pointer-events: auto;
-}
-
-.test-strum-btn:hover {
-  background: var(--accent-active);
-  color: white;
-  border-color: var(--accent-active);
-}
-
-.test-strum-btn:active {
-  transform: scale(0.95);
-}
 
 /* Minimalist Result Panel */
 .result-minimal {
@@ -1789,69 +1221,6 @@ body {
 }
 
 /* ===== FINGERS SELECTOR POPUP ===== */
-.fingers-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.2);
-  z-index: 200;
-}
-
-.fingers-selector {
-  position: fixed;
-  transform: translate(-50%, -120%);
-  background: var(--bg-glass);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 12px;
-  padding: 12px 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  z-index: 300;
-  animation: popUp 0.15s ease-out;
-}
-
-.fingers-selector-title {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  text-align: center;
-  margin-bottom: 8px;
-}
-
-.fingers-selector-buttons {
-  display: flex;
-  gap: 8px;
-}
-
-.fingers-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 2px solid var(--glass-border);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.fingers-btn:hover {
-  border-color: var(--accent-active);
-  transform: scale(1.1);
-}
-
-.fingers-btn.active {
-  background: var(--accent-active);
-  border-color: var(--accent-active);
-  color: #000;
-  box-shadow: 0 0 12px var(--accent-active-glow);
-}
 
 /* Fingers indicator on notes */
 .fingers-indicator {
@@ -1889,20 +1258,6 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-}
-
-.quick-fingers-title {
-  font-size: 0.65rem;
-  font-weight: 500;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.quick-fingers-label {
-  font-size: 0.6rem;
-  color: var(--text-muted);
-  text-transform: lowercase;
 }
 
 .quick-fingers-btns {
@@ -1962,15 +1317,6 @@ body {
 }
 
 /* ===== FINGERS PANEL ===== */
-.fingers-panel-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.3);
-  z-index: 400;
-}
 
 .fingers-panel {
   position: fixed;
@@ -2077,12 +1423,6 @@ body {
   gap: 16px 24px;
 }
 
-.knob-control.mini {
-  width: 32px;
-  height: 32px;
-  margin: 4px 0;
-}
-
 .fingers-note-row {
   display: flex;
   flex-direction: column;
@@ -2127,14 +1467,6 @@ body {
 }
 
 /* Dragging state */
-.fingers-panel.dragging {
-  opacity: 0.9;
-  cursor: grabbing;
-}
-
-.fingers-panel.dragging .fingers-panel-header {
-  cursor: grabbing;
-}
 
 .fingers-panel-header {
   user-select: none;
@@ -2290,34 +1622,6 @@ body {
 }
 
 /* Loop Slots */
-.loop-bank-slots {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.loop-slot {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 12px 8px;
-  border: 2px solid var(--glass-border);
-  border-radius: 10px;
-  background: var(--bg-glass);
-  min-height: 90px;
-  transition: all 0.15s ease;
-}
-
-.loop-slot.has-loop {
-  border-color: var(--text-muted);
-}
-
-.loop-slot.playing {
-  border-color: var(--accent-active);
-  background: rgba(229, 168, 0, 0.1);
-}
 
 .slot-number {
   font-size: 0.7rem;
@@ -2338,11 +1642,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.loop-slot.playing .slot-play-btn {
-  background: var(--accent-active);
-  color: #000;
 }
 
 .slot-play-btn:hover {
@@ -2387,7 +1686,6 @@ body {
   gap: 10px;
 }
 
-.loop-bank-save-btn,
 .loop-bank-clear-btn {
   flex: 1;
   padding: 10px 16px;
@@ -2397,21 +1695,6 @@ body {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
-}
-
-.loop-bank-save-btn {
-  background: var(--accent-active);
-  border-color: var(--accent-active);
-  color: #000;
-}
-
-.loop-bank-save-btn:hover:not(:disabled) {
-  filter: brightness(1.1);
-}
-
-.loop-bank-save-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
 }
 
 .loop-bank-clear-btn {
@@ -2473,13 +1756,6 @@ body {
   background: var(--accent-active);
   border-color: var(--accent-active);
   color: #000;
-}
-
-.control-btn-large.active.rec {
-  background: #ef4444;
-  border-color: #ef4444;
-  color: white;
-  animation: pulse-rec 1s infinite;
 }
 
 @keyframes pulse-rec {
@@ -2945,14 +2221,6 @@ body {
 
 /* arp-hold-row removed - hold now lives inside arpeggiator-control */
 
-.tempo-metro-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 16px;
-  margin-top: 4px;
-}
-
 .rec-instrument-row {
   display: flex;
   flex-direction: row;
@@ -2976,22 +2244,6 @@ body {
   letter-spacing: 1px;
   color: var(--text-muted);
   margin-bottom: 4px;
-}
-
-.arp-power-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  justify-content: center;
-}
-
-.arp-power-label {
-  min-width: 20px;
-  font-size: 0.55rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--text-muted);
 }
 
 .arp-mode-selector {
@@ -3132,14 +2384,6 @@ body {
   align-items: center;
   justify-content: center;
   gap: 6px;
-}
-
-.arp-demo-label {
-  font-size: 0.55rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
 }
 
 .arp-demo-control .knob-wrapper {
@@ -3314,12 +2558,6 @@ body {
 }
 
 /* ===== METRONOME ===== */
-.metronome-bottom-right {
-  position: fixed;
-  bottom: 70px;
-  right: 24px;
-  z-index: 50;
-}
 
 .metronome-section {
   display: flex;
@@ -3642,7 +2880,6 @@ body {
 .arp-title,
 .style-selector-apple > label,
 .vfader-label,
-.arp-demo-label,
 .arp-label {
   font-family: 'Space Grotesk', sans-serif !important;
   font-size: 11px !important;
@@ -4461,8 +3698,7 @@ body {
   }
 
   .arp-title-lite,
-  .style-selector-apple > label,
-  .arp-demo-label {
+  .style-selector-apple > label {
     font-size: 9px !important;
     letter-spacing: 0.12em !important;
   }
@@ -4616,7 +3852,6 @@ body {
     gap: 6px;
   }
 
-  .arpeggiator-control .arp-demo-label,
   .arpeggiator-control .knob-wrapper > label {
     height: 16px;
     line-height: 16px;
@@ -5405,8 +4640,7 @@ body,
   justify-content: center;
 }
 
-.wheel-bottom-row .octave-control > span,
-.wheel-bottom-row .octave-value {
+.wheel-bottom-row .octave-control > span {
   font-family: var(--fv-mono);
   font-weight: 500;
   font-size: 28px;
@@ -5760,8 +4994,7 @@ body,
     font-size: 17px;
   }
 
-  .wheel-bottom-row .octave-control > span,
-  .wheel-bottom-row .octave-value { font-size: 20px; min-width: 24px; }
+  .wheel-bottom-row .octave-control > span { font-size: 20px; min-width: 24px; }
 
   .wheel-bottom-row .hold-btn {
     flex: 1;
@@ -6158,14 +5391,14 @@ body,
    por debajo de ~1200px de ventana el boton "full" quedaba fuera de la
    caja. Con min-width:max-content la columna crece lo necesario, y entre
    1024 y 1300 se aprietan paddings y gaps para que ese minimo sea chico. */
-@media (min-width: 900px) and (min-height: 600px) {
+@media (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
   .wheel-bottom-row,
   .center-panel .wheel-bottom-row {
     min-width: max-content;
   }
 }
 
-@media (min-width: 900px) and (min-height: 600px) and (max-width: 1320px) {
+@media (orientation: landscape) and (min-width: 900px) and (min-height: 600px) and (max-width: 1320px) {
   .wheel-bottom-row,
   .center-panel .wheel-bottom-row {
     padding: 0 20px !important;
@@ -6173,8 +5406,7 @@ body,
 
   .wheel-bottom-row .octave-control { gap: 10px !important; }
   .wheel-bottom-row .octave-control button { width: 40px; height: 40px; font-size: 19px; }
-  .wheel-bottom-row .octave-control > span,
-  .wheel-bottom-row .octave-value { font-size: 24px; min-width: 26px; }
+  .wheel-bottom-row .octave-control > span { font-size: 24px; min-width: 26px; }
 
   .wheel-bottom-row .hold-btn {
     min-width: 76px;
@@ -6188,7 +5420,7 @@ body,
    ocupan las columnas laterales (168px la de expresion, 250px la derecha).
    Por debajo de ~1200px se metia debajo de los paneles de la derecha.
    Ahora el ancho disponible del centro es parte del calculo. */
-@media (min-width: 900px) and (min-height: 600px) {
+@media (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
   /* Columnas laterales fijas: asi el ancho del centro es un dato, no una
      estimacion. El circulo se acota contra su propia columna y no puede
      meterse debajo de los paneles, sea cual sea el ancho de ventana. */
@@ -6301,8 +5533,7 @@ body,
   .wheel-bottom-row { padding: 0 10px !important; gap: 6px !important; }
   .wheel-bottom-row .octave-control { gap: 6px !important; }
   .wheel-bottom-row .octave-control button { width: 34px; height: 34px; font-size: 17px; }
-  .wheel-bottom-row .octave-control > span,
-  .wheel-bottom-row .octave-value { font-size: 20px; min-width: 22px; }
+  .wheel-bottom-row .octave-control > span { font-size: 20px; min-width: 22px; }
   .wheel-bottom-row .hold-btn { min-width: 36px !important; width: 36px; height: 36px; margin-left: 6px; }
   .btn-icon { width: 15px; height: 15px; }
 }
@@ -6326,7 +5557,7 @@ body,
 /* La barra tiene que seguir el ancho de la rueda, no el de la columna.
    Sin tope quedaba en 838px contra un circulo de 585. El valor es el que
    ya tenia el diseno antes de este cambio. */
-@media (min-width: 900px) and (min-height: 600px) {
+@media (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
   .main-layout .center-panel .wheel-bottom-row,
   .main-layout .wheel-bottom-row {
     max-width: 540px !important;
@@ -6354,7 +5585,7 @@ body,
    que scrollear. Con un piso, cuando la ventana es demasiado baja el
    contenido pasa a ser mas alto que la pantalla y el scroll aparece de
    verdad. Ademas se reserva el safe-area de abajo. */
-@media (min-width: 900px) and (min-height: 600px) {
+@media (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
   .main-layout {
     /* Columnas mas angostas: las tres tarjetas de la derecha comparten el
        ancho del arpegiador (250px) en vez de estirarse a 300, y eso le
@@ -6391,7 +5622,7 @@ body,
    escritorio ahi quedan enormes. `pointer: coarse` distingue exactamente
    el caso: tactil, ancho y alto suficientes.
    ===================================================================== */
-@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+@media (pointer: coarse) and (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
   /* Columna izquierda mas angosta: el texto EXPRESSION era lo que forzaba
      el ancho del panel. */
   .main-layout {
@@ -6425,8 +5656,7 @@ body,
 
   .wheel-bottom-row .octave-control { gap: 12px !important; }
   .wheel-bottom-row .octave-control button { width: 36px; height: 36px; font-size: 18px; }
-  .wheel-bottom-row .octave-control > span,
-  .wheel-bottom-row .octave-value { font-size: 22px; min-width: 26px; }
+  .wheel-bottom-row .octave-control > span { font-size: 22px; min-width: 26px; }
 
   .wheel-bottom-row .hold-btn {
     min-width: 72px;
@@ -6444,7 +5674,7 @@ body,
 /* =====================================================================
    TABLET APAISADO — ajustes finos
    ===================================================================== */
-@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+@media (pointer: coarse) and (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
 
   /* --- 1. Por que "sin pantalla completa se ve como antes" ------------
      dvh es el alto DINAMICO: con la barra de Safari a la vista vale
@@ -6505,8 +5735,7 @@ body,
 
   .wheel-bottom-row .octave-control { gap: 10px !important; }
   .wheel-bottom-row .octave-control button { width: 32px; height: 32px; font-size: 16px; }
-  .wheel-bottom-row .octave-control > span,
-  .wheel-bottom-row .octave-value { font-size: 19px; min-width: 22px; }
+  .wheel-bottom-row .octave-control > span { font-size: 19px; min-width: 22px; }
 
   .wheel-bottom-row .hold-btn {
     min-width: 64px;
@@ -6536,7 +5765,7 @@ body,
   }
 }
 
-@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+@media (pointer: coarse) and (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
   /* Al alinear todo al fondo, la fila de abajo se pegaba al borde y se
      montaba sobre la marca FIVO. Se reserva ese espacio. */
   .main-layout {
@@ -6559,7 +5788,7 @@ body,
   }
 }
 
-@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+@media (pointer: coarse) and (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
   /* La marca es absoluta abajo a la derecha y ahi le pasa por encima la
      tarjeta de Jazzy. Con la columna derecha alineada al fondo, el hueco
      libre quedo arriba: la marca se muda ahi. */
@@ -6578,7 +5807,7 @@ body,
   .app-header::after { font-size: 8px; letter-spacing: .18em; }
 }
 
-@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+@media (pointer: coarse) and (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
   /* Las tarjetas median 496px fijos y la columna entre 660 y 950 segun el
      aparato, asi que todo el sobrante se acumulaba arriba: 264px en un
      iPad Air 3 y 454px en un Pro 12.9. Se veia distinto en cada tablet
@@ -6615,7 +5844,7 @@ body,
   .instrument-panel .style-list-apple { justify-content: space-between; }
 }
 
-@media (pointer: coarse) and (min-width: 900px) and (min-height: 600px) {
+@media (pointer: coarse) and (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
   /* El arpegiador estirado a 420px quedaba con demasiado aire adentro: dos
      perillas flotando en una tarjeta enorme. Se le pone techo y el
      sobrante lo absorbe la lista de instrumentos, que sí lo aprovecha. */
@@ -6645,4 +5874,166 @@ body,
     text-align: left;
     align-items: flex-start !important;
   }
+}
+
+/* =====================================================================
+   TELEFONO APAISADO (alto <= 500px)
+   No tenia diseno propio: caia en capas viejas, con 108-163px de scroll,
+   la barra fuera de vista y la marca encima de la lista de instrumentos.
+   Usa la composicion aprobada de tablet apaisada (expresion a la
+   izquierda, circulo con la barra debajo, arpegiador / instrumentos /
+   Jazzy a la derecha, marca abajo a la izquierda) repartida en el alto
+   disponible. Va al final porque las capas de arriba usan !important.
+   ===================================================================== */
+@media (orientation: landscape) and (max-height: 500px) {
+  .app-container,
+  .main-layout {
+    height: 100dvh !important;
+    min-height: 0 !important;
+  }
+
+  .main-layout {
+    grid-template-columns: minmax(84px, 104px) minmax(0, 1fr) minmax(196px, 236px) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    gap: 8px !important;
+    padding: 8px max(8px, env(safe-area-inset-right)) 8px max(8px, env(safe-area-inset-left)) !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Izquierda: la expresion deja abajo el lugar de la marca. */
+  .tools-left-container {
+    height: 100% !important;
+    min-height: 0 !important;
+    padding: 0 0 40px !important;
+    box-sizing: border-box !important;
+    align-items: stretch !important;
+  }
+
+  .tools-left-container > .tools-left,
+  .tools-left-container .effects-box {
+    height: 100% !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Marca: la version compacta aprobada en mobile (FIVO + MK1), abajo a la
+     izquierda como en tablet apaisada, dentro del ancho de la columna. */
+  .app-header {
+    top: auto !important;
+    right: auto !important;
+    left: max(16px, env(safe-area-inset-left)) !important;
+    bottom: 14px !important;
+    display: flex !important;
+    align-items: baseline !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+  }
+
+  .app-header h1 { font-size: 14px !important; letter-spacing: .32em !important; color: #46464e !important; }
+
+  .app-header::after {
+    content: 'MK1' !important;
+    display: inline !important;
+    margin: 0 0 0 7px !important;
+    font-size: 7px !important;
+    letter-spacing: .18em !important;
+    color: #3b3b42 !important;
+  }
+
+  /* Centro: circulo + barra, el circulo se acota por el alto que queda. */
+  .center-panel {
+    height: 100% !important;
+    min-height: 0 !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    padding: 0 !important;
+  }
+
+  .circle-wrapper {
+    width: min(100%, calc(100dvh - 16px - 8px - 52px)) !important;
+    max-width: none !important;
+    height: auto !important;
+    margin: 0 auto !important;
+  }
+
+  .wheel-bottom-row {
+    height: 52px !important;
+    min-height: 0 !important;
+    padding: 4px 8px !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Derecha: tres paneles que suman el alto de la pantalla. */
+  .tools-right-container {
+    height: 100% !important;
+    min-height: 0 !important;
+    gap: 8px !important;
+    justify-content: flex-start !important;
+  }
+
+  .tools-right-container > .arpeggiator-control {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 10px 14px !important;
+    row-gap: 6px !important;
+  }
+
+  .tools-right-container .arp-demo-row {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  .tools-right-container > .rec-instrument-row {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    gap: 8px !important;
+  }
+
+  .rec-instrument-row > .instrument-panel {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 10px 14px !important;
+    justify-content: flex-start !important;
+  }
+
+  .instrument-panel .style-list-apple {
+    gap: 0 !important;
+    margin-top: 4px !important;
+    min-height: 0 !important;
+  }
+
+  .instrument-panel .style-item-apple {
+    min-height: 0 !important;
+    padding: 0 10px 0 0 !important;
+    gap: 10px !important;
+  }
+
+  .instrument-panel .slot-name { font-size: 15px !important; }
+  .instrument-panel .slot-rail { margin: 4px 0 !important; }
+
+  .rec-instrument-row > .jazzy-control {
+    flex: 0 0 36px !important;
+    height: 36px !important;
+    min-height: 0 !important;
+    padding: 0 14px !important;
+  }
+
+  .instrument-panel .style-item-apple { flex: 1 1 18px !important; line-height: 1.15 !important; }
+
+  /* Separadores y encabezados mas juntos: en 340px de alto (iPhone con las
+     barras de Safari) la lista de instrumentos no entraba. */
+  .tools-right-container,
+  .rec-instrument-row { gap: 6px !important; }
+
+  .tools-right-container > .arpeggiator-control { padding: 8px 14px !important; row-gap: 2px !important; }
+  .rec-instrument-row > .instrument-panel { padding: 8px 14px !important; gap: 0 !important; row-gap: 0 !important; }
+
+  .arpeggiator-control > .panel-rule,
+  .instrument-panel > .panel-rule { margin: 5px 0 !important; }
 }

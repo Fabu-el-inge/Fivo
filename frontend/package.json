@@ -7,7 +7,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:visual": "node scripts/visual-diff.mjs",
+    "check:colors": "node scripts/gen-context-table.mjs",
+    "test:audio-trace": "node scripts/audio-trace.mjs",
+    "test:midi": "node scripts/midi-e2e.mjs"
   },
   "dependencies": {
     "react": "^19.2.0",
@@ -24,8 +29,10 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "playwright-core": "^1.56.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vitest": "^3.2.4"
   }
 }

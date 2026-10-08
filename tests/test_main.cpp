@@ -81,26 +81,26 @@ void test_fifth_distance() {
 void test_style_manager_pop() {
     std::cout << "[Test] Style Manager (Pop)... ";
 
-    // Key of C Major - NEW LOGIC based on circle of fifths + diatonic function
-    // Primary diatonic (I, IV, V, vi) = GREEN
-    assert(fivo_style_get_color(NOTE_C, NOTE_C) == COLOR_GREEN);  // I  - Tonic
-    assert(fivo_style_get_color(NOTE_C, NOTE_F) == COLOR_GREEN);  // IV - Subdominant
-    assert(fivo_style_get_color(NOTE_C, NOTE_G) == COLOR_GREEN);  // V  - Dominant (was ORANGE, now GREEN)
-    assert(fivo_style_get_color(NOTE_C, NOTE_A) == COLOR_GREEN);  // vi - Relative minor
+    // Colores aprobados de pop en C mayor (los mismos que sirve /api/context y
+    // que guarda frontend/src/api/contextTable.ts).
+    fivo_set_lite_mode(0);
+    assert(fivo_style_get_color(NOTE_C, NOTE_C) == COLOR_GREEN);   // I
+    assert(fivo_style_get_color(NOTE_C, NOTE_F) == COLOR_GREEN);   // IV
+    assert(fivo_style_get_color(NOTE_C, NOTE_G) == COLOR_GREEN);   // V
+    assert(fivo_style_get_color(NOTE_C, NOTE_D) == COLOR_ORANGE);  // II
+    assert(fivo_style_get_color(NOTE_C, NOTE_E) == COLOR_ORANGE);  // III
+    assert(fivo_style_get_color(NOTE_C, NOTE_A) == COLOR_ORANGE);  // VI
+    assert(fivo_style_get_color(NOTE_C, NOTE_AS) == COLOR_ORANGE); // bVII
+    assert(fivo_style_get_color(NOTE_C, NOTE_DS) == COLOR_ORANGE); // bIII (version completa)
+    assert(fivo_style_get_color(NOTE_C, NOTE_B) == COLOR_RED);     // VII
+    assert(fivo_style_get_color(NOTE_C, NOTE_FS) == COLOR_RED);    // #IV/bV
+    assert(fivo_style_get_color(NOTE_C, NOTE_CS) == COLOR_RED);    // bII
+    assert(fivo_style_get_color(NOTE_C, NOTE_GS) == COLOR_RED);    // bVI
 
-    // Secondary diatonic (ii, iii, vii) = ORANGE
-    assert(fivo_style_get_color(NOTE_C, NOTE_D) == COLOR_ORANGE); // ii  - Supertonic
-    assert(fivo_style_get_color(NOTE_C, NOTE_E) == COLOR_ORANGE); // iii - Mediant
-    assert(fivo_style_get_color(NOTE_C, NOTE_B) == COLOR_ORANGE); // vii - Leading tone
-
-    // bVII common in pop = ORANGE
-    assert(fivo_style_get_color(NOTE_C, NOTE_AS) == COLOR_ORANGE); // bVII (Bb)
-
-    // Non-diatonic far = RED
-    assert(fivo_style_get_color(NOTE_C, NOTE_FS) == COLOR_RED);   // #IV/bV - Tritone
-    assert(fivo_style_get_color(NOTE_C, NOTE_CS) == COLOR_RED);   // bII
-    assert(fivo_style_get_color(NOTE_C, NOTE_GS) == COLOR_RED);   // bVI
-    assert(fivo_style_get_color(NOTE_C, NOTE_DS) == COLOR_RED);   // bIII
+    // LITE (decision 06/05/2026): bIII va sin color en pop.
+    fivo_set_lite_mode(1);
+    assert(fivo_style_get_color(NOTE_C, NOTE_DS) == COLOR_RED);
+    fivo_set_lite_mode(0);
 
     std::cout << "PASSED" << std::endl;
 }

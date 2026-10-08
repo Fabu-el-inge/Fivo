@@ -19,7 +19,7 @@ export const ResultPanel: React.FC<Props> = ({ chordData }) => {
     return (
         <div className="result-minimal">
             <span className="chord-text">
-                {rootName} {chordData.color.includes('minor') ? 'Minor' : 'Major'}
+                {rootName} {chordData.isMinor ? 'Minor' : 'Major'}
             </span>
             <span className="separator">•</span>
             <div className="mini-notes">
