@@ -15,23 +15,26 @@
 .midi-panel-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 12px;
+  gap: 9px;
+  min-height: 40px;
+  padding: 0 16px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, .06);
+  border: 1px solid rgba(255, 122, 60, .55);
   background: linear-gradient(180deg, var(--fv-panel-top, #1c1c20), var(--fv-panel-bot, #141417));
-  color: var(--fv-label-2, #84848e);
+  box-shadow: 0 0 18px rgba(255, 122, 60, .18);
+  color: var(--fv-accent, #ff7a3c);
   font-family: var(--fv-mono, monospace);
-  font-size: 11px;
+  font-size: 13px;
+  font-weight: 500;
   letter-spacing: .2em;
   cursor: pointer;
 }
 
 .midi-dot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: #3b3b42;
+  background: rgba(255, 122, 60, .45);
 }
 .midi-dot.live { background: #4ade80; box-shadow: 0 0 8px rgba(74, 222, 128, .7); }
 .midi-dot.rec { background: var(--fv-accent, #ff7a3c); box-shadow: 0 0 8px rgba(255, 122, 60, .8); }
