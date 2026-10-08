@@ -7,6 +7,8 @@ export interface FivoResponse {
     key: number;
     root: number;
     isMinor?: boolean;
+    isPower?: boolean;
+    fingers?: number;
     style: string;
     color: string;
     colorCode: number;
@@ -29,58 +31,11 @@ import { CONTEXT_TABLE } from './contextTable';
 
 type ContextKey = keyof typeof CONTEXT_TABLE.lite.pop;
 
-// In dev, Vite proxies /api to the BFF. This keeps mobile testing on one LAN port.
-const getApiBase = () => {
-    if (import.meta.env.VITE_API_BASE_URL) {
-        const configuredUrl = new URL(import.meta.env.VITE_API_BASE_URL);
-        const isLocalApi = configuredUrl.hostname === 'localhost' || configuredUrl.hostname === '127.0.0.1';
-        const isLocalPage = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-        if (import.meta.env.DEV && isLocalApi && !isLocalPage) {
-            return '/api';
-        }
-
-        if (isLocalApi && isLocalPage) {
-            configuredUrl.hostname = window.location.hostname;
-        }
-
-        return configuredUrl.toString().replace(/\/$/, '');
-    }
-    if (import.meta.env.DEV) return '/api';
-    return '/api';
-};
-const API_BASE = getApiBase();
-
 export type PowerMode = 'auto' | 'on' | 'off';
 
-// Cache de acordes: evita round-trip a Railway en cada clic
-const chordCache = new Map<string, FivoResponse>();
-
-const cacheKey = (key: string, root: string, inversion: number, style: FivoStyle, isMinor: boolean, power: PowerMode, fingers: number) =>
-    `${key}|${root}|${inversion}|${style}|${isMinor}|${power}|${fingers}`;
-
-export const fetchChord = async (
-    key: string,
-    root: string,
-    inversion: number = 0,
-    style: FivoStyle = 'pop',
-    isMinor: boolean = false,
-    power: PowerMode = 'auto',
-    fingers: number = 3
-): Promise<FivoResponse> => {
-    const ck = cacheKey(key, root, inversion, style, isMinor, power, fingers);
-    const cached = chordCache.get(ck);
-    if (cached) return cached;
-
-    const url = `${API_BASE}/chord?key=${encodeURIComponent(key)}&root=${encodeURIComponent(root)}&inversion=${inversion}&style=${style}&minor=${isMinor}&power=${power}&fingers=${fingers}&lite=${LITE_MODE}`;
-    const res = await fetch(url);
-    if (!res.ok) {
-        throw new Error(`API Error: ${res.statusText}`);
-    }
-    const data = await res.json();
-    chordCache.set(ck, data);
-    return data;
-};
+// El front ya no llama al backend: los colores salen de contextTable.ts y la
+// lectura del acorde de engine.ts (port exacto del motor C++). El BFF (bff/)
+// queda para desarrollo y para regenerar/verificar contra el binario.
 
 // Colores del circulo: salen de la tabla generada desde el motor C++
 // (contextTable.ts), sin red. Antes venian de /api/context en cada cambio de

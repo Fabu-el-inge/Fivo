@@ -6,7 +6,8 @@ import { RecLoopHold } from './components/RecLoopHold';
 import { Metronome } from './components/Metronome';
 import type { MetronomeClickSound } from './components/Metronome';
 import { ResultPanel } from './components/ResultPanel';
-import { fetchChord, getContext } from './api/fivo';
+import { getContext } from './api/fivo';
+import { engineChord } from './api/engine';
 import type { FivoResponse, FivoStyle, PowerMode } from './api/fivo';
 import { calcChordNotes } from './api/chordCalc';
 import { audioEngine } from './api/audio';
@@ -461,20 +462,14 @@ function FivoWorkspace() {
   }, []);
 
   // Fetch chord data WITHOUT playing sound
+  // Lectura del acorde (abajo a la izquierda en escritorio). Antes era un
+  // GET /api/chord al backend en Railway; ahora la calcula engine.ts, el port
+  // exacto del motor C++ (verificado en todo el dominio), sin red.
   const fetchChordData = useCallback(async (key: string, root: string, isMinor: boolean = false, inv: number = 0, styleParam: FivoStyle = 'pop', power: PowerMode = 'auto', fingersParam: number = 3) => {
-    try {
-      const apiRoot = isMinor ? getMinorRoot(root) : root;
-      // Pass isMinor to API - backend now generates correct minor chord notes
-      const res = await fetchChord(key, apiRoot, inv, styleParam, isMinor, power, fingersParam);
-      setChordData(res);
-      return res;
-    } catch (e: unknown) {
-      const error = e as Error;
-      // La lectura del acorde es informativa: si el backend falla, el sonido
-      // y los colores siguen funcionando, asi que no se muestra error.
-      console.warn('Lectura del acorde no disponible', error);
-      return null;
-    }
+    const apiRoot = isMinor ? getMinorRoot(root) : root;
+    const res = engineChord(key, apiRoot, inv, styleParam, isMinor, power, fingersParam, LITE_MODE);
+    setChordData(res);
+    return res;
   }, []);
 
   // Key change - NO sound, solo cambia los colores
