@@ -90,6 +90,9 @@ async function shoot(browser, url, [name, w, h, touch], action) {
   // backend): sin esta espera, la captura sale gris y el diff es ruido.
   await page.waitForFunction(() => document.querySelector('.circle-svg')?.outerHTML.includes('--color-safe'), null, { timeout: 30000 });
   await page.evaluate(() => document.fonts.ready);
+  // Sin transiciones: se comparan estados finales, no el momento exacto de
+  // una animacion (un switch a mitad de camino daba diferencias sueltas).
+  await page.addStyleTag({ content: '*, *::before, *::after { transition: none !important; animation: none !important; }' });
   if (action) {
     await action(page);
     await page.mouse.click(1, 1);
