@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './App.css';
 import { CircleOfFifths } from './components/CircleOfFifths';
-import { ToolsLeft, StyleSelector, InstrumentSelector, OctaveControl, RotaryKnob, RecLoopHold, Arpeggiator, ArpTempoControl, Metronome } from './components/ControlPanel';
-import type { MetronomeClickSound } from './components/ControlPanel';
+import { ToolsLeft, StyleSelector, InstrumentSelector, OctaveControl, RotaryKnob, Arpeggiator, ArpTempoControl } from './components/ControlPanel';
+import { RecLoopHold } from './components/RecLoopHold';
+import { Metronome } from './components/Metronome';
+import type { MetronomeClickSound } from './components/Metronome';
 import { ResultPanel } from './components/ResultPanel';
 import { fetchChord, getContext } from './api/fivo';
 import type { FivoResponse, FivoStyle, PowerMode } from './api/fivo';
